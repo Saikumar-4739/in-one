@@ -15,6 +15,10 @@
     "noUnusedLocals": true,
     "skipLibCheck": true,
     "strict": true,
-    "target": "es2022"
+    "target": "es2022",
+    "paths": {
+      "@in-one/shared-models": ["packages/libs/shared-models/src/index.ts"],
+      "@in-one/shared-services": ["packages/libs/shared-services/src/index.ts"]
+    }
   }
 }

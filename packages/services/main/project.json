@@ -1,0 +1,26 @@
+{
+  "name": "services-main",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/services/main/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "serve": {
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "services-main:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "services-main:build:development"
+        },
+        "production": {
+          "buildTarget": "services-main:build:production"
+        }
+      }
+    }
+  }
+}

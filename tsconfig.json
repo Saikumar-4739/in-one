@@ -2,5 +2,26 @@
   "extends": "./tsconfig.base.json",
   "compileOnSave": false,
   "files": [],
-  "references": []
+  "compilerOptions": {
+    "baseUrl": ".",
+    "moduleResolution": "nodenext",
+    "module": "NodeNext"
+  },
+  "references": [
+    {
+      "path": "./packages/mobile"
+    },
+    {
+      "path": "./packages/libs/shared-services"
+    },
+    {
+      "path": "./packages/libs/shared-models"
+    },
+    {
+      "path": "./packages/services/main"
+    },
+    {
+      "path": "./packages/ui"
+    }
+  ]
 }
