@@ -1,0 +1,12 @@
+{
+  "name": "python",
+  "type": "application",
+  "targets": {
+    "run-fastapi": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "C:/In-One/packages/python/venv/Scripts/python -m uvicorn packages.python.main:app --reload"
+      }
+    }
+  }
+}

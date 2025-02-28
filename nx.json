@@ -15,6 +15,14 @@
     ],
     "sharedGlobals": ["{workspaceRoot}/.github/workflows/ci.yml"]
   },
+  "targetDefaults": {
+    "run-python": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "python apps/python-app/main.py"
+      }
+    }
+  },
   "nxCloudId": "67beadce97580053fbe71fa4",
   "plugins": [
     {
@@ -37,12 +45,6 @@
         "buildTargetName": "build",
         "serveTargetName": "serve",
         "previewTargetName": "preview"
-      }
-    },
-    {
-      "plugin": "@nx/eslint/plugin",
-      "options": {
-        "targetName": "lint"
       }
     },
     {
