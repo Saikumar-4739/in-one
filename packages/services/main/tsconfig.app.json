@@ -3,12 +3,27 @@
   "compilerOptions": {
     "outDir": "../../../dist/out-tsc",
     "module": "NodeNext",
-    "types": ["node"],
+    "moduleResolution": "NodeNext",
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
+    "declaration": true,
+    "declarationMap": true,
+    "baseUrl": "./",
     "target": "es2021",
-    "moduleResolution": "nodenext"
+    "types": ["node"],
+    "rootDir": "../../", // Adjusted rootDir
+    "strictPropertyInitialization": false
   },
   "exclude": ["jest.config.ts", "src/**/*.spec.ts", "src/**/*.test.ts"],
-  "include": ["src/**/*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "../../libs/shared-models/src/**/*.ts",
+    "../../libs/backend-utils/src/**/*.ts",
+    "../../libs/shared-services/src/**/*.ts" // Explicitly include
+  ],
+  "references": [
+    {
+      "path": "../../libs/shared-models/tsconfig.lib.json"
+    }
+  ]
 }

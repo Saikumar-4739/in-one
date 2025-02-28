@@ -4,6 +4,9 @@
   "include": [],
   "references": [
     {
+      "path": "../../libs/shared-models"
+    },
+    {
       "path": "./tsconfig.app.json"
     },
     {
@@ -11,9 +14,21 @@
     }
   ],
   "compilerOptions": {
+    "moduleResolution": "node",
     "esModuleInterop": true,
-    "baseUrl": ".",
-    "module": "NodeNext",
-    "moduleResolution": "nodenext"
+    "strict": true,
+    "target": "ES6",
+    "module": "commonjs",
+    "noUnusedLocals": false,
+    "skipLibCheck": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strictPropertyInitialization": false,
+    "types": ["node"],
+    "baseUrl": "./", // Base directory for resolving non-relative paths
+    "paths": {
+      "@in-one/shared-services": ["../../libs/shared-services/src/index.ts"],
+      "@in-one/shared-models": ["../../libs/shared-models/src/index.ts"]
+    }
   }
 }
