@@ -2,14 +2,16 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "../../dist/out-tsc",
+    "rootDir": "../../", // Set to the parent directory to include both 'ui' and 'libs'
+    "module": "NodeNext",
     "types": [
       "node",
       "@nx/react/typings/cssmodule.d.ts",
-      "@nx/react/typings/image.d.ts",
-      "vite/client"
+      "@nx/react/typings/image.d.ts"
     ]
   },
   "exclude": [
+    "jest.config.ts",
     "src/**/*.spec.ts",
     "src/**/*.test.ts",
     "src/**/*.spec.tsx",
@@ -19,5 +21,13 @@
     "src/**/*.spec.jsx",
     "src/**/*.test.jsx"
   ],
-  "include": ["src/**/*.js", "src/**/*.jsx", "src/**/*.ts", "src/**/*.tsx"]
+  "include": [
+    "**/*.js",
+    "**/*.jsx",
+    "**/*.ts",
+    "**/*.tsx",
+    "../libs/shared-models/src/**/*", // Include shared models
+    "../libs/shared-services/src/**/*" // Include shared services
+  ],
+  "references": []
 }

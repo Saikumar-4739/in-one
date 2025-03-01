@@ -1,0 +1,149 @@
+/* AppLayout.css */
+
+/* Global Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+}
+
+/* Header Styles */
+/* Header Styles */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 24px;
+  background-color: #1B1A18; /* Dark brown header background */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* Light shadow for a subtle effect */
+}
+
+.toggle-icon {
+  display: flex;
+  align-items: center;
+}
+
+.toggle-icon .ant-btn {
+  color: #F5F5F5; /* White color for the toggle icon */
+}
+
+.logo-text {
+  font-size: 24px;
+  font-weight: bold;
+  color: #F5F5F5; /* Light grey text for the logo */
+  margin-left: 10px; /* Space between icon and text */
+}
+
+/* Header actions (icons in the right) */
+.header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.header-icon {
+  color: #F5F5F5; /* White icons */
+  font-size: 20px;
+}
+
+
+/* Layout Styles */
+.ant-layout {
+  background: #F5F5F5; /* Light grey for the entire layout */
+}
+
+.ant-layout-header {
+  background: #1B1A18; /* Dark brown background for the header */
+  padding: 0;
+}
+
+.sidebar {
+  background: #F5F0E0; /* Light Cream for sidebar */
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1); /* Sidebar shadow */
+}
+
+.sidebar-menu {
+  height: 100%;
+  border-right: 0;
+}
+
+/* Menu Styles */
+.ant-menu-item a {
+  color: #0D0D0D; /* Dark black text for menu items */
+}
+
+.ant-menu-item a:hover {
+  color: #FCB54A; /* Bright Orange on hover */
+}
+
+.ant-menu-item-icon {
+  font-size: 18px; /* Adjust icon size */
+}
+
+/* Footer Styles */
+.ant-layout-footer {
+  background: #F7DEE0; /* Light Peach for footer */
+  text-align: center;
+  padding: 10px 0;
+  color: #1B1A18; /* Dark text for footer */
+}
+
+/* Toggle Icon Styles */
+.toggle-icon {
+  text-align: right;
+  margin: 16px;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 10px;
+  }
+
+  .logo {
+    font-size: 20px;
+    margin-bottom: 10px;
+  }
+
+  .header-actions {
+    margin-top: 10px;
+  }
+
+  .header-icon {
+    margin-left: 10px;
+  }
+
+  .ant-layout {
+    padding: 0;
+  }
+
+  .ant-layout-sider {
+    width: 100%;
+    height: auto;
+    position: relative;
+  }
+
+  .ant-menu {
+    display: flex;
+    justify-content: space-around;
+  }
+
+  .ant-menu-item {
+    width: 100%;
+    text-align: center;
+  }
+
+  .sidebar {
+    box-shadow: none;
+    margin-bottom: 10px;
+  }
+
+  .ant-layout-footer {
+    font-size: 12px;
+  }
+}

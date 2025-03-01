@@ -8,17 +8,19 @@
     "noPropertyAccessFromIndexSignature": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
+    "outDir": "./dist/out-tsc",
+    "rootDir": "../../libs",
     "baseUrl": ".",
-    "moduleResolution": "nodenext"
+    "paths": {
+      "@in-one/shared-services": ["../../libs/shared-services/src/index.ts"],
+      "@in-one/shared-models": ["../../libs/shared-models/src/index.ts"],
+    },
+    "typeRoots": ["node_modules/@types", "node_modules"]
   },
   "files": [],
-  "include": [],
+  "include": ["src/**/*"],
   "references": [
-    {
-      "path": "./tsconfig.lib.json"
-    },
-    {
-      "path": "./tsconfig.spec.json"
-    }
+    { "path": "../shared-models" },
+    { "path": "./tsconfig.lib.json" },
   ]
 }

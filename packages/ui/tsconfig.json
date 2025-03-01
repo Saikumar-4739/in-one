@@ -1,16 +1,27 @@
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "jsx": "react-jsx",
     "allowJs": false,
-    "esModuleInterop": false,
+    "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,
-    "types": ["vite/client"],
-    "baseUrl": ".",
-    "module": "NodeNext"
+    "target": "es2021",
+    "baseUrl": "./src",
+    "noUnusedLocals": false,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": ["node"],
+    "paths": {
+      "@in-one/shared-services": ["../../libs/shared-services/src/index.ts"],
+      "@in-one/shared-models": ["../../libs/shared-models/src/index.ts"]
+    },
+    "lib": ["dom", "es2021"],
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
   },
-  "files": [],
-  "include": [],
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules", "**/*.spec.ts", "**/*.test.ts"],
   "references": [
     {
       "path": "./tsconfig.app.json"
@@ -18,6 +29,5 @@
     {
       "path": "./tsconfig.spec.json"
     }
-  ],
-  "extends": "../../tsconfig.base.json"
+  ]
 }

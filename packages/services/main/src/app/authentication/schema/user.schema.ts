@@ -11,8 +11,23 @@ export class UserEntity {
   @Prop({ required: true })
   password: string;
 
+  @Prop({ required: true })
+  email: string;
+
   @Prop({ default: '' })
   profilePicture: string;
+
+  @Prop()
+  resetPasswordOtp?: string;
+
+  @Prop()
+  resetPasswordExpires?: Date;
+
+  @Prop()
+  twoFactorOtp?: string;
+
+  @Prop()
+  twoFactorExpires?: Date;
 
   @Prop({ enum: ['online', 'offline', 'busy'], default: 'offline' })
   status: 'online' | 'offline' | 'busy';

@@ -1,21 +1,20 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { JwtModule } from '@nestjs/jwt';
+import { CacheModule } from '@nestjs/cache-manager'; // ✅ FIXED: Import from @nestjs/cache-manager
 import { UserService } from './user.service';
 import { UserController } from './user.controller';
+import { MongooseModule } from '@nestjs/mongoose';
 import { UserEntity, UserSchema } from './schema/user.schema';
-import { UserRepository } from './repository/user.repository';
+import { JwtModule } from '@nestjs/jwt';
+import { GenericTransactionManager } from 'src/database/trasanction-manager';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: UserEntity.name, schema: UserSchema }]),
-    JwtModule.register({
-      secret: process.env.JWT_SECRET || 'your-secret-key',
-      signOptions: { expiresIn: '1h' }, 
-    }),
+    JwtModule.register({}),
+    CacheModule.register({ isGlobal: true, ttl: 300 }), // ✅ Register CacheModule properly
   ],
-  providers: [UserService, UserRepository],
   controllers: [UserController],
-  exports: [UserService, JwtModule],
+  providers: [UserService, GenericTransactionManager,],
+  exports: [UserService],
 })
 export class UserModule {}
