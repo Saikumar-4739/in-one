@@ -12,11 +12,11 @@ async function bootstrap() {
 
   app.enableCors();
   app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
-  app.use(rateLimit({
-    windowMs: 15 * 60 * 1000, 
-    max: 5, 
-    message: 'Too many requests, please try again later.',
-  }));
+  // app.use(rateLimit({
+  //   windowMs: 15 * 60 * 1000, 
+  //   max: 5, 
+  //   message: 'Too many requests, please try again later.',
+  // }));
 
 
   const config = new DocumentBuilder()

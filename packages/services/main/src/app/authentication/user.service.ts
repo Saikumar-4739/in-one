@@ -225,7 +225,7 @@ export class UserService {
       if (!user) throw new NotFoundException('User not found');
       return new CommonResponse<{ status: string }>(true, 200, 'User status fetched successfully', { status: user.status });
     } catch (error) {
-      return new CommonResponse<{ status: string }>(false, 500, 'Error fetching user status');
+      return new CommonResponse<{ status: string }>(false, 500, 'Error fetcspothing user status');
     }
   }
 
