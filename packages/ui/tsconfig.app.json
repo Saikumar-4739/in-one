@@ -27,7 +27,7 @@
     "**/*.ts",
     "**/*.tsx",
     "../libs/shared-models/src/**/*", // Include shared models
-    "../libs/shared-services/src/**/*" // Include shared services
+    // "../libs/shared-services/src/**/*" // Include shared services
   ],
   "references": [
     {

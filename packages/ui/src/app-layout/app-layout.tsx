@@ -23,7 +23,10 @@ import {
   SettingOutlined,
   LogoutOutlined,
   AppstoreAddOutlined,
-  VideoCameraOutlined
+  VideoCameraOutlined,
+  UserOutlined,
+  HomeOutlined,
+  PhoneOutlined
 } from '@ant-design/icons';
 import './app-layout.css';
 import { UserHelpService } from '../../../libs/shared-services/src/authentication/user-help-service';
@@ -111,54 +114,54 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <Layout>
         {/* Sidebar */}
         <Sider collapsed={collapsed} width={260} className="sidebar">
-<Menu mode="inline" defaultSelectedKeys={['1']}>
-  <Menu.Item key="1" icon={<ProjectOutlined />}>
-    <Link to="/dashboard">Dashboard</Link>
-  </Menu.Item>
-  <Menu.Item key="2" icon={<MessageOutlined />}>
-    <Link to="/chat">Chat</Link>
-  </Menu.Item>
-  <Menu.Item key="3" icon={<FileOutlined />}>
-    <Link to="/notes">Notes</Link>
-  </Menu.Item>
-  <Menu.Item key="4" icon={<CalendarOutlined />}>
-    <Link to="/calendar">Calendar</Link>
-  </Menu.Item>
-  <Menu.Item key="5" icon={<BulbOutlined />}>
-    <Link to="/ai-bot">AI Bot</Link>
-  </Menu.Item>
-  <Menu.Item key="6" icon={<TeamOutlined />}>
-    <Link to="/community">Community</Link>
-  </Menu.Item>
-  <Menu.Item key="7" icon={<DollarOutlined />}>
-    <Link to="/datiment">Entertainment</Link>
-  </Menu.Item>
-  <Menu.Item key="8" icon={<VideoCameraOutlined />}>
-    <Link to="/videos">Videos</Link>
-  </Menu.Item>
-  <Menu.Item key="9" icon={<PictureOutlined />}>
-    <Link to="/photos">Photos</Link>
-  </Menu.Item>
+          <Menu mode="inline" defaultSelectedKeys={['1']}>
+            <Menu.Item key="1" icon={<ProjectOutlined />}>
+              <Link to="/dashboard">Dashboard</Link>
+            </Menu.Item>
+            <Menu.Item key="2" icon={<MessageOutlined />}>
+              <Link to="/chat">Chat</Link>
+            </Menu.Item>
+            <Menu.Item key="3" icon={<FileOutlined />}>
+              <Link to="/notes">Notes</Link>
+            </Menu.Item>
+            <Menu.Item key="4" icon={<CalendarOutlined />}>
+              <Link to="/calendar">Calendar</Link>
+            </Menu.Item>
+            <Menu.Item key="5" icon={<BulbOutlined />}>
+              <Link to="/ai-bot">AI Bot</Link>
+            </Menu.Item>
+            <Menu.Item key="6" icon={<TeamOutlined />}>
+              <Link to="/community">Community</Link>
+            </Menu.Item>
+            <Menu.Item key="7" icon={<DollarOutlined />}>
+              <Link to="/datiment">Entertainment</Link>
+            </Menu.Item>
+            <Menu.Item key="8" icon={<VideoCameraOutlined />}>
+              <Link to="/videos">Videos</Link>
+            </Menu.Item>
+            <Menu.Item key="9" icon={<PictureOutlined />}>
+              <Link to="/photos">Photos</Link>
+            </Menu.Item>
 
-  <Menu.Divider />
+            <Menu.Divider />
 
-  <Menu.ItemGroup title="LATEST NEWS">
-    <Menu.Item key="10" icon={<LineChartOutlined />}>
-      <Link to="/latest-news">Latest News</Link>
-    </Menu.Item>
-    <Menu.Item key="11" icon={<GlobalOutlined />}>
-      <Link to="/technology-news">Technology News</Link>
-    </Menu.Item>
-  </Menu.ItemGroup>
+            <Menu.ItemGroup title="LATEST NEWS">
+              <Menu.Item key="10" icon={<LineChartOutlined />}>
+                <Link to="/latest-news">Latest News</Link>
+              </Menu.Item>
+              <Menu.Item key="11" icon={<GlobalOutlined />}>
+                <Link to="/technology-news">Technology News</Link>
+              </Menu.Item>
+            </Menu.ItemGroup>
 
-  <Menu.Divider />
+            <Menu.Divider />
 
-  <Menu.ItemGroup title="PLUGINS">
-    <Menu.Item key="12" icon={<AppstoreAddOutlined />}>
-      <Link to="/plugins">Plugins</Link>
-    </Menu.Item>
-  </Menu.ItemGroup>
-</Menu>
+            <Menu.ItemGroup title="PLUGINS">
+              <Menu.Item key="12" icon={<AppstoreAddOutlined />}>
+                <Link to="/plugins">Plugins</Link>
+              </Menu.Item>
+            </Menu.ItemGroup>
+          </Menu>
 
           {/* Profile at Bottom */}
           <div className="sidebar-footer">
@@ -186,27 +189,58 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         {/* Content & Footer */}
         <Layout className="content-layout">
           <Content className="content-container">{children}</Content>
-          <Footer className="footer">© 2025 In-One. All Rights Reserved.</Footer>
+          {/* <Footer className="footer">© 2025 In-One. All Rights Reserved.</Footer> */}
         </Layout>
       </Layout>
 
       {/* User Details Modal */}
       <Modal
-        title="User Details"
+        title={<div className="modal-title">User Details</div>}
         visible={isModalVisible}
         onCancel={handleModalClose}
         footer={null}
         centered
+        className="user-details-modal"
       >
         {loading ? (
-          <Spin size="large" />
+          <div className="loading-container">
+            <Spin size="large" />
+          </div>
         ) : (
-          <div>
-            <p><strong>Name:</strong> {userData?.username}</p>
-            <p><strong>Email:</strong> {userData?.email}</p>
-            <p><strong>Phone:</strong> {userData?.phone}</p>
-            <p><strong>Address:</strong> {userData?.address}</p>
-            {/* Add any additional user details here */}
+          <div className="user-details-container">
+            <div className="user-detail-item">
+              <UserOutlined className="detail-icon" />
+              <div className="detail-content">
+                <span className="detail-label">Name:</span>
+                <span className="detail-value">{userData?.username || 'N/A'}</span>
+              </div>
+            </div>
+
+            <div className="user-detail-item">
+              <MailOutlined className="detail-icon" />
+              <div className="detail-content">
+                <span className="detail-label">Email:</span>
+                <span className="detail-value">{userData?.email || 'N/A'}</span>
+              </div>
+            </div>
+
+            <div className="user-detail-item">
+              <PhoneOutlined className="detail-icon" />
+              <div className="detail-content">
+                <span className="detail-label">Phone:</span>
+                <span className="detail-value">{userData?.phone || 'N/A'}</span>
+              </div>
+            </div>
+
+            <div className="user-detail-item">
+              <HomeOutlined className="detail-icon" />
+              <div className="detail-content">
+                <span className="detail-label">Address:</span>
+                <span className="detail-value">{userData?.address || 'N/A'}</span>
+              </div>
+            </div>
+
+            {/* Add any additional user details here following the same pattern */}
           </div>
         )}
       </Modal>

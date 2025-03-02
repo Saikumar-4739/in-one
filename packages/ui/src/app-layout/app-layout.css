@@ -77,6 +77,7 @@
   padding: 16px;
   display: flex;
   align-items: center;
+  background-color: #000;
   border-top: 1px solid #ddd;
 }
 
@@ -110,7 +111,7 @@
   flex: 1;
   padding: 24px;
   background: white;
-  margin: 16px;
+  margin: 4px;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
@@ -178,4 +179,119 @@
   display: block;
   font-size: 14px;
   color: #333;
+}
+
+/* UserModal.css */
+
+.user-details-modal .ant-modal-content {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.user-details-modal .ant-modal-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #eaeaea;
+  padding: 16px 24px;
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.user-details-container {
+  padding: 8px 0;
+}
+
+.user-detail-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.user-detail-item:last-child {
+  border-bottom: none;
+}
+
+.detail-icon {
+  font-size: 20px;
+  color: #3498db; /* Primary blue color for icons */
+  margin-right: 16px;
+  margin-top: 2px;
+}
+
+.detail-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #7f8c8d;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.detail-value {
+  color: #2c3e50;
+  font-size: 16px;
+  word-break: break-word;
+}
+
+/* For responsive behavior */
+@media (max-width: 480px) {
+  .detail-content {
+    flex-direction: column;
+  }
+  
+  .detail-label {
+    margin-right: 0;
+    margin-bottom: 4px;
+  }
+}
+
+/* Media query for mobile devices */
+@media (max-width: 768px) {
+  /* Main layout changes for mobile */
+  .app-layout {
+    flex-direction: column;
+  }
+  
+  /* Sidebar adjustments for mobile */
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+  }
+  
+  /* Hide the sidebar by default on mobile */
+  .sidebar-content {
+    display: none;
+  }
+  
+  /* Show sidebar when active */
+  .sidebar.active .sidebar-content {
+    display: block;
+  }
+  
+  /* Mobile menu toggle button */
+  .mobile-menu-toggle {
+    display: block;
+    padding: 10px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+  }
 }

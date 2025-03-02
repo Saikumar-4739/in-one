@@ -1,11 +1,10 @@
 .login-container {
   display: flex;
   height: 100vh;
-  background-color: #000; /* Entire background black */
+  background-color: #fff; /* White background */
   margin: 0;
   padding: 0; /* Ensure there's no padding that might cause additional space */
 }
-
 /* Left Side - Background Image with Spacing */
 .login-image-section {
   width: 80%;
@@ -17,21 +16,19 @@
   justify-content: center;
   padding: 0; /* Removed padding to avoid extra space */
 }
-
 /* Right Side - Stylish Login Box */
 .login-box {
   width: 20%;
   padding: 40px;
   display: flex;
-  background-color: #000;
+  background-color: #fff; /* White background */
   flex-direction: column;
   justify-content: center;
   border-radius: 10px;
   /* box-shadow: 0px 4px 20px rgba(255, 255, 255, 0.15); */
   /* border: 1px solid rgba(12, 12, 12, 0.87); */
-  color: white; /* White text */
+  color: #000; /* Changed from white to black text */
 }
-
 /* Sidebar Logo */
 .sidebar-logo {
   display: flex;
@@ -40,15 +37,16 @@
   gap: 4px;
   justify-content: center;
 }
-
+/* Logo Circle */
 /* Logo Circle */
 .logo-circle {
   width: 50px;
   height: 50px;
-  background-color: #fff;
-  color: black;
+  background-color: #000; /* Black background */
+  color: white; /* White text on black background */
   font-weight: bold;
   font-size: 22px;
+  font-family: 'Montserrat', sans-serif; /* Added modern sans-serif font */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -59,64 +57,55 @@
 .logo-text {
   font-size: 22px;
   font-weight: bold;
-  color: white !important; /* Ensure text color is white */
+  font-family: 'Poppins', sans-serif; /* Added different modern font */
+  color: #000 !important; /* Black text */
 }
-
 /* Header Title */
 .text-center {
-  color: white !important; /* Header text white */
+  color: #000 !important; /* Changed to black text */
 }
-
 /* Form Styling */
 .ant-form-item-label > label {
-  color: white !important;
+  color: #000 !important; /* Changed to black text */
 }
-
 /* Input Fields - Transparent Background */
 .input-field {
   background: transparent !important;
-  color: white !important;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #000 !important; /* Changed to black text */
+  border: 1px solid rgba(0, 0, 0, 0.3); /* Changed border color to match theme */
 }
-
-/* ✅ Placeholder text color set to white */
+/* ✅ Placeholder text color set to dark gray */
 .input-field::placeholder,
 .ant-input::placeholder,
 .ant-input-password::placeholder {
-  color: white !important;  
+  color: #666 !important; /* Changed to dark gray for better visibility on white */  
   opacity: 1 !important; /* Ensure full opacity */
 }
-
 /* Remove gray background on focus & hover */
 .input-field:focus, 
 .input-field:hover {
   background: transparent !important;
 }
-
 /* Icon Styling */
 .input-icon {
-  color: rgba(255, 255, 255, 0.8); /* Slightly brighter for better visibility */
+  color: rgba(0, 0, 0, 0.8); /* Changed to dark for better visibility on white */
   font-size: 18px;
   margin-right: 10px;
 }
-
 /* Signup Text */
 .signup-text {
   text-align: center;
   margin-top: 15px;
-  color: white;
+  color: #000; /* Changed to black text */
 }
-
 .signup-text a {
-  color: #1890ff;
+  color: #1890ff; /* Kept blue for links */
   font-weight: bold;
   text-decoration: none;
 }
-
 .signup-text a:hover {
   text-decoration: underline;
 }
-
 /* ✅ Responsive Design for Mobile & Tablets */
 @media (max-width: 1024px) {
   .login-container {
@@ -124,25 +113,21 @@
     align-items: center;
     justify-content: center;
   }
-
   .login-image-section {
     width: 100%;
     height: 40vh; /* Reduce height on smaller screens */
     padding: 0; /* Removed padding to avoid extra space */
   }
-
   .login-box {
     width: 90%; /* Make it full width for better usability */
     max-width: 400px;
     margin-top: 20px;
   }
 }
-
 @media (max-width: 768px) {
   .login-box {
     padding: 30px;
   }
-
   .text-center {
     font-size: 20px; /* Slightly smaller text for better fit */
   }

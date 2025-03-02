@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 import { Route, Routes, Navigate } from 'react-router-dom';
 import AppLayout from './app-layout';
-import About from '../components/pages/layout-pages/about-page';
-import Home from '../components/pages/layout-pages/home-page';
-import Profile from '../components/pages/layout-pages/profile-page';
 import LoginPage from '../components/pages/authentication/login-page';
 
 const AppRoutes: React.FC = () => {
@@ -17,16 +14,14 @@ const AppRoutes: React.FC = () => {
       <Route path="/login" element={<LoginPage />} />
 
       {/* Protected Routes */}
-      {isAuthenticated ? (
-        <>
-          <Route path="/" element={<AppLayout><Home /></AppLayout>} />
-          <Route path="/about" element={<AppLayout><About /></AppLayout>} />
-          <Route path="/profile" element={<AppLayout><Profile /></AppLayout>} />
-        </>
-      ) : (
-        // Redirect unauthorized users to login
-        <Route path="*" element={<Navigate to="/login" />} />
-      )}
+      <Route path="/" element={
+        isAuthenticated ? 
+          <AppLayout children={undefined} /> : 
+          <Navigate to="/login" />
+      } />
+
+      {/* Catch all route */}
+      <Route path="*" element={<Navigate to={isAuthenticated ? "/" : "/login"} />} />
     </Routes>
   );
 };
