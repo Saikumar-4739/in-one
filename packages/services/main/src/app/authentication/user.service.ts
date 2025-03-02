@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, ObjectId } from 'mongoose';
 import { UserEntity, UserDocument } from './schema/user.schema';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -132,30 +132,56 @@ export class UserService {
   }
 
 
-  async loginUser(userLoginDto: UserLoginModel): Promise<CommonResponse<{ accessToken: string }>> {
-    await this.transactionManager.startTransaction();
 
-    try {
-      const user = await this.userModel.findOne({ username: userLoginDto.email }).exec();
-      if (!user) throw new UnauthorizedException('Invalid credentials');
+async loginUser(userLoginDto: UserLoginModel): Promise<CommonResponse<{ accessToken: string, refreshToken: string, user: { id: string, email: string, profilePicture: string, username: string } }>> {
+  try {
+    // Explicitly type the user to include the correct types for _id
+    const user = await this.userModel.findOne({ email: userLoginDto.email }).exec();
 
-      const isPasswordValid = await bcrypt.compare(userLoginDto.password, user.password);
-      if (!isPasswordValid) throw new UnauthorizedException('Invalid credentials');
+    if (!user) throw new UnauthorizedException('Invalid credentials');
 
-      const payload = { username: user.username, sub: user._id };
-      const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
-      const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+    const isPasswordValid = await bcrypt.compare(userLoginDto.password, user.password);
+    if (!isPasswordValid) throw new UnauthorizedException('Invalid credentials');
 
-      await this.userModel.findByIdAndUpdate(user._id, { status: 'online' }, { session: this.transactionManager.getSession() }).exec();
+    const payload = { username: user.email, sub: user._id };
+    const accessToken = this.jwtService.sign(payload, { expiresIn: '15m' });
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
 
-      await this.transactionManager.commitTransaction();
+    await this.userModel.findByIdAndUpdate(user._id, { status: 'online' }).exec();
 
-      return new CommonResponse<{ accessToken: string, refreshToken: string }>(true, 200, 'User logged in successfully', { accessToken, refreshToken });
-    } catch (error) {
-      await this.transactionManager.rollbackTransaction();
-      return new CommonResponse<{ accessToken: string }>(false, 500, 'Error logging in user');
-    }
+    // Return the response with proper types and include user info
+    return new CommonResponse<{ accessToken: string, refreshToken: string, user: { id: string, email: string, profilePicture: string, username: string } }>(
+      true, 
+      200, 
+      'User logged in successfully', 
+      { 
+        accessToken, 
+        refreshToken, 
+        user: {
+          id: (user._id as ObjectId).toString(),  // Cast _id to ObjectId and convert to string
+          email: user.email, 
+          profilePicture: user.profilePicture, 
+          username: user.username 
+        }
+      }
+    );
+  } catch (error) {
+    console.log(error);
+    return new CommonResponse<{ accessToken: string, refreshToken: string, user: { id: string, email: string, profilePicture: string, username: string } }>(
+      false, 
+      500, 
+      'Error logging in user', 
+      { 
+        accessToken: '', 
+        refreshToken: '', 
+        user: { id: '', email: '', profilePicture: '', username: '' }
+      }
+    );
   }
+}
+
+
+
 
   async getUserById(userId: string): Promise<CommonResponse<UserEntity>> {
     const cachedUser = await this.cacheManager.get<UserEntity>(`user_${userId}`);
@@ -205,19 +231,15 @@ export class UserService {
   }
 
   async logoutUser(userId: string): Promise<CommonResponse<null>> {
-    await this.transactionManager.startTransaction();
-
     try {
-      await this.userModel.findByIdAndUpdate(userId, { status: 'offline' }, { session: this.transactionManager.getSession() }).exec();
-
-      await this.transactionManager.commitTransaction();
-
+      await this.userModel.findByIdAndUpdate(userId, { status: 'offline' }).exec();
       return new CommonResponse<null>(true, 200, 'User logged out successfully');
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
+      console.error('Logout error:', error); // Added console log for debugging
       return new CommonResponse<null>(false, 500, 'Error logging out user');
     }
   }
+  
 
   async checkUserStatus(userId: string): Promise<CommonResponse<{ status: string }>> {
     try {

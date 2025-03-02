@@ -5,13 +5,20 @@ import { UserEntity, UserDocument } from '../authentication/schema/user.schema';
 import { ChatRoom, ChatRoomDocument } from './schema/chat-room.schema';
 import { MessageEntity, MessageDocument } from './schema/message.schema';
 import { ChatRoomResponse, CreateChatRoomModel, CreateMessageModel, EditMessageModel, MessageResponseModel } from '@in-one/shared-models';
+import { AudioMessageDocument, AudioMessageEntity } from './schema/audio.schema';
+import { CallDocument, CallEntity } from './schema/call.schema';
 
 @Injectable()
 export class ChatService {
+  getAllCalls(): CallDocument[] | PromiseLike<CallDocument[]> {
+    throw new Error('Method not implemented.');
+  }
   constructor(
     @InjectModel(ChatRoom.name) private chatRoomModel: Model<ChatRoomDocument>,
     @InjectModel(MessageEntity.name) private messageModel: Model<MessageDocument>,
     @InjectModel(UserEntity.name) private userModel: Model<UserDocument>,
+    @InjectModel(CallEntity.name) private callModel: Model<CallDocument>,
+    @InjectModel(AudioMessageEntity.name) private audioMessageModel: Model<AudioMessageDocument>
   ) {}
 
   async createMessage(req: CreateMessageModel): Promise<MessageResponseModel> {
@@ -267,6 +274,18 @@ export class ChatService {
       );
     }
   }
-  
-  
+
+  async sendAudioMessage(data: { senderId: string; receiverId: string; chatRoomId: string; audioUrl: string; duration: number }) {
+    return await this.audioMessageModel.create(data);
+  }
+
+  async startCall(data: { callerId: string; receiverId: string; callType: string }) {
+    return await this.callModel.create({ ...data, status: 'ongoing' });
+  }
+
+  async endCall(callId: string, status: string) {
+    return await this.callModel.findByIdAndUpdate(callId, { status }, { new: true });
+  }
 }
+  
+  

@@ -29,5 +29,12 @@
     "../libs/shared-models/src/**/*", // Include shared models
     "../libs/shared-services/src/**/*" // Include shared services
   ],
-  "references": []
+  "references": [
+    {
+      "path": "../libs/shared-services/tsconfig.lib.json"
+    },
+    {
+      "path": "../libs/shared-models/tsconfig.lib.json"
+    }
+  ]
 }

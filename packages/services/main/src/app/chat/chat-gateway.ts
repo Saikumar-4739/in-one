@@ -9,7 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
-import { Logger } from '@nestjs/common';
+import { HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { CreateMessageModel } from '@in-one/shared-models';
 
 @WebSocketGateway({ cors: true })
@@ -147,4 +147,43 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return { success: false, message: 'Failed to retrieve online users', error: error };
     }
   }
+
+  @SubscribeMessage('startCall')
+  async handleStartCall(@MessageBody() data: { callerId: string; receiverId: string; callType: string }) {
+    const call = await this.chatService.startCall(data);
+    this.server.to(data.receiverId).emit('incomingCall', call);
+  }
+
+  @SubscribeMessage('endCall')
+async handleEndCall(@MessageBody() data: { callId: string; status: string }) {
+  const call = await this.chatService.endCall(data.callId, data.status);
+  
+  if (!call) {
+    throw new HttpException(
+      { success: false, message: 'Call not found' },
+      HttpStatus.NOT_FOUND
+    );
+  }
+
+  // Convert ObjectId to string before passing to `to()`
+  this.server.to(call.receiverId.toString()).emit('callEnded', call);
 }
+
+
+  @SubscribeMessage('sendAudioMessage')
+  async handleSendAudioMessage(@MessageBody() data: { senderId: string; receiverId: string; chatRoomId: string; audioUrl: string; duration: number }) {
+    const audioMessage = await this.chatService.sendAudioMessage(data);
+    this.server.to(data.chatRoomId).emit('newAudioMessage', audioMessage);
+  }
+
+  @SubscribeMessage('joinCall')
+  async handleJoinCall(@MessageBody() data: { callId: string; userId: string }) {
+    this.server.to(data.callId).emit('userJoinedCall', data.userId);
+  }
+
+  @SubscribeMessage('leaveCall')
+  async handleLeaveCall(@MessageBody() data: { callId: string; userId: string }) {
+    this.server.to(data.callId).emit('userLeftCall', data.userId);
+  }
+}
+

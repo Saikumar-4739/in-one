@@ -5,13 +5,15 @@ import { AppService } from './app.service';
 import { DatabaseModule } from 'src/database/database.module';
 import { UserModule } from './authentication/user.module';
 import { ChatModule } from './chat/chat.module';
+import { NotesCalendarModule } from './notes-calender/notes.calender.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot(),
     DatabaseModule,
     UserModule,
-    ChatModule
+    ChatModule,
+    NotesCalendarModule
   ],
   controllers: [AppController],
   providers: [AppService],

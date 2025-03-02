@@ -8,7 +8,8 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "noUnusedLocals": false,
-    "tsBuildInfoFile": "out-tsc/mobile/tsconfig.app.tsbuildinfo"
+    "tsBuildInfoFile": "out-tsc/mobile/tsconfig.app.tsbuildinfo",
+    "baseUrl": "."
   },
   "files": ["../../node_modules/@nx/expo/typings/svg.d.ts"],
   "exclude": [

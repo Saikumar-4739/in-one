@@ -3,6 +3,7 @@ import { ChatService } from './chat.service';
 import { CommonResponse, CreateChatRoomModel, CreateMessageModel, EditMessageModel, MessageResponseModel } from '@in-one/shared-models'; // ✅ Import CommonResponse
 import { ExceptionHandler } from '@in-one/shared-models'; // ✅ Import ExceptionHandler
 import { ApiBody } from '@nestjs/swagger';
+import { CallDocument } from './schema/call.schema';
 
 @Controller('chat')
 export class ChatController {
@@ -102,6 +103,37 @@ export class ChatController {
         { success: false, message: 'Error sending private message', error: error },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
+    }
+  }
+
+  @Post('start')
+  async startCall(@Body() data: { callerId: string; receiverId: string; callType: string }): Promise<CallDocument> {
+    try {
+      return await this.chatService.startCall(data);
+    } catch (error) {
+      throw new HttpException({ success: false, message: 'Error starting call', error }, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Post('end')
+  async endCall(@Body() data: { callId: string; status: string }): Promise<CallDocument | null> {
+    try {
+      const call = await this.chatService.endCall(data.callId, data.status);
+      if (!call) {
+        throw new HttpException({ success: false, message: 'Call not found' }, HttpStatus.NOT_FOUND);
+      }
+      return call;
+    } catch (error) {
+      throw new HttpException({ success: false, message: 'Error ending call', error }, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  @Post('getAllCalls')
+  async getAllCalls(): Promise<CallDocument[]> {
+    try {
+      return await this.chatService.getAllCalls();
+    } catch (error) {
+      throw new HttpException({ success: false, message: 'Error retrieving calls', error }, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 }

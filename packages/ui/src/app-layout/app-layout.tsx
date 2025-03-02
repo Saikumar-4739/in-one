@@ -1,96 +1,215 @@
-import React, { useState } from 'react';
-import { Layout, Menu, Button } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Layout, Menu, Button, Avatar, Modal, Spin } from 'antd';
 import { Link } from 'react-router-dom';
-import { LoginOutlined, UserOutlined, MessageOutlined, SettingOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
+import {
+  ProjectOutlined,
+  LineChartOutlined,
+  DollarOutlined,
+  WalletOutlined,
+  PictureOutlined,
+  CalendarOutlined,
+  MessageOutlined,
+  TeamOutlined,
+  ShoppingCartOutlined,
+  FileOutlined,
+  QuestionCircleOutlined,
+  MailOutlined,
+  StarOutlined,
+  BellOutlined,
+  GlobalOutlined,
+  SearchOutlined,
+  FullscreenOutlined,
+  BulbOutlined,
+  SettingOutlined,
+  LogoutOutlined,
+  AppstoreAddOutlined,
+  VideoCameraOutlined
+} from '@ant-design/icons';
 import './app-layout.css';
+import { UserHelpService } from '../../../libs/shared-services/src/authentication/user-help-service';
 
-const { Header, Content, Sider, Footer } = Layout;
+const { Header, Sider, Content, Footer } = Layout;
 
-interface AppLayoutProps {
-  children: React.ReactNode;
-}
-
-const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
+const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [collapsed, setCollapsed] = useState(false);
+  const [userData, setUserData] = useState<any>(null); // State to store user data
+  const [loading, setLoading] = useState<boolean>(true); // Loading state
+  const [isModalVisible, setIsModalVisible] = useState<boolean>(false); // Modal visibility state
+  const userService = new UserHelpService();
 
-  const toggleSidebar = () => {
-    setCollapsed(!collapsed);
+  // Fetch user data on component mount
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+          const response = await userService.getUserById(userId);
+          setUserData(response.data);
+        } else {
+          console.error('User ID not found in localStorage');
+        }
+      } catch (error) {
+        console.error('Failed to fetch user data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  const logoutUser = async () => {
+    try {
+      const userId = localStorage.getItem('userId');
+      if (!userId) {
+        throw new Error('User ID not found in localStorage');
+      }
+
+      console.log('Logging out user:', userId); // Debugging
+      const response = await userService.logoutUser(userId);
+      console.log('Logout API Response:', response); // Debugging API response
+
+      // Clear local storage and redirect
+      localStorage.removeItem('userId');
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
+  const handleLogoClick: React.MouseEventHandler<HTMLDivElement> = () => {
+    console.log("Logo Clicked");
+  };
+
+  const showModal = () => {
+    setIsModalVisible(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalVisible(false);
   };
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout className="app-layout">
       {/* Header */}
       <Header className="header">
-        <div className="toggle-icon">
-          <Button
-            type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={toggleSidebar}
-            style={{ color: '#F5F5F5', fontSize: '18px' }} // Make sure the icon is white
-          />
-          <span className="logo-text">IN-ONE</span>
+        <div className="header-left">
+          <div className="sidebar-logo" onClick={handleLogoClick}>
+            <div className="logo-circle-f">IN</div>
+            {!collapsed && <span className="logo-text-f">One</span>}
+          </div>
         </div>
-
-        <div className="header-actions">
-          <Button
-            type="text"
-            icon={<UserOutlined />}
-            className="header-icon"
-            style={{ marginLeft: 16, color: '#F5F5F5' }} // White icon for user
-          />
-          <Button
-            type="text"
-            icon={<SettingOutlined />}
-            className="header-icon"
-            style={{ marginLeft: 16, color: '#F5F5F5' }} // White icon for settings
-          />
+        <div className="header-right">
+          <Button type="text" icon={<FullscreenOutlined />} className="header-icon" />
+          <Button type="text" icon={<BulbOutlined />} className="header-icon" />
+          <Button type="text" icon={<BellOutlined />} className="header-icon" />
+          <Button type="text" icon={<LogoutOutlined />} className="header-icon" onClick={logoutUser} />
         </div>
       </Header>
 
-
-      {/* Sidebar */}
+      {/* Sidebar & Main Content */}
       <Layout>
-        <Sider
-          width={250}
-          className="sidebar"
-          collapsible
-          collapsed={collapsed}
-          onCollapse={toggleSidebar}
-        >
-          <Menu
-            mode="inline"
-            defaultSelectedKeys={['1']}
-            className="sidebar-menu"
-          >
-            <Menu.Item key="1" icon={<MessageOutlined />} style={{ color: '#000000' }}>
-              <Link to="/">Chat</Link>
-            </Menu.Item>
-            <Menu.Item key="2" icon={<UserOutlined />} style={{ color: '#000000' }}>
-              <Link to="/profile">Profile</Link>
-            </Menu.Item>
-            <Menu.Item key="3" icon={<SettingOutlined />} style={{ color: '#000000' }}>
-              <Link to="/settings">Settings</Link>
-            </Menu.Item>
-          </Menu>
+        {/* Sidebar */}
+        <Sider collapsed={collapsed} width={260} className="sidebar">
+<Menu mode="inline" defaultSelectedKeys={['1']}>
+  <Menu.Item key="1" icon={<ProjectOutlined />}>
+    <Link to="/dashboard">Dashboard</Link>
+  </Menu.Item>
+  <Menu.Item key="2" icon={<MessageOutlined />}>
+    <Link to="/chat">Chat</Link>
+  </Menu.Item>
+  <Menu.Item key="3" icon={<FileOutlined />}>
+    <Link to="/notes">Notes</Link>
+  </Menu.Item>
+  <Menu.Item key="4" icon={<CalendarOutlined />}>
+    <Link to="/calendar">Calendar</Link>
+  </Menu.Item>
+  <Menu.Item key="5" icon={<BulbOutlined />}>
+    <Link to="/ai-bot">AI Bot</Link>
+  </Menu.Item>
+  <Menu.Item key="6" icon={<TeamOutlined />}>
+    <Link to="/community">Community</Link>
+  </Menu.Item>
+  <Menu.Item key="7" icon={<DollarOutlined />}>
+    <Link to="/datiment">Entertainment</Link>
+  </Menu.Item>
+  <Menu.Item key="8" icon={<VideoCameraOutlined />}>
+    <Link to="/videos">Videos</Link>
+  </Menu.Item>
+  <Menu.Item key="9" icon={<PictureOutlined />}>
+    <Link to="/photos">Photos</Link>
+  </Menu.Item>
+
+  <Menu.Divider />
+
+  <Menu.ItemGroup title="LATEST NEWS">
+    <Menu.Item key="10" icon={<LineChartOutlined />}>
+      <Link to="/latest-news">Latest News</Link>
+    </Menu.Item>
+    <Menu.Item key="11" icon={<GlobalOutlined />}>
+      <Link to="/technology-news">Technology News</Link>
+    </Menu.Item>
+  </Menu.ItemGroup>
+
+  <Menu.Divider />
+
+  <Menu.ItemGroup title="PLUGINS">
+    <Menu.Item key="12" icon={<AppstoreAddOutlined />}>
+      <Link to="/plugins">Plugins</Link>
+    </Menu.Item>
+  </Menu.ItemGroup>
+</Menu>
+
+          {/* Profile at Bottom */}
+          <div className="sidebar-footer">
+            {loading ? (
+              <Spin size="small" />
+            ) : (
+              <>
+                <div className="avatar-container" onClick={showModal}>
+                  <Avatar src={userData?.profilePicture || "/profile.jpg"} size={40} />
+                  {/* Green dot for online status */}
+                  <div className="online-status-dot" />
+                </div>
+                {!collapsed && (
+                  <div className="user-info">
+                    <span className="username">{userData?.username || 'User Name'}</span>
+                    <span className="email">{userData?.email || 'user@example.com'}</span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
         </Sider>
 
-        {/* Content Area */}
-        <Layout style={{ padding: '0 24px 24px' }}>
-          <Content
-            style={{
-              padding: 24,
-              margin: 0,
-              minHeight: 280,
-              background: '#FFFFFF', // Light Grey background for content
-            }}
-          >
-            {children}
-          </Content>
-          <Footer style={{ textAlign: 'center', background: '#FFFFFF' }}>
-            © 2025 In-One. All Rights Reserved.
-          </Footer>
+        {/* Content & Footer */}
+        <Layout className="content-layout">
+          <Content className="content-container">{children}</Content>
+          <Footer className="footer">© 2025 In-One. All Rights Reserved.</Footer>
         </Layout>
       </Layout>
+
+      {/* User Details Modal */}
+      <Modal
+        title="User Details"
+        visible={isModalVisible}
+        onCancel={handleModalClose}
+        footer={null}
+        centered
+      >
+        {loading ? (
+          <Spin size="large" />
+        ) : (
+          <div>
+            <p><strong>Name:</strong> {userData?.username}</p>
+            <p><strong>Email:</strong> {userData?.email}</p>
+            <p><strong>Phone:</strong> {userData?.phone}</p>
+            <p><strong>Address:</strong> {userData?.address}</p>
+            {/* Add any additional user details here */}
+          </div>
+        )}
+      </Modal>
     </Layout>
   );
 };

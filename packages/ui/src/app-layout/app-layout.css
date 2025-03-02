@@ -1,149 +1,181 @@
-/* AppLayout.css */
-
-/* Global Styles */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* Global Layout */
+.app-layout {
+  display: flex;
+  height: 100vh; /* Ensures full height */
+  overflow: hidden; /* Prevents unwanted scroll */
 }
 
-body {
-  font-family: Arial, sans-serif;
-}
-
-/* Header Styles */
-/* Header Styles */
+/* Header Styling */
 .header {
+  height: 64px;
+  background: #ffffff;
+  padding: 8px 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 24px;
-  background-color: #1B1A18; /* Dark brown header background */
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* Light shadow for a subtle effect */
+  color: black;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+  margin-bottom: 5px;
 }
 
-.toggle-icon {
+/* Header Sections */
+.header-left, .header-center, .header-right {
   display: flex;
   align-items: center;
 }
 
-.toggle-icon .ant-btn {
-  color: #F5F5F5; /* White color for the toggle icon */
+.header-center {
+  flex-grow: 1;
+  justify-content: center;
 }
 
-.logo-text {
-  font-size: 24px;
+.header-right {
+  gap: 8px;
+}
+
+/* Sidebar */
+.sidebar {
+  background: #ffffff;
+  color: black;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100vh; /* Ensures sidebar takes full height */
+  position: relative; /* Needed for the sidebar-footer positioning */
+}
+
+/* Sidebar Logo */
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  gap: 4px; /* Adds spacing between logo circle and text */
+}
+
+.logo-circle-f {
+  width: 45px; /* Slightly increased size */
+  height: 45px;
+  background-color: #000;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px; /* Increased font size */
+  color: white;
   font-weight: bold;
-  color: #F5F5F5; /* Light grey text for the logo */
-  margin-left: 10px; /* Space between icon and text */
 }
 
-/* Header actions (icons in the right) */
-.header-actions {
+.logo-text-f {
+  font-size: 20px; /* Increased font size */
+  font-weight: bold;
+  color: black;
+}
+
+/* Sidebar Footer */
+.sidebar-footer {
+  padding: 16px;
   display: flex;
   align-items: center;
+  border-top: 1px solid #ddd;
 }
 
-.header-icon {
-  color: #F5F5F5; /* White icons */
-  font-size: 20px;
+.user-info {
+  margin-left: 10px;
+  display: flex;
+  flex-direction: column;
+  color: black;
 }
 
-
-/* Layout Styles */
-.ant-layout {
-  background: #F5F5F5; /* Light grey for the entire layout */
+.username {
+  font-weight: bold;
+  font-size: 14px;
 }
 
-.ant-layout-header {
-  background: #1B1A18; /* Dark brown background for the header */
-  padding: 0;
+.email {
+  font-size: 12px;
+  color: #555;
+}
+
+.content-layout {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 64px); /* Full height minus header */
+  overflow-y: auto; /* Allows scrolling if needed */
+}
+
+/* Content & Footer */
+.content-container {
+  flex: 1;
+  padding: 24px;
+  background: white;
+  margin: 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
+}
+
+/* Footer */
+.footer {
+  text-align: center;
+  padding: 12px;
+  background: #ffffff;
+  border-top: 1px solid #ddd;
+  flex-shrink: 0;
 }
 
 .sidebar {
-  background: #F5F0E0; /* Light Cream for sidebar */
-  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1); /* Sidebar shadow */
+  background: #ffffff;
+  color: black;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 260px; /* Sidebar width */
+  height: calc(100vh - 64px); /* Full height minus header */
+  flex-shrink: 0;
+  position: relative;
 }
 
-.sidebar-menu {
-  height: 100%;
-  border-right: 0;
+.sidebar-footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  border-top: 1px solid #ddd;
+  background: #ffffff;
 }
 
-/* Menu Styles */
-.ant-menu-item a {
-  color: #0D0D0D; /* Dark black text for menu items */
+.sidebar-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 10px;
 }
 
-.ant-menu-item a:hover {
-  color: #FCB54A; /* Bright Orange on hover */
+.avatar-container {
+  position: relative;
 }
 
-.ant-menu-item-icon {
-  font-size: 18px; /* Adjust icon size */
+.online-status-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  background-color: #52c41a; /* Green color for online status */
+  border-radius: 50%;
+  border: 2px solid #fff; /* White border to make it stand out */
 }
 
-/* Footer Styles */
-.ant-layout-footer {
-  background: #F7DEE0; /* Light Peach for footer */
-  text-align: center;
-  padding: 10px 0;
-  color: #1B1A18; /* Dark text for footer */
+.user-info {
+  margin-left: 10px;
 }
 
-/* Toggle Icon Styles */
-.toggle-icon {
-  text-align: right;
-  margin: 16px;
-}
-
-/* Responsive Styles */
-@media (max-width: 768px) {
-  .header {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 10px;
-  }
-
-  .logo {
-    font-size: 20px;
-    margin-bottom: 10px;
-  }
-
-  .header-actions {
-    margin-top: 10px;
-  }
-
-  .header-icon {
-    margin-left: 10px;
-  }
-
-  .ant-layout {
-    padding: 0;
-  }
-
-  .ant-layout-sider {
-    width: 100%;
-    height: auto;
-    position: relative;
-  }
-
-  .ant-menu {
-    display: flex;
-    justify-content: space-around;
-  }
-
-  .ant-menu-item {
-    width: 100%;
-    text-align: center;
-  }
-
-  .sidebar {
-    box-shadow: none;
-    margin-bottom: 10px;
-  }
-
-  .ant-layout-footer {
-    font-size: 12px;
-  }
+.username, .email {
+  display: block;
+  font-size: 14px;
+  color: #333;
 }
