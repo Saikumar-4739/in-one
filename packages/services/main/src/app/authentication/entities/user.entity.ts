@@ -2,6 +2,8 @@ import { AudioMessageEntity } from 'src/app/chat/entities/audio.entity';
 import { CallEntity } from 'src/app/chat/entities/call.entity';
 import { ChatRoomEntity } from 'src/app/chat/entities/chatroom.entity';
 import { MessageEntity } from 'src/app/chat/entities/messege.entity';
+import { CalendarEntity } from 'src/app/notes-calender/entities/calender.entity';
+import { NoteEntity } from 'src/app/notes-calender/entities/notes.entity';
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, ManyToMany } from 'typeorm';
 
 @Entity('users')
@@ -65,4 +67,10 @@ export class UserEntity {
 
   @OneToMany(() => MessageEntity, (message) => message.receiver)
   receivedMessages: MessageEntity[];
+
+  @OneToMany(() => NoteEntity, (note) => note.user)
+  notes: NoteEntity[]; 
+
+  @OneToMany(() => CalendarEntity, (calendar) => calendar.user)
+  calendars: CalendarEntity[]; 
 }
