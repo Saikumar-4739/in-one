@@ -1,16 +1,16 @@
 import { Controller, Post, Body, HttpException, HttpStatus } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { CommonResponse, CreateChatRoomModel, CreateMessageModel, EditMessageModel, MessageResponseModel } from '@in-one/shared-models'; // ✅ Import CommonResponse
-import { ExceptionHandler } from '@in-one/shared-models'; // ✅ Import ExceptionHandler
+import { ExceptionHandler } from '@in-one/shared-models';
 import { ApiBody } from '@nestjs/swagger';
-import { CallDocument } from './schema/call.schema';
 
 @Controller('chat')
 export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
   @Post('message')
-  async sendMessage(@Body() body: CreateMessageModel): Promise<CommonResponse<any>> {
+  @ApiBody({ type: CreateMessageModel })
+  async sendMessage(@Body() body: CreateMessageModel): Promise<CommonResponse> {
     try {
       const message = await this.chatService.createMessage(body);
       return new CommonResponse(true, 200, 'Message sent successfully', message);
@@ -20,7 +20,8 @@ export class ChatController {
   }
 
   @Post('messages')
-  async getMessages(@Body('chatRoomId') chatRoomId: string): Promise<CommonResponse<any>> {
+  @ApiBody({ schema: { properties: { chatRoomId: { type: 'string' } } } })
+  async getMessages(@Body('chatRoomId') chatRoomId: string): Promise<CommonResponse> {
     try {
       const messages = await this.chatService.getChatHistory(chatRoomId);
       return new CommonResponse(true, 200, 'Chat history retrieved', messages);
@@ -30,7 +31,8 @@ export class ChatController {
   }
 
   @Post('edit-message')
-  async editMessage(@Body() body: EditMessageModel): Promise<CommonResponse<any>> {
+  @ApiBody({ type: EditMessageModel })
+  async editMessage(@Body() body: EditMessageModel): Promise<CommonResponse> {
     try {
       const updatedMessage = await this.chatService.editMessage(body);
       return new CommonResponse(true, 200, 'Message updated successfully', updatedMessage);
@@ -40,7 +42,8 @@ export class ChatController {
   }
 
   @Post('delete-message')
-  async deleteMessage(@Body('messageId') messageId: string): Promise<CommonResponse<null>> {
+  @ApiBody({ schema: { properties: { messageId: { type: 'string' } } }})
+  async deleteMessage(@Body('messageId') messageId: string): Promise<CommonResponse> {
     try {
       await this.chatService.deleteMessage(messageId);
       return new CommonResponse(true, 200, 'Message deleted successfully');
@@ -50,7 +53,8 @@ export class ChatController {
   }
 
   @Post('chatrooms')
-  async getChatRooms(@Body('userId') userId: string): Promise<CommonResponse<any>> {
+  @ApiBody({ schema:  { properties: { userId: { type: 'string' } } } })
+  async getChatRooms(@Body('userId') userId: string): Promise<CommonResponse> {
     try {
       const chatRooms = await this.chatService.getChatRoomsForUser(userId);
       return new CommonResponse(true, 200, 'Chat rooms retrieved successfully', chatRooms);
@@ -60,7 +64,8 @@ export class ChatController {
   }
 
   @Post('create-chatroom')
-  async createChatRoom(@Body() body: CreateChatRoomModel): Promise<CommonResponse<any>> {
+  @ApiBody({ type: CreateChatRoomModel })
+  async createChatRoom(@Body() body: CreateChatRoomModel): Promise<CommonResponse> {
     try {
       const chatRoom = await this.chatService.createChatRoom(body);
       return new CommonResponse(true, 200, 'Chat room created successfully', chatRoom);
@@ -70,7 +75,8 @@ export class ChatController {
   }
 
   @Post('users')
-  async getAllUsers(): Promise<CommonResponse<any>> {
+  @ApiBody({ type: Object })
+  async getAllUsers(): Promise<CommonResponse> {
     try {
       const users = await this.chatService.getAllUsers();
       return new CommonResponse(true, 200, 'All users retrieved successfully', users);
@@ -80,22 +86,8 @@ export class ChatController {
   }
 
   @Post('private')
-  @ApiBody({
-    schema: {
-      type: 'object',
-      properties: {
-        senderId: { type: 'string', example: 'user123' },
-        receiverId: { type: 'string', example: 'user456' },
-        text: { type: 'string', example: 'Hello, how are you?' },
-      },
-      required: ['senderId', 'receiverId', 'text'],
-    },
-  })
-  async sendPrivateMessage(
-    @Body('senderId') senderId: string,
-    @Body('receiverId') receiverId: string,
-    @Body('text') text: string,
-  ): Promise<MessageResponseModel> {
+  @ApiBody({ schema: { properties: { senderId: { type: 'string' }, receiverId: { type: 'string' },text: { type: 'string' }}}})
+  async sendPrivateMessage( @Body('senderId') senderId: string, @Body('receiverId') receiverId: string, @Body('text') text: string): Promise<CommonResponse> {
     try {
       return await this.chatService.sendPrivateMessage(senderId, receiverId, text);
     } catch (error) {
@@ -107,7 +99,8 @@ export class ChatController {
   }
 
   @Post('start')
-  async startCall(@Body() data: { callerId: string; receiverId: string; callType: string }): Promise<CallDocument> {
+  @ApiBody({ schema: { properties: { senderId: { type: 'string' }, receiverId: { type: 'string' },text: { type: 'string' }}}})
+  async startCall(@Body() data: { callerId: string; receiverId: string; callType: 'audio' | 'video' }): Promise<CommonResponse> {
     try {
       return await this.chatService.startCall(data);
     } catch (error) {
@@ -116,7 +109,8 @@ export class ChatController {
   }
 
   @Post('end')
-  async endCall(@Body() data: { callId: string; status: string }): Promise<CallDocument | null> {
+  @ApiBody({ schema: { properties: { senderId: { type: 'string' }, receiverId: { type: 'string' }, text: { type: 'string' }}}})
+  async endCall(@Body() data: { callId: string; status: 'missed' | 'completed' | 'declined' }): Promise<CommonResponse> {
     try {
       const call = await this.chatService.endCall(data.callId, data.status);
       if (!call) {
@@ -125,15 +119,6 @@ export class ChatController {
       return call;
     } catch (error) {
       throw new HttpException({ success: false, message: 'Error ending call', error }, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  @Post('getAllCalls')
-  async getAllCalls(): Promise<CallDocument[]> {
-    try {
-      return await this.chatService.getAllCalls();
-    } catch (error) {
-      throw new HttpException({ success: false, message: 'Error retrieving calls', error }, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 }

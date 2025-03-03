@@ -1,8 +1,26 @@
-import { MongooseModule } from '@nestjs/mongoose';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import * as dotenv from 'dotenv';
 
-dotenv.config(); 
+dotenv.config();
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/in-one';
+const DB_HOST = process.env.DB_HOST;
+const DB_PORT = process.env.DB_PORT ? parseInt(process.env.DB_PORT) : 21240;
+const DB_USER = process.env.DB_USER;
+const DB_PASSWORD = process.env.DB_PASSWORD;
+const DB_NAME = process.env.DB_NAME;
 
-export const DatabaseModule = MongooseModule.forRoot(MONGO_URI);
+export const DatabaseModule = TypeOrmModule.forRoot({
+  type: 'postgres',
+  host: DB_HOST,
+  port: DB_PORT,
+  username: DB_USER,
+  password: DB_PASSWORD,
+  database: DB_NAME,
+  migrations: ['dist/database/migrations/*.js*{.ts,.js}'],
+  synchronize: true,
+  autoLoadEntities: true,
+  ssl: {
+    rejectUnauthorized: false, 
+  },
+});
+

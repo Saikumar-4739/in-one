@@ -1,67 +1,67 @@
 import { Injectable } from '@nestjs/common';
-import { InjectConnection } from '@nestjs/mongoose';
-import { Connection, ClientSession, Model } from 'mongoose';
+import { DataSource, ObjectLiteral, QueryRunner, Repository } from 'typeorm';
 
 export interface ITransactionHelper {
-  startTransaction(): void;
+  startTransaction(): Promise<void>;
   completeTransaction(work: () => Promise<void>): Promise<void>;
-  getRepository<T>(entity: Model<T>): Model<T>;
+  getRepository<T extends ObjectLiteral>(entity: Repository<T>): Repository<T>;
 }
 
 @Injectable()
 export class GenericTransactionManager implements ITransactionHelper {
-  private session: ClientSession;
+  private queryRunner: QueryRunner;
 
-  constructor(@InjectConnection() private readonly connection: Connection) {}
+  constructor(private readonly dataSource: DataSource) {}
 
-  async startTransaction() {
-    this.session = await this.connection.startSession();
-    this.session.startTransaction();
+  async startTransaction(): Promise<void> {
+    this.queryRunner = this.dataSource.createQueryRunner();
+    await this.queryRunner.connect();
+    await this.queryRunner.startTransaction();
   }
 
-  getSession(): ClientSession {
-    if (!this.session) {
-      throw new Error('Transaction session not started. Please call startTransaction() first.');
+  getQueryRunner(): QueryRunner {
+    if (!this.queryRunner) {
+      throw new Error('Transaction not started. Please call startTransaction() first.');
     }
-    return this.session;
+    return this.queryRunner;
   }
 
-  async commitTransaction() {
-    if (!this.session) {
-      throw new Error('Transaction session not started. Please call startTransaction() first.');
+  async commitTransaction(): Promise<void> {
+    if (!this.queryRunner) {
+      throw new Error('Transaction not started. Please call startTransaction() first.');
     }
     try {
-      await this.session.commitTransaction();
+      await this.queryRunner.commitTransaction();
     } catch (error) {
-      await this.session.abortTransaction();
-      throw error; 
+      await this.queryRunner.rollbackTransaction();
+      throw error;
     } finally {
-      await this.session.endSession();
+      await this.queryRunner.release();
     }
   }
 
-  async rollbackTransaction() {
-    if (!this.session) {
-      throw new Error('Transaction session not started. Please call startTransaction() first.');
+  async rollbackTransaction(): Promise<void> {
+    if (!this.queryRunner) {
+      throw new Error('Transaction not started. Please call startTransaction() first.');
     }
-    await this.session.abortTransaction();
-    await this.session.endSession();
+    await this.queryRunner.rollbackTransaction();
+    await this.queryRunner.release();
   }
 
-  getRepository<T>(entity: Model<T>): Model<T> {
-    if (!this.session) {
-      throw new Error('Transaction session not started. Please call startTransaction() first.');
+  getRepository<T extends ObjectLiteral>(entity: Repository<T>): Repository<T> {
+    if (!this.queryRunner) {
+      throw new Error('Transaction not started. Please call startTransaction() first.');
     }
-    return entity; 
+    return this.queryRunner.manager.getRepository(entity.target as any);
   }
 
   async completeTransaction(work: () => Promise<void>): Promise<void> {
     try {
-      await work(); 
-      await this.commitTransaction(); 
+      await work();
+      await this.commitTransaction();
     } catch (error) {
-      await this.rollbackTransaction(); 
-      throw error; 
+      await this.rollbackTransaction();
+      throw error;
     }
   }
 }

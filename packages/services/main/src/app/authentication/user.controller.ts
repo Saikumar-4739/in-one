@@ -1,7 +1,7 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CommonResponse, CreateUserModel, ExceptionHandler, UpdateUserModel, UserLoginModel } from '@in-one/shared-models';
-import { ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiProperty, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Users') 
 @Controller('users')
@@ -10,7 +10,7 @@ export class UserController {
 
   @Post('createUser')
   @ApiBody({ type: CreateUserModel })
-  async createUser(@Body() createUserDto: CreateUserModel): Promise<CommonResponse<any>> {
+  async createUser(@Body() createUserDto: CreateUserModel): Promise<CommonResponse> {
     try {
       return await this.userService.createUser(createUserDto);
     } catch (error) {
@@ -20,7 +20,7 @@ export class UserController {
 
   @Post('loginUser')
   @ApiBody({ type: UserLoginModel })
-  async loginUser(@Body() userLoginDto: UserLoginModel): Promise<CommonResponse<{ accessToken: string }>> {
+  async loginUser(@Body() userLoginDto: UserLoginModel): Promise<CommonResponse> {
     try {
       return await this.userService.loginUser(userLoginDto);
     } catch (error) {
@@ -30,7 +30,7 @@ export class UserController {
 
   @Post('getUserById')
   @ApiBody({ schema: { properties: { userId: { type: 'string' } } } })
-  async getUserById(@Body('userId') userId: string): Promise<CommonResponse<any>> {
+  async getUserById(@Body('userId') userId: string): Promise<CommonResponse> {
     try {
       return await this.userService.getUserById(userId);
     } catch (error) {
@@ -40,7 +40,7 @@ export class UserController {
 
   @Post('updateUser')
   @ApiBody({ schema: { properties: { userId: { type: 'string' }, updateData: { type: 'object' } } } })
-  async updateUser( @Body('userId') userId: string, @Body() updateUserDto: Omit<UpdateUserModel, 'userId'>): Promise<CommonResponse<any>> {
+  async updateUser( @Body('userId') userId: string, @Body() updateUserDto: Omit<UpdateUserModel, 'userId'>): Promise<CommonResponse> {
     try {
       return await this.userService.updateUser(userId, updateUserDto);
     } catch (error) {
@@ -50,7 +50,7 @@ export class UserController {
 
   @Post('deleteUser')
   @ApiBody({ schema: { properties: { userId: { type: 'string' } } } })
-  async deleteUser(@Body('userId') userId: string): Promise<CommonResponse<null>> {
+  async deleteUser(@Body('userId') userId: string): Promise<CommonResponse> {
     try {
       return await this.userService.deleteUser(userId);
     } catch (error) {
@@ -60,7 +60,7 @@ export class UserController {
 
   @Post('logoutUser')
   @ApiBody({ schema: { properties: { userId: { type: 'string' } } } })
-  async logoutUser(@Body('userId') userId: string): Promise<CommonResponse<null>> {
+  async logoutUser(@Body('userId') userId: string): Promise<CommonResponse> {
     try {
       return await this.userService.logoutUser(userId);
     } catch (error) {
@@ -70,7 +70,7 @@ export class UserController {
 
   @Post('status')
   @ApiBody({ schema: { properties: { userId: { type: 'string' } } } })
-  async checkUserStatus(@Body('userId') userId: string): Promise<CommonResponse<{ status: string }>> {
+  async checkUserStatus(@Body('userId') userId: string): Promise<CommonResponse> {
     try {
       return await this.userService.checkUserStatus(userId);
     } catch (error) {
@@ -80,7 +80,7 @@ export class UserController {
 
   @Post('forgotPassword')
   @ApiBody({ schema: { properties: { email: { type: 'string' } } } })
-  async forgotPassword(@Body('email') email: string): Promise<CommonResponse<null>> {
+  async forgotPassword(@Body('email') email: string): Promise<CommonResponse> {
     try {
       return await this.userService.sendResetPasswordEmail(email);
     } catch (error) {
@@ -89,22 +89,11 @@ export class UserController {
   }
 
   @Post('resetPassword')
-  @ApiBody({ schema: { properties: { email: { type: 'string' }, otp: { type: 'string' }, newPassword: { type: 'string' } } } })
-  async resetPassword( @Body('email') email: string, @Body('otp') otp: string, @Body('newPassword') newPassword: string): Promise<CommonResponse<null>> {
+  async resetPassword( @Body('email') email: string, @Body('otp') otp: string, @Body('newPassword') newPassword: string): Promise<CommonResponse> {
     try {
       return await this.userService.resetPassword(email, otp, newPassword);
     } catch (error) {
       return ExceptionHandler.handleError(error, 'Error resetting password');
-    }
-  }
-
-  @Post('uploadProfilePicture')
-  @ApiBody({ schema: { properties: { userId: { type: 'string' }, base64Image: { type: 'string' } } } })
-  async uploadProfilePicture( @Body('userId') userId: string, @Body('base64Image') base64Image: string): Promise<CommonResponse<{ profilePictureUrl: string }>> {
-    try {
-      return await this.userService.uploadProfilePicture(userId, base64Image);
-    } catch (error) {
-      return ExceptionHandler.handleError(error, 'Error uploading profile picture');
     }
   }
 }

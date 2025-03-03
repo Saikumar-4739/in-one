@@ -1,10 +1,10 @@
-export class CommonResponse<T> {
+export class CommonResponse{
     status: boolean;
     errorCode: number;
     internalMessage: string;
-    data?: T;
+    data?: any;
   
-    constructor(status: boolean, errorCode: number, internalMessage: string, data?: T) {
+    constructor(status: boolean, errorCode: number, internalMessage: string, data?: any) {
       this.status = status;
       this.errorCode = errorCode;
       this.internalMessage = internalMessage;

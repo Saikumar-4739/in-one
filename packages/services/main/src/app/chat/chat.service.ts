@@ -1,291 +1,299 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-import { UserEntity, UserDocument } from '../authentication/schema/user.schema';
-import { ChatRoom, ChatRoomDocument } from './schema/chat-room.schema';
-import { MessageEntity, MessageDocument } from './schema/message.schema';
-import { ChatRoomResponse, CreateChatRoomModel, CreateMessageModel, EditMessageModel, MessageResponseModel } from '@in-one/shared-models';
-import { AudioMessageDocument, AudioMessageEntity } from './schema/audio.schema';
-import { CallDocument, CallEntity } from './schema/call.schema';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { UserEntity } from '../authentication/entities/user.entity';
+import { ChatRoomResponse, CommonResponse, CreateChatRoomModel, CreateMessageModel, EditMessageModel, MessageResponseModel } from '@in-one/shared-models';
+import { ChatRoomRepository } from './repository/chatroom.repository';
+import { MessegeRepository } from './repository/messege.repository';
+import { CallRepository } from './repository/call.repository';
+import { AudioRepository } from './repository/audio.repository';
+import { GenericTransactionManager } from 'src/database/trasanction-manager';
 
 @Injectable()
 export class ChatService {
-  getAllCalls(): CallDocument[] | PromiseLike<CallDocument[]> {
-    throw new Error('Method not implemented.');
-  }
   constructor(
-    @InjectModel(ChatRoom.name) private chatRoomModel: Model<ChatRoomDocument>,
-    @InjectModel(MessageEntity.name) private messageModel: Model<MessageDocument>,
-    @InjectModel(UserEntity.name) private userModel: Model<UserDocument>,
-    @InjectModel(CallEntity.name) private callModel: Model<CallDocument>,
-    @InjectModel(AudioMessageEntity.name) private audioMessageModel: Model<AudioMessageDocument>
-  ) {}
+    @InjectRepository(ChatRoomRepository) private readonly chatRoomRepository: ChatRoomRepository,
+    @InjectRepository(MessegeRepository) private readonly messageRepository: MessegeRepository,
+    @InjectRepository(UserEntity) private readonly userRepository: Repository<UserEntity>,
+    @InjectRepository(CallRepository) private readonly callRepository: CallRepository,
+    @InjectRepository(AudioRepository) private readonly audioMessageRepository: AudioRepository,
+    private readonly transactionManager: GenericTransactionManager
+  ) { }
 
   async createMessage(req: CreateMessageModel): Promise<MessageResponseModel> {
+    await this.transactionManager.startTransaction();
     try {
-      const newMessage = await this.messageModel.create(req);
-      await this.chatRoomModel.findByIdAndUpdate( req.chatRoomId, { lastMessage: req.text }, { new: true });
+      const messageRepo = this.transactionManager.getRepository(this.messageRepository);
+      const chatRoomRepo = this.transactionManager.getRepository(this.chatRoomRepository);
+      const newMessage = messageRepo.create(req);
+      const savedMessage = await messageRepo.save(newMessage);
+      await chatRoomRepo.update(req.chatRoomId, { lastMessage: req.text });
+      await this.transactionManager.commitTransaction();
       return {
-        _id: String(newMessage._id), 
-        senderId: String(newMessage.senderId),
-        chatRoomId: String(newMessage.chatRoomId),
-        text: newMessage.text,
-        createdAt: newMessage.createdAt,
+        _id: savedMessage.id,
+        senderId: savedMessage.sender.id,
+        chatRoomId: savedMessage.chatRoom.id,
+        text: savedMessage.text,
+        createdAt: savedMessage.createdAt,
       };
     } catch (error) {
-      throw new HttpException(
-        { success: false, message: 'Error creating message', error: error },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      await this.transactionManager.rollbackTransaction();
+      console.error('❌ Error creating message:', error);
+      throw new HttpException('Error creating message', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
-  
+
   async getChatHistory(chatRoomId: string): Promise<MessageResponseModel[]> {
+    await this.transactionManager.startTransaction();
     try {
-      const messages = await this.messageModel.find({ chatRoomId }).populate('senderId').lean(); 
-      return messages.map(msg => ({
-        _id: msg._id.toString(),
-        senderId: msg.senderId.toString(),
-        chatRoomId: msg.chatRoomId.toString(),
-        text: msg.text,
-        createdAt: msg.createdAt, // Ensure createdAt is included
-      }));
-    } catch (error) {
-      throw new HttpException(
-        { success: false, message: 'Error retrieving chat history', error: error },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-  
-  async editMessage(data: EditMessageModel): Promise<MessageResponseModel> {
-    try {
-      const updatedMessage = await this.messageModel.findByIdAndUpdate(
-        data.messageId,
-        { text: data.newText },
-        { new: true },
-      ).lean(); // ✅ Convert to plain object
-  
-      if (!updatedMessage) {
-        throw new HttpException('Message not found', HttpStatus.NOT_FOUND);
-      }
-  
-      return {
-        _id: String(updatedMessage._id), // ✅ Explicitly convert _id to string
-        senderId: String(updatedMessage.senderId),
-        chatRoomId: String(updatedMessage.chatRoomId),
-        text: updatedMessage.text,
-        createdAt: updatedMessage.createdAt,
-      };
-    } catch (error) {
-      throw new HttpException(
-        { success: false, message: 'Error editing message', error: error },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-  
-
-  /**
-   * Delete a message
-   */
-  async deleteMessage(messageId: string): Promise<void> {
-    try {
-      const deletedMessage = await this.messageModel.findByIdAndDelete(messageId);
-
-      if (!deletedMessage) {
-        throw new HttpException('Message not found', HttpStatus.NOT_FOUND);
-      }
-    } catch (error) {
-      throw new HttpException(
-        { success: false, message: 'Error deleting message', error: error },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  /**
-   * Get all users (excluding passwords)
-   */
-  async getAllUsers(): Promise<UserEntity[]> {
-    try {
-      return await this.userModel.find({}, { password: 0 }); // Excluding passwords for security
-    } catch (error) {
-      throw new HttpException(
-        { success: false, message: 'Error retrieving users', error: error },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  /**
-   * Get a single message by ID
-   */
-  async getMessageById(messageId: string): Promise<MessageResponseModel> {
-    try {
-      const message = await this.messageModel.findById(messageId).populate('senderId').lean();
-  
-      if (!message) {
-        throw new HttpException('Message not found', HttpStatus.NOT_FOUND);
-      }
-  
-      return {
-        _id: String(message._id),
-        senderId: String(message.senderId),
-        chatRoomId: String(message.chatRoomId),
-        text: message.text,
-        createdAt: message.createdAt,
-      };
-    } catch (error) {
-      throw new HttpException(
-        { success: false, message: 'Error retrieving message', error: error },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-  
-
-  /**
-   * Get all chat rooms for a user
-   */
-  async getChatRoomsForUser(userId: string): Promise<ChatRoomResponse[]> {
-    try {
-      const chatRooms = await this.chatRoomModel.find({ participants: userId }).lean(); // ✅ Convert to plain objects
-  
-      if (!chatRooms.length) {
-        throw new HttpException('No chat rooms found', HttpStatus.NOT_FOUND);
-      }
-  
-      return chatRooms.map(room => ({
-        _id: String(room._id), // ✅ Convert ObjectId to string
-        participants: room.participants.map((p: Types.ObjectId) => String(p)), // ✅ Convert participant IDs to strings
-        name: room.name,
-        isGroup: room.isGroup,
-        lastMessage: room.lastMessage,
-      }));
-    } catch (error) {
-      throw new HttpException(
-        { success: false, message: 'Error retrieving chat rooms', error: error },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-  
-
-  /**
-   * Create a new chat room
-   */
-  async createChatRoom(data: CreateChatRoomModel): Promise<ChatRoomResponse> {
-    try {
-      const newChatRoom = await this.chatRoomModel.create({
-        participants: data.participants,
-        name: data.name || '',
-        isGroup: data.participants.length > 1,
+      const messageRepo = this.transactionManager.getRepository(this.messageRepository);
+      const messages = await messageRepo.find({
+        where: { chatRoom: { id: chatRoomId } },
+        relations: ['sender', 'chatRoom'],
       });
-  
-      return {
-        _id: String(newChatRoom._id),
-        participants: newChatRoom.participants.map((p: Types.ObjectId) => String(p)),
-        name: newChatRoom.name,
-        isGroup: newChatRoom.isGroup,
-        lastMessage: newChatRoom.lastMessage,
-      };
-    } catch (error) {
-      throw new HttpException(
-        { success: false, message: 'Error creating chat room', error: error },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-  
-
-  /**
-   * Get all messages for a group chat room
-   */
-  async getAllMessagesForGroup(chatRoomId: string): Promise<MessageResponseModel[]> {
-    try {
-      const messages = await this.messageModel
-        .find({ chatRoomId })
-        .populate('senderId')
-        .lean(); // ✅ Convert to plain objects
-  
-      if (!messages.length) {
-        throw new HttpException('No messages found', HttpStatus.NOT_FOUND);
-      }
-  
-      return messages.map(msg => ({
-        _id: String(msg._id), // ✅ Convert ObjectId to string
-        senderId: String(msg.senderId._id), // ✅ Ensure senderId is string
-        chatRoomId: String(msg.chatRoomId),
+      await this.transactionManager.commitTransaction();
+      return messages.map((msg) => ({
+        _id: msg.id,
+        senderId: msg.sender?.id ?? null,
+        chatRoomId: msg.chatRoom?.id ?? null,
         text: msg.text,
         createdAt: msg.createdAt,
       }));
     } catch (error) {
-      throw new HttpException(
-        { success: false, message: 'Error retrieving messages for group', error: error },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      await this.transactionManager.rollbackTransaction();
+      console.error('❌ Error fetching chat history:', error);
+      throw new HttpException('Error fetching chat history', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
-  async sendPrivateMessage(senderId: string, receiverId: string, text: string): Promise<MessageResponseModel> {
+  async editMessage(data: EditMessageModel): Promise<MessageResponseModel> {
+    await this.transactionManager.startTransaction();
     try {
-      // Check if a chat room exists for these two users
-      let chatRoom = await this.chatRoomModel.findOne({
-        isGroup: false,
-        participants: { $all: [senderId, receiverId] },
+      const messageRepo = this.transactionManager.getRepository(this.messageRepository);
+      const updatedMessage = await messageRepo.findOne({ where: { id: data.messageId }, relations: ['sender', 'chatRoom'] });
+
+      if (!updatedMessage) {
+        throw new HttpException('Message not found', HttpStatus.NOT_FOUND);
+      }
+      updatedMessage.text = data.newText;
+      const savedMessage = await messageRepo.save(updatedMessage);
+      await this.transactionManager.commitTransaction();
+      return {
+        _id: savedMessage.id,
+        senderId: savedMessage.sender.id,
+        chatRoomId: savedMessage.chatRoom.id,
+        text: savedMessage.text,
+        createdAt: savedMessage.createdAt,
+      };
+    } catch (error) {
+      await this.transactionManager.rollbackTransaction();
+      console.error('❌ Error editing message:', error);
+      throw new HttpException('Error editing message', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async deleteMessage(messageId: string): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
+    try {
+      const messageRepo = this.transactionManager.getRepository(this.messageRepository);
+      const deleted = await messageRepo.delete(messageId);
+      if (!deleted.affected) {
+        throw new HttpException('Message not found', HttpStatus.NOT_FOUND);
+      }
+      await this.transactionManager.commitTransaction();
+      return new CommonResponse(true, 200, 'Message deleted successfully');
+    } catch (error) {
+      await this.transactionManager.rollbackTransaction();
+      console.error('❌ Error deleting message:', error);
+      return new CommonResponse(false, 500, 'Error deleting message');
+    }
+  }
+
+  async getAllUsers(): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
+    try {
+      const userRepo = this.transactionManager.getRepository(this.userRepository);
+      const users = await userRepo.find({
+        select: ['id', 'username', 'email', 'profilePicture']
       });
-  
-      // If no chat room exists, create a new one
+      await this.transactionManager.commitTransaction();
+      return new CommonResponse(true, 200, 'Users retrieved successfully', users);
+    } catch (error) {
+      await this.transactionManager.rollbackTransaction();
+      console.error('❌ Error fetching users:', error);
+      return new CommonResponse(false, 500, 'Error fetching users', []);
+    }
+  }
+
+  async getMessageById(messageId: string): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
+    try {
+      const message = await this.messageRepository.findOne({
+        where: { id: messageId },
+        relations: ['sender', 'chatRoom'],
+      });
+      if (!message) {
+        await this.transactionManager.rollbackTransaction();
+        return new CommonResponse(false, 404, 'Message not found', null);
+      }
+      await this.transactionManager.commitTransaction();
+      return new CommonResponse(true, 200, 'Message retrieved successfully', {
+        _id: message.id,
+        senderId: message.sender.id,
+        chatRoomId: message.chatRoom.id,
+        text: message.text,
+        createdAt: message.createdAt,
+      });
+    } catch (error) {
+      await this.transactionManager.rollbackTransaction();
+      console.error('❌ Error getting message:', error);
+      return new CommonResponse(false, 500, 'Error retrieving message', null);
+    }
+  }
+
+  async getChatRoomsForUser(userId: string): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
+    try {
+      const chatRooms = await this.chatRoomRepository.find({
+        where: { participants: { id: userId } },
+        relations: ['participants'],
+      });
+
+      if (!chatRooms || chatRooms.length === 0) {
+        await this.transactionManager.rollbackTransaction();
+        return new CommonResponse(false, 404, 'No chat rooms found for user', []);
+      }
+      const chatRoomResponses = chatRooms.map((room) => ({
+        _id: room.id,
+        participants: room.participants.map((p) => p.id),
+        name: room.name,
+        isGroup: room.isGroup,
+        lastMessage: room.lastMessage,
+      }));
+      await this.transactionManager.commitTransaction();
+      return new CommonResponse(true, 200, 'Chat rooms fetched successfully', chatRoomResponses);
+    } catch (error) {
+      await this.transactionManager.rollbackTransaction();
+      console.error('❌ Error fetching chat rooms:', error);
+      return new CommonResponse(false, 500, 'Error fetching chat rooms', []);
+    }
+  }
+
+  async createChatRoom(data: CreateChatRoomModel): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
+
+    try {
+      const participants = await this.userRepository.findByIds(data.participants);
+      if (!participants || participants.length === 0) {
+        await this.transactionManager.rollbackTransaction();
+        return new CommonResponse(false, 400, 'No participants found', null);
+      }
+      const newChatRoom = this.chatRoomRepository.create({
+        participants,
+        name: data.name || '',
+        isGroup: data.participants.length > 1,
+      });
+      const savedChatRoom = await this.chatRoomRepository.save(newChatRoom);
+      await this.transactionManager.commitTransaction();
+      return new CommonResponse(true, 200, 'Chat room created successfully', {
+        _id: savedChatRoom.id,
+        participants: savedChatRoom.participants.map((p) => p.id),
+        name: savedChatRoom.name,
+        isGroup: savedChatRoom.isGroup,
+        lastMessage: savedChatRoom.lastMessage,
+      });
+    } catch (error) {
+      await this.transactionManager.rollbackTransaction();
+      console.error('❌ Error creating chat room:', error);
+      return new CommonResponse(false, 500, 'Error creating chat room', null);
+    }
+  }
+
+  async sendPrivateMessage(senderId: string, receiverId: string, text: string): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
+    try {
+      let chatRoom = await this.chatRoomRepository.findOne({
+        where: { isGroup: false, participants: [{ id: senderId }, { id: receiverId }] },
+      });
       if (!chatRoom) {
-        chatRoom = await this.chatRoomModel.create({
-          participants: [senderId, receiverId],
+        chatRoom = this.chatRoomRepository.create({
+          participants: await this.userRepository.findByIds([senderId, receiverId]),
           isGroup: false,
           lastMessage: text,
         });
+        await this.chatRoomRepository.save(chatRoom);
       }
-  
-      // Create the new message
-      const newMessage = await this.messageModel.create({
-        senderId,
-        receiverId,
-        chatRoomId: chatRoom._id,
+      const newMessage = this.messageRepository.create({
+        sender: { id: senderId } as UserEntity,
+        receiver: { id: receiverId } as UserEntity,
+        chatRoom,
         text,
       });
-  
-      // Update the chat room's last message
-      await this.chatRoomModel.findByIdAndUpdate(
-        chatRoom._id,
-        { lastMessage: text },
-        { new: true }
-      );
-  
-      return {
-        _id: String(newMessage._id),
-        senderId: String(newMessage.senderId),
-        chatRoomId: String(newMessage.chatRoomId),
-        text: newMessage.text,
-        createdAt: newMessage.createdAt,
-      };
+      const savedMessage = await this.messageRepository.save(newMessage);
+      await this.chatRoomRepository.update(chatRoom.id, { lastMessage: text });
+      await this.transactionManager.commitTransaction();
+      return new CommonResponse(true, 200, 'Message sent successfully', {
+        _id: savedMessage.id,
+        senderId: savedMessage.sender.id,
+        chatRoomId: savedMessage.chatRoom.id,
+        text: savedMessage.text,
+        createdAt: savedMessage.createdAt,
+      });
     } catch (error) {
-      throw new HttpException(
-        { success: false, message: 'Error sending private message', error: error },
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      await this.transactionManager.rollbackTransaction();
+      console.error('❌ Error sending private message:', error);
+      return new CommonResponse(false, 500, 'Error sending private message', null);
+    }
+  }
+ 
+  async sendAudioMessage(data: { senderId: string; receiverId: string; chatRoomId: string; audioUrl: string; duration: number }): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
+    try {
+      const newAudioMessage = this.audioMessageRepository.create(data);
+      const savedAudioMessage = await this.audioMessageRepository.save(newAudioMessage);
+      await this.transactionManager.commitTransaction();
+      return new CommonResponse(true, 200, 'Audio message sent successfully', savedAudioMessage);
+    } catch (error) {
+      await this.transactionManager.rollbackTransaction();
+      console.error('❌ Error sending audio message:', error);
+      return new CommonResponse(false, 500, 'Error sending audio message', null);
     }
   }
 
-  async sendAudioMessage(data: { senderId: string; receiverId: string; chatRoomId: string; audioUrl: string; duration: number }) {
-    return await this.audioMessageModel.create(data);
+  async startCall(data: { callerId: string; receiverId: string; callType: 'audio' | 'video' }): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
+    try {
+      const newCall = this.callRepository.create({
+        ...data, 
+        status: 'ongoing', 
+      });
+      const savedCall = await this.callRepository.save(newCall);
+      await this.transactionManager.commitTransaction();
+      return new CommonResponse(true, 200, 'Call started successfully', savedCall);
+    } catch (error) {
+      await this.transactionManager.rollbackTransaction();
+      console.error('❌ Error starting call:', error);
+      return new CommonResponse(false, 500, 'Error starting call', null);
+    }
   }
-
-  async startCall(data: { callerId: string; receiverId: string; callType: string }) {
-    return await this.callModel.create({ ...data, status: 'ongoing' });
-  }
-
-  async endCall(callId: string, status: string) {
-    return await this.callModel.findByIdAndUpdate(callId, { status }, { new: true });
+  
+  async endCall(callId: string, status: 'missed' | 'completed' | 'declined'): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
+    try {
+      const validStatuses = ['missed', 'completed', 'declined'] as const;
+      if (!validStatuses.includes(status)) {
+        throw new HttpException('Invalid status', HttpStatus.BAD_REQUEST);
+      }
+      const updatedCall = await this.callRepository.update(callId, { status });
+      if (updatedCall.affected === 0) {
+        throw new HttpException('Call not found', HttpStatus.NOT_FOUND);
+      }
+      await this.transactionManager.commitTransaction();
+      return new CommonResponse(true, 200, 'Call ended successfully', null);
+    } catch (error) {
+      await this.transactionManager.rollbackTransaction();
+      console.error('❌ Error ending call:', error);
+      return new CommonResponse(false, 500, 'Error ending call', null);
+    }
   }
 }
-  
-  

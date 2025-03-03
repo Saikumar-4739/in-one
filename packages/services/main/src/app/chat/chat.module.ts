@@ -1,25 +1,25 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { ChatService } from './chat.service';
 import { ChatGateway } from './chat-gateway';
-import { ChatRoom, ChatRoomSchema } from './schema/chat-room.schema';
-import { MessageEntity, MessageSchema } from './schema/message.schema';
 import { ChatController } from './chat.controller';
-import { UserEntity, UserSchema } from '../authentication/schema/user.schema';
-import { CallEntity, CallSchema } from './schema/call.schema';
-import { AudioMessageEntity, AudioMessageSchema } from './schema/audio.schema';
+import { UserEntity } from '../authentication/entities/user.entity'; 
+import { CallEntity } from './entities/call.entity'; 
+import { AudioMessageEntity } from './entities/audio.entity';
+import { ChatRoomEntity } from './entities/chatroom.entity';
+import { MessageEntity } from './entities/messege.entity';
+import { ChatRoomRepository } from './repository/chatroom.repository';
+import { MessegeRepository } from './repository/messege.repository';
+import { UserRepository } from '../authentication/repository/user.repository';
+import { CallRepository } from './repository/call.repository';
+import { AudioRepository } from './repository/audio.repository';
+import { GenericTransactionManager } from 'src/database/trasanction-manager';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: ChatRoom.name, schema: ChatRoomSchema }]),
-    MongooseModule.forFeature([{ name: MessageEntity.name, schema: MessageSchema }]),
-    MongooseModule.forFeature([{ name: UserEntity.name, schema: UserSchema }]),
-    MongooseModule.forFeature([{ name: CallEntity.name, schema: CallSchema }]),
-    MongooseModule.forFeature([{ name: AudioMessageEntity.name, schema: AudioMessageSchema }]),
+    TypeOrmModule.forFeature([ChatRoomEntity, MessageEntity, UserEntity, CallEntity, AudioMessageEntity]),
   ],
-  providers: [ChatService, ChatGateway],
-  controllers: [ChatController]
+  providers: [ChatService, ChatGateway, ChatRoomRepository, MessegeRepository, UserRepository, CallRepository, AudioRepository, GenericTransactionManager],
+  controllers: [ChatController],
 })
-
-
 export class ChatModule {}
