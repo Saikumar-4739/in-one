@@ -1,6 +1,7 @@
 import { UserEntity } from 'src/app/authentication/entities/user.entity';
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 import { CommentEntity } from './comment.entity';
+import { LikeEntity } from './like.entity';
 
 @Entity('videos')
 export class VideoEntity {
@@ -20,9 +21,6 @@ export class VideoEntity {
   views: number;
 
   @Column({ type: 'int', default: 0 })
-  likes: number;
-
-  @Column({ type: 'int', default: 0 })
   dislikes: number;
 
   @Column({ type: 'boolean', default: false })
@@ -36,6 +34,9 @@ export class VideoEntity {
 
   @OneToMany(() => CommentEntity, (comment) => comment.video, { cascade: true })
   comments: CommentEntity[]; 
+
+  @OneToMany(() => LikeEntity, (like) => like.video, { cascade: true })
+  likes: LikeEntity[];
 
   @CreateDateColumn()
   createdAt: Date;

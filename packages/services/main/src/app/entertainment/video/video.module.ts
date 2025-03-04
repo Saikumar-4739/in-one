@@ -8,9 +8,12 @@ import { VideoEntity } from '../entities/video.entity';
 import { UserEntity } from 'src/app/authentication/entities/user.entity';
 import { CommentEntity } from '../entities/comment.entity';
 import { LikeEntity } from '../entities/like.entity';
+import { CloudinaryModule } from '../cloudinary/cloudinary.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([VideoEntity, UserEntity, CommentEntity, LikeEntity])],
+  imports: [TypeOrmModule.forFeature([VideoEntity, UserEntity, CommentEntity, LikeEntity]),
+  CloudinaryModule
+],
   providers: [VideoService, GenericTransactionManager, VideoRepository],
   controllers: [VideoController],
   exports: [VideoService],

@@ -7,9 +7,11 @@ import { LikeEntity } from '../entities/like.entity';
 import { ReelController } from './reels.controller';
 import { ReelService } from './reels.service';
 import { ReelsRepository } from '../repository/reels.repository';
+import { CloudinaryModule } from '../cloudinary/cloudinary.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ReelEntity, CommentEntity, LikeEntity])],
+  imports: [TypeOrmModule.forFeature([ReelEntity, CommentEntity, LikeEntity]),
+CloudinaryModule],
   controllers: [ReelController],
   providers: [ReelService, GenericTransactionManager, ReelsRepository],
   exports: [ReelService],
