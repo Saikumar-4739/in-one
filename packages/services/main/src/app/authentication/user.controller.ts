@@ -59,10 +59,10 @@ export class UserController {
   }
 
   @Post('logoutUser')
-  @ApiBody({ type: UserIdRequestModel })
-  async logoutUser(@Body('userId') reqModel: UserIdRequestModel): Promise<CommonResponse> {
+  @ApiBody({ schema: { properties: { userId: { type: 'string' } } } })
+  async logoutUser(@Body('userId') userId: string): Promise<CommonResponse> {
     try {
-      return await this.userService.logoutUser(reqModel);
+      return await this.userService.logoutUser(userId);
     } catch (error) {
       return ExceptionHandler.handleError(error, 'Error logging out user');
     }

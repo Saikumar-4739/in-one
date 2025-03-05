@@ -198,21 +198,21 @@ export class UserService {
     }
   }
 
-  async logoutUser(reqModel: UserIdRequestModel): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
+  async logoutUser(userId: string): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction(); 
     try {
       const userRepo = this.transactionManager.getRepository(this.userRepository);
-      const user = await userRepo.findOne({ where: { id: reqModel.userId } });
+      const user = await userRepo.findOne({ where: { id: userId } });
       if (!user) {
         await this.transactionManager.rollbackTransaction();
         return new CommonResponse(false, 404, 'User not found');
       }
-      await userRepo.update(reqModel.userId, { status: 'offline' });
+      await userRepo.update(userId, { status: 'offline' });
       await this.transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'User logged out successfully');
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
-      console.error('Logout error:', error);
+      console.error('Logout error:', error); 
       return new CommonResponse(false, 500, 'Error logging out user');
     }
   }

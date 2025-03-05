@@ -10,6 +10,7 @@
     "strictBindCallApply": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
+    "composite": true,
     "baseUrl": ".",
     "module": "NodeNext",
     "rootDir": "c:/insights-365/packages/libs", // Updated to include all source files

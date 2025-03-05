@@ -1,86 +1,65 @@
-import React, { useState } from "react";
-import { Form, Input, Button, Typography, message, Upload } from "antd";
-import { UserOutlined, LockOutlined, MailOutlined, PictureOutlined, UploadOutlined } from "@ant-design/icons";
-import { UserLoginModel, CreateUserModel, GlobalResponseObject } from "@in-one/shared-models"; // Import models
+import React, { useState, useEffect } from "react";
+import { Form, Input, Button, Checkbox, Typography, message, Upload } from "antd";
+import { UserOutlined, LockOutlined, MailOutlined, UploadOutlined } from "@ant-design/icons";
+import { UserLoginModel, CommonResponse } from "@in-one/shared-models";
 import "./login-page.css";
-import { UserHelpService } from "../../../../../libs/shared-services/src/authentication/user-help-service";
 import { useNavigate } from "react-router-dom";
+import { UserHelpService } from "@in-one/shared-services";
 
 const { Title, Text } = Typography;
 
 const LoginPage: React.FC = () => {
-  const [isSignup, setIsSignup] = useState(false); // Toggle between Login & Signup
+  const [isSignup, setIsSignup] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(localStorage.getItem("rememberEmail") || "");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
-  const [profilePicture, setProfilePicture] = useState(""); // Optional profile picture URL
-  const userService = new UserHelpService(); // Initialize user service
+  const [remember, setRemember] = useState(localStorage.getItem("rememberEmail") ? true : false);
+  const [profilePicture, setProfilePicture] = useState("");
+  
+  const userService = new UserHelpService();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (remember) {
+      setEmail(localStorage.getItem("rememberEmail") || "");
+    }
+  }, []);
 
   const handleImageUpload = (file: File) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
-    reader.onload = () => {
-      setProfilePicture(reader.result as string);
-    }
-}
+    reader.onload = () => setProfilePicture(reader.result as string);
+  };
 
-
-const handleLogin = async () => {
-  if (!email || !password) {
-    message.error("Please enter email and password.");
-    return;
-  }
-
-  setLoading(true);
-  const loginData = new UserLoginModel(email, password);
-
-  try {
-    const response: GlobalResponseObject = await userService.loginUser(loginData);
-    if (response.status) { // ✅ Use 'status' instead of 'success'
-      message.success("Login successful!");
-      
-      // Storing token in localStorage
-      localStorage.setItem("token", response.data.accessToken);
-      
-      // Set user data in localStorage or state
-      const { username, email, id, profilePicture } = response.data.user;
-      localStorage.setItem("username", username);
-      localStorage.setItem("email", email);
-      localStorage.setItem("userId", id);
-      localStorage.setItem("profilePicture", profilePicture || "");
-
-      console.log(response);
-
-      navigate("/"); // Redirect to dashboard or app layout
-    } else {
-      message.error(response.internalMessage || "Invalid credentials.");
-    }
-  } catch (error) {
-    message.error("An error occurred. Please try again.");
-  } finally {
-    setLoading(false);
-  }
-};
-
-  
-  const handleSignup = async () => {
-    if (!email || !password || !username) {
-      message.error("Please fill all required fields.");
+  const handleLogin = async () => {
+    if (!email || !password) {
+      message.error("Please enter email and password.");
       return;
     }
-  
+
     setLoading(true);
-    const signupData = new CreateUserModel(username, password, email, profilePicture);
-  
+    const loginData = new UserLoginModel(email, password);
+
     try {
-      const response: GlobalResponseObject = await userService.createUser(signupData);
-      if (response.status) { // ✅ Use 'status' instead of 'success'
-        message.success("Signup successful! You can now log in.");
-        setIsSignup(false); // Switch back to login mode
+      const response: CommonResponse = await userService.loginUser(loginData);
+      if (response.status) {
+        message.success("Login successful!");
+        localStorage.setItem("token", response.data.accessToken);
+        localStorage.setItem("username", response.data.user.username);
+        localStorage.setItem("email", response.data.user.email);
+        localStorage.setItem("userId", response.data.user.id);
+        localStorage.setItem("profilePicture", response.data.user.profilePicture || "");
+
+        if (remember) {
+          localStorage.setItem("rememberEmail", email);
+        } else {
+          localStorage.removeItem("rememberEmail");
+        }
+
+        navigate("/");
       } else {
-        message.error(response.internalMessage || "Signup failed.");
+        message.error(response.internalMessage || "Invalid credentials.");
       }
     } catch (error) {
       message.error("An error occurred. Please try again.");
@@ -89,66 +68,36 @@ const handleLogin = async () => {
     }
   };
 
-  
-  
-
   return (
     <div className="login-container">
-      {/* Left Section (80%) */}
       <div className="login-image-section"></div>
-
-      {/* Right Section (20%) */}
       <div className="login-box">
         <div className="header-left">
           <div className="sidebar-logo">
             <div className="logo-circle">IN</div>
-            <span className="logo-text">One</span> {/* White text ensured */}
+            <span className="logo-text">One</span>
           </div>
         </div>
 
-        <Title level={3} className="text-center">
-          {isSignup ? "Sign Up" : "Sign In"}
-        </Title>
+        <Title level={3} className="text-center">{isSignup ? "Sign Up" : "Sign In"}</Title>
 
-        <Form layout="vertical" onFinish={isSignup ? handleSignup : handleLogin}>
-          {/* Username Field for Signup */}
+        <Form layout="vertical" onFinish={handleLogin}>
           {isSignup && (
             <Form.Item label="Username" required>
-              <Input
-                prefix={<UserOutlined className="input-icon" />}
-                className="input-field"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your username"
-              />
+              <Input prefix={<UserOutlined />} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Enter your username" style={{ color: "black" }} />
             </Form.Item>
           )}
 
-          {/* Email Field */}
           <Form.Item label="Email" required>
-            <Input
-              prefix={<MailOutlined className="input-icon" />}
-              className="input-field"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
-            />
+            <Input prefix={<MailOutlined />} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email" style={{ color: "black" }} />
           </Form.Item>
 
-          {/* Password Field */}
           <Form.Item label="Password" required>
-            <Input.Password
-              prefix={<LockOutlined className="input-icon" />}
-              className="input-field"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
-            />
+            <Input.Password prefix={<LockOutlined />} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" style={{ color: "black" }} />
           </Form.Item>
 
-          {/* Profile Picture URL Field (Optional) */}
           {isSignup && (
-            <Form.Item label="Profile Picture (Optional)">
+            <Form.Item label="Profile Picture">
               <Upload
                 beforeUpload={(file) => {
                   handleImageUpload(file);
@@ -164,24 +113,20 @@ const handleLogin = async () => {
             </Form.Item>
           )}
 
-          {/* Submit Button */}
           <Form.Item>
-            <Button type="primary" block htmlType="submit" loading={loading}>
-              {isSignup ? "Sign Up" : "Sign In"}
-            </Button>
+            <Checkbox checked={remember} onChange={(e) => setRemember(e.target.checked)}>Remember me</Checkbox>
+          </Form.Item>
+
+          <Form.Item>
+            <Button type="primary" block htmlType="submit" loading={loading}>{isSignup ? "Sign Up" : "Sign In"}</Button>
           </Form.Item>
         </Form>
 
-        {/* Toggle Between Sign In & Sign Up */}
         <Text className="signup-text">
           {isSignup ? (
-            <>
-              Already have an account? <a onClick={() => setIsSignup(false)}>Sign in</a>
-            </>
+            <>Already have an account? <a onClick={() => setIsSignup(false)}>Sign in</a></>
           ) : (
-            <>
-              Don't have an account? <a onClick={() => setIsSignup(true)}>Sign up</a>
-            </>
+            <>Don't have an account? <a onClick={() => setIsSignup(true)}>Sign up</a></>
           )}
         </Text>
       </div>
