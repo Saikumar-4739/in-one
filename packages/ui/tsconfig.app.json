@@ -2,7 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "../../dist/out-tsc",
-    "rootDir": "../../", // Set to the parent directory to include both 'ui' and 'libs'
+    "rootDir": "../../",
     "module": "NodeNext",
     "types": [
       "node",
@@ -26,15 +26,15 @@
     "**/*.jsx",
     "**/*.ts",
     "**/*.tsx",
-    "../libs/shared-models/src/**/*", // Include shared models
-    // "../libs/shared-services/src/**/*" // Include shared services
+    "../libs/shared-services/src/**/*", // Ensure shared-services is included
+    "../libs/shared-models/src/**/*"
   ],
   "references": [
     {
-      "path": "../libs/shared-services/tsconfig.lib.json"
+      "path": "../libs/shared-models/tsconfig.lib.json"
     },
     {
-      "path": "../libs/shared-models/tsconfig.lib.json"
+      "path": "../libs/shared-services/tsconfig.lib.json"
     }
   ]
 }

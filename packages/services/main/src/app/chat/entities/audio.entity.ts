@@ -1,5 +1,6 @@
 import {  Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { UserEntity } from 'src/app/authentication/entities/user.entity';
+import { ChatRoomEntity } from './chatroom.entity';
 
 @Entity('audio_messages')
 export class AudioMessageEntity {
@@ -11,6 +12,10 @@ export class AudioMessageEntity {
 
     @ManyToOne(() => UserEntity, (user) => user.receivedAudioMessages, { nullable: false, onDelete: 'CASCADE' }) 
     receiver: UserEntity;
+
+    @ManyToOne(() => ChatRoomEntity, (chatRoom) => chatRoom.messages, { nullable: false, onDelete: 'CASCADE' })
+    chatRoom: ChatRoomEntity;
+
 
     @Column({ type: 'text', nullable: false }) 
     audioUrl: string;

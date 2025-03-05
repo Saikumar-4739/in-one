@@ -12,10 +12,10 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "module": "NodeNext",
+    "rootDir": "c:/insights-365/packages/libs", // Updated to include all source files
     "esModuleInterop": true,
-    "rootDir": "../../",
     "paths": {
-      "@in-one/shared-models": ["../shared-models/src/index.ts"],
+      "@in-one/shared-models": ["libs/shared-models/src/index.ts"]
     }
   },
   "include": ["src/**/*.ts"],
@@ -26,6 +26,8 @@
     "src/**/*.ts"
   ],
   "references": [
-    { "path": "../shared-models/tsconfig.lib.json" },
+    {
+      "path": "../shared-models/tsconfig.lib.json"
+    }
   ]
 }

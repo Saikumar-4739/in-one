@@ -2,6 +2,7 @@ import { WebSocketGateway, WebSocketServer, SubscribeMessage, MessageBody, Conne
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
 import { HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { ChatRoomIdRequestModel, EndCallModel } from '@in-one/shared-models';
 
 @WebSocketGateway({ cors: true })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -87,16 +88,22 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('getChatHistory')
-  async handleGetChatHistory(@MessageBody() chatRoomId: string) {
+  async handleGetChatHistory(@MessageBody() reqModel: any) {
     try {
-      this.logger.log(`📜 Fetching chat history for room: ${chatRoomId}`);
-      const messages = await this.chatService.getChatHistory(chatRoomId);
+      if (typeof reqModel !== 'object' || !reqModel.chatRoomId) {
+        throw new Error('Invalid request payload: Expected an object with chatRoomId.');
+      }
+  
+      this.logger.log(`📜 Fetching chat history for room: ${reqModel.chatRoomId}`);
+      const messages = await this.chatService.getChatHistory(reqModel.chatRoomId);
+  
       return { success: true, message: 'Chat history retrieved', data: messages };
     } catch (error) {
       this.logger.error(`❌ Error in handleGetChatHistory: ${error}`);
       return { success: false, message: 'Failed to retrieve chat history', error: error };
     }
   }
+  
 
   @SubscribeMessage('getOnlineUsers')
   async handleGetOnlineUsers() {
@@ -120,16 +127,16 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('endCall')
-  async handleEndCall(@MessageBody() data: { callId: string; status: 'missed' | 'completed' | 'declined' }) {
+  async handleEndCall(@MessageBody() reqModel: EndCallModel) {
     try {
       const validStatuses: ['missed', 'completed', 'declined'] = ['missed', 'completed', 'declined'];
-      if (!validStatuses.includes(data.status)) {
+      if (!validStatuses.includes(reqModel.status)) {
         throw new HttpException(
           { success: false, message: 'Invalid status' },
           HttpStatus.BAD_REQUEST
         );
       }
-      const callResponse = await this.chatService.endCall(data.callId, data.status);
+      const callResponse = await this.chatService.endCall(reqModel);
       if (!callResponse.status) {
         throw new HttpException(
           { success: false, message: callResponse.internalMessage },

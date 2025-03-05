@@ -9,8 +9,8 @@
     "target": "es2021",
     "baseUrl": "./src",
     "noUnusedLocals": false,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "NodeNext",  // or "commonjs" if using CommonJS
+    "moduleResolution": "NodeNext",  // or "node" if using Node modules
     "types": ["node"],
     "paths": {
       "@in-one/shared-services": ["../../libs/shared-services/src/index.ts"],
@@ -20,20 +20,15 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "../../libs/shared-services/src/**/*",  // Ensure shared-services is included
+    "../../libs/shared-models/src/**/*"  // Ensure shared-models is included
+  ],
   "exclude": ["node_modules", "**/*.spec.ts", "**/*.test.ts"],
   "references": [
-    {
-      "path": "../libs/shared-services"
-    },
-    {
-      "path": "../libs/shared-models"
-    },
-    {
-      "path": "./tsconfig.app.json"
-    },
-    {
-      "path": "./tsconfig.spec.json"
-    }
+    { "path": "../libs/shared-services" },
+    { "path": "../libs/shared-models" }
   ]
 }

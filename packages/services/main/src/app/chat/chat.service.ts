@@ -1,8 +1,8 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { UserEntity } from '../authentication/entities/user.entity';
-import { ChatRoomResponse, CommonResponse, CreateChatRoomModel, CreateMessageModel, EditMessageModel, MessageResponseModel } from '@in-one/shared-models';
+import { AudioMessegeModel, CallModel, ChatRoomIdRequestModel, CommonResponse, CreateChatRoomModel, CreateMessageModel, EditMessageModel, EndCallModel, MessageResponseModel, MessegeIdRequestModel, PrivateMessegeModel, UserIdRequestModel } from '@in-one/shared-models';
 import { ChatRoomRepository } from './repository/chatroom.repository';
 import { MessegeRepository } from './repository/messege.repository';
 import { CallRepository } from './repository/call.repository';
@@ -20,14 +20,14 @@ export class ChatService {
     private readonly transactionManager: GenericTransactionManager
   ) { }
 
-  async createMessage(req: CreateMessageModel): Promise<MessageResponseModel> {
+  async createMessage(reqModel: CreateMessageModel): Promise<MessageResponseModel> {
     await this.transactionManager.startTransaction();
     try {
       const messageRepo = this.transactionManager.getRepository(this.messageRepository);
       const chatRoomRepo = this.transactionManager.getRepository(this.chatRoomRepository);
-      const newMessage = messageRepo.create(req);
+      const newMessage = messageRepo.create(reqModel);
       const savedMessage = await messageRepo.save(newMessage);
-      await chatRoomRepo.update(req.chatRoomId, { lastMessage: req.text });
+      await chatRoomRepo.update(reqModel.chatRoomId, { lastMessage: reqModel.text });
       await this.transactionManager.commitTransaction();
       return {
         _id: savedMessage.id,
@@ -43,12 +43,12 @@ export class ChatService {
     }
   }
 
-  async getChatHistory(chatRoomId: string): Promise<MessageResponseModel[]> {
+  async getChatHistory(reqModel: ChatRoomIdRequestModel): Promise<MessageResponseModel[]> {
     await this.transactionManager.startTransaction();
     try {
       const messageRepo = this.transactionManager.getRepository(this.messageRepository);
       const messages = await messageRepo.find({
-        where: { chatRoom: { id: chatRoomId } },
+        where: { chatRoom: { id: reqModel.chatRoomId } },
         relations: ['sender', 'chatRoom'],
       });
       await this.transactionManager.commitTransaction();
@@ -66,16 +66,16 @@ export class ChatService {
     }
   }
 
-  async editMessage(data: EditMessageModel): Promise<MessageResponseModel> {
+  async editMessage(reqModel: EditMessageModel): Promise<MessageResponseModel> {
     await this.transactionManager.startTransaction();
     try {
       const messageRepo = this.transactionManager.getRepository(this.messageRepository);
-      const updatedMessage = await messageRepo.findOne({ where: { id: data.messageId }, relations: ['sender', 'chatRoom'] });
+      const updatedMessage = await messageRepo.findOne({ where: { id: reqModel.messageId }, relations: ['sender', 'chatRoom'] });
 
       if (!updatedMessage) {
         throw new HttpException('Message not found', HttpStatus.NOT_FOUND);
       }
-      updatedMessage.text = data.newText;
+      updatedMessage.text = reqModel.newText;
       const savedMessage = await messageRepo.save(updatedMessage);
       await this.transactionManager.commitTransaction();
       return {
@@ -92,11 +92,11 @@ export class ChatService {
     }
   }
 
-  async deleteMessage(messageId: string): Promise<CommonResponse> {
+  async deleteMessage(reqModel: MessegeIdRequestModel): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
     try {
       const messageRepo = this.transactionManager.getRepository(this.messageRepository);
-      const deleted = await messageRepo.delete(messageId);
+      const deleted = await messageRepo.delete(reqModel.messageId);
       if (!deleted.affected) {
         throw new HttpException('Message not found', HttpStatus.NOT_FOUND);
       }
@@ -125,11 +125,11 @@ export class ChatService {
     }
   }
 
-  async getMessageById(messageId: string): Promise<CommonResponse> {
+  async getMessageById(reqModel: MessegeIdRequestModel): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
     try {
       const message = await this.messageRepository.findOne({
-        where: { id: messageId },
+        where: { id: reqModel.messageId },
         relations: ['sender', 'chatRoom'],
       });
       if (!message) {
@@ -151,11 +151,11 @@ export class ChatService {
     }
   }
 
-  async getChatRoomsForUser(userId: string): Promise<CommonResponse> {
+  async getChatRoomsForUser(reqModel: UserIdRequestModel): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
     try {
       const chatRooms = await this.chatRoomRepository.find({
-        where: { participants: { id: userId } },
+        where: { participants: { id: reqModel.userId } },
         relations: ['participants'],
       });
 
@@ -179,19 +179,19 @@ export class ChatService {
     }
   }
 
-  async createChatRoom(data: CreateChatRoomModel): Promise<CommonResponse> {
+  async createChatRoom(reqModel: CreateChatRoomModel): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
 
     try {
-      const participants = await this.userRepository.findByIds(data.participants);
+      const participants = await this.userRepository.findByIds(reqModel.participants);
       if (!participants || participants.length === 0) {
         await this.transactionManager.rollbackTransaction();
         return new CommonResponse(false, 400, 'No participants found', null);
       }
       const newChatRoom = this.chatRoomRepository.create({
         participants,
-        name: data.name || '',
-        isGroup: data.participants.length > 1,
+        name: reqModel.name || '',
+        isGroup: reqModel.participants.length > 1,
       });
       const savedChatRoom = await this.chatRoomRepository.save(newChatRoom);
       await this.transactionManager.commitTransaction();
@@ -209,29 +209,36 @@ export class ChatService {
     }
   }
 
-  async sendPrivateMessage(senderId: string, receiverId: string, text: string): Promise<CommonResponse> {
+  async sendPrivateMessage(reqModel: PrivateMessegeModel): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
     try {
       let chatRoom = await this.chatRoomRepository.findOne({
-        where: { isGroup: false, participants: [{ id: senderId }, { id: receiverId }] },
+        where: {
+          isGroup: false,
+          participants: { id: In([reqModel.senderId, reqModel.receiverId]) },
+        },
       });
+
       if (!chatRoom) {
         chatRoom = this.chatRoomRepository.create({
-          participants: await this.userRepository.findByIds([senderId, receiverId]),
+          participants: await this.userRepository.findByIds([reqModel.senderId, reqModel.receiverId]),
           isGroup: false,
-          lastMessage: text,
+          lastMessage: reqModel.text,
         });
         await this.chatRoomRepository.save(chatRoom);
       }
+
       const newMessage = this.messageRepository.create({
-        sender: { id: senderId } as UserEntity,
-        receiver: { id: receiverId } as UserEntity,
+        sender: { id: reqModel.senderId } as UserEntity,
+        receiver: { id: reqModel.receiverId } as UserEntity,
         chatRoom,
-        text,
+        text: reqModel.text
       });
+
       const savedMessage = await this.messageRepository.save(newMessage);
-      await this.chatRoomRepository.update(chatRoom.id, { lastMessage: text });
+      await this.chatRoomRepository.update(chatRoom.id, { lastMessage: reqModel.text });
       await this.transactionManager.commitTransaction();
+
       return new CommonResponse(true, 200, 'Message sent successfully', {
         _id: savedMessage.id,
         senderId: savedMessage.sender.id,
@@ -245,13 +252,37 @@ export class ChatService {
       return new CommonResponse(false, 500, 'Error sending private message', null);
     }
   }
- 
-  async sendAudioMessage(data: { senderId: string; receiverId: string; chatRoomId: string; audioUrl: string; duration: number }): Promise<CommonResponse> {
+
+  async sendAudioMessage(reqModel: AudioMessegeModel): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
     try {
-      const newAudioMessage = this.audioMessageRepository.create(data);
+      const chatRoom = await this.chatRoomRepository.findOne({ where: { id: reqModel.chatRoomId } });
+      if (!chatRoom) {
+        throw new Error('Chat room not found');
+      }
+
+      const sender = await this.userRepository.findOne({ where: { id: reqModel.senderId } });
+      if (!sender) {
+        throw new Error('Sender not found');
+      }
+
+      const receiver = await this.userRepository.findOne({ where: { id: reqModel.receiverId } });
+      if (!receiver) {
+        throw new Error('Receiver not found');
+      }
+
+      const newAudioMessage = this.audioMessageRepository.create({
+        sender: sender,
+        receiver: receiver,
+        chatRoom: chatRoom,
+        audioUrl: reqModel.audioUrl,
+        duration: reqModel.duration,
+      });
+
       const savedAudioMessage = await this.audioMessageRepository.save(newAudioMessage);
+      await this.chatRoomRepository.update(reqModel.chatRoomId, { lastMessage: 'Audio Message' });
       await this.transactionManager.commitTransaction();
+
       return new CommonResponse(true, 200, 'Audio message sent successfully', savedAudioMessage);
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
@@ -260,13 +291,23 @@ export class ChatService {
     }
   }
 
-  async startCall(data: { callerId: string; receiverId: string; callType: 'audio' | 'video' }): Promise<CommonResponse> {
+  async startCall(reqModel: CallModel): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
     try {
+      const caller = await this.userRepository.findOne({ where: { id: reqModel.callerId } });
+      const receiver = await this.userRepository.findOne({ where: { id: reqModel.receiverId } });
+
+      if (!caller || !receiver) {
+        throw new HttpException('Caller or receiver not found', HttpStatus.NOT_FOUND);
+      }
+
       const newCall = this.callRepository.create({
-        ...data, 
-        status: 'ongoing', 
+        caller: caller,
+        receiver: receiver,
+        callType: reqModel.callType,
+        status: 'ongoing',
       });
+
       const savedCall = await this.callRepository.save(newCall);
       await this.transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'Call started successfully', savedCall);
@@ -276,24 +317,29 @@ export class ChatService {
       return new CommonResponse(false, 500, 'Error starting call', null);
     }
   }
-  
-  async endCall(callId: string, status: 'missed' | 'completed' | 'declined'): Promise<CommonResponse> {
+
+  async endCall(reqModel: EndCallModel): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
     try {
-      const validStatuses = ['missed', 'completed', 'declined'] as const;
+      const { callId, status } = reqModel; // Extracting callId and status properly
+
+      const validStatuses: ReadonlyArray<string> = ['missed', 'completed', 'declined'];
       if (!validStatuses.includes(status)) {
         throw new HttpException('Invalid status', HttpStatus.BAD_REQUEST);
       }
+
       const updatedCall = await this.callRepository.update(callId, { status });
-      if (updatedCall.affected === 0) {
+
+      if (!updatedCall || updatedCall.affected === 0) {
         throw new HttpException('Call not found', HttpStatus.NOT_FOUND);
       }
+
       await this.transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'Call ended successfully', null);
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
       console.error('❌ Error ending call:', error);
-      return new CommonResponse(false, 500, 'Error ending call', null);
+      return new CommonResponse(false, 500, 'Error ending call', error);
     }
   }
 }

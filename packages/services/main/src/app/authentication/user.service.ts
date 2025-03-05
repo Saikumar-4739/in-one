@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { UserEntity } from './entities/user.entity';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { CommonResponse, CreateUserModel, UpdateUserModel, UserLoginModel } from '@in-one/shared-models';
+import { CommonResponse, CreateUserModel, EmailRequestModel, ResetPassowordModel, UpdateUserModel, UserIdRequestModel, UserLoginModel, WelcomeRequestModel } from '@in-one/shared-models';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
 import * as nodemailer from 'nodemailer';
 import type { Cache } from 'cache-manager';
@@ -20,7 +20,6 @@ export class UserService {
     @Inject(CACHE_MANAGER) private cacheManager: Cache
   ) { }
 
-
   async createUser(reqModel: CreateUserModel): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
     try {
@@ -34,20 +33,19 @@ export class UserService {
       });
       const savedUser = await userRepo.save(user);
       await this.transactionManager.commitTransaction();
-      await this.sendWelcomeEmail(user.email, user.username);
+      await this.sendWelcomeEmail(new WelcomeRequestModel(reqModel.email, reqModel.username));
       return new CommonResponse(true, 0, 'User created successfully', savedUser);
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
       return new CommonResponse(false, 500, 'Error creating user', null);
     }
   }
-  
-  async send2FAOtp(email: string): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction(); 
+
+  async send2FAOtp(reqModel: EmailRequestModel): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
     try {
-      const userRepo = this.transactionManager.getRepository(this.userRepository); 
-      const user = await userRepo.findOne({ where: { email } });
-  
+      const userRepo = this.transactionManager.getRepository(this.userRepository);
+      const user = await userRepo.findOne({ where: { email: reqModel.email } });
       if (!user) {
         await this.transactionManager.rollbackTransaction();
         return new CommonResponse(false, 404, 'User not found');
@@ -55,25 +53,25 @@ export class UserService {
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       user.twoFactorOtp = otp;
       user.twoFactorExpires = new Date(Date.now() + 5 * 60 * 1000);
-      await userRepo.save(user); 
+      await userRepo.save(user);
       await this.transactionManager.commitTransaction();
-      await this.sendWelcomeEmail(email, `Your OTP is ${otp}`);
+      await this.sendWelcomeEmail(new WelcomeRequestModel(reqModel.email, `Your OTP is ${otp}`));
       return new CommonResponse(true, 200, '2FA OTP sent successfully');
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
       return new CommonResponse(false, 500, 'Error sending 2FA OTP');
     }
   }
-  
-  async sendWelcomeEmail(email: string, username: string): Promise<void> {
+
+  async sendWelcomeEmail(reqModel: WelcomeRequestModel): Promise<void> {
     try {
       const transporter = nodemailer.createTransport({
-        service: 'gmail', auth: { user: process.env.EMAIL_USER,  pass: process.env.EMAIL_PASS},
+        service: 'gmail', auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
       });
-  
+
       const mailOptions = {
         from: process.env.EMAIL_USER,
-        to: email,
+        to: reqModel.email,
         subject: 'Welcome to Our Platform!',
         html: `
         <html>
@@ -82,44 +80,44 @@ export class UserService {
             <title>Welcome Email</title>
         </head>
         <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; text-align: center; border-radius: 10px; width: 80%; margin: auto;">
-            <h2 style="color: #333;">Hello, <span style="color: #007BFF;">${username}</span>!</h2>
+            <h2 style="color: #333;">Hello, <span style="color: #007BFF;">${reqModel.username}</span>!</h2>
             <p style="color: #555; font-size: 16px;">Welcome to our platform! We're excited to have you on board.</p>
             <p style="color: #777; font-size: 14px;">Best Regards,<br><strong>Your Team</strong></p>
         </body>
         </html>`
       };
       await transporter.sendMail(mailOptions);
-      console.log(`📧 Welcome email sent to ${email}`);
+      console.log(`📧 Welcome email sent to ${reqModel.email}`);
     } catch (error) {
     }
   }
-  
+
   async loginUser(reqModel: UserLoginModel): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction(); 
+    await this.transactionManager.startTransaction();
     try {
       const userRepo = this.transactionManager.getRepository(this.userRepository);
-  
+
       const user = await userRepo.findOne({ where: { email: reqModel.email } });
-  
+
       if (!user) {
         await this.transactionManager.rollbackTransaction();
         return new CommonResponse(false, 401, 'Invalid credentials');
       }
-  
+
       const isPasswordValid = await bcrypt.compare(reqModel.password, user.password);
       if (!isPasswordValid) {
         await this.transactionManager.rollbackTransaction();
         return new CommonResponse(false, 401, 'Invalid credentials');
       }
-  
+
       const payload = { username: user.username, sub: user.id };
       const accessToken = this.jwtService.sign(payload, { expiresIn: '7d' });
       const refreshToken = this.jwtService.sign(payload, { expiresIn: '15d' });
-  
+
       await userRepo.update(user.id, { status: 'online' });
-  
+
       await this.transactionManager.commitTransaction();
-  
+
       return new CommonResponse(true, 200, 'User logged in successfully', {
         accessToken,
         refreshToken,
@@ -136,24 +134,24 @@ export class UserService {
       return new CommonResponse(false, 500, errorMessage);
     }
   }
-  
-  async getUserById(userId: string): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction(); 
+
+  async getUserById(reqModel: UserIdRequestModel): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
     try {
-      const cachedUser = await this.cacheManager.get<UserEntity>(`user_${userId}`);
+      const cachedUser = await this.cacheManager.get<UserEntity>(`user_${reqModel.userId}`);
       if (cachedUser) {
-        await this.transactionManager.commitTransaction(); 
+        await this.transactionManager.commitTransaction();
         return new CommonResponse(true, 200, 'User fetched from cache', cachedUser);
       }
       const userRepo = this.transactionManager.getRepository(this.userRepository);
-      const user = await userRepo.findOne({ where: { id: userId } });
+      const user = await userRepo.findOne({ where: { id: reqModel.userId } });
       if (!user) {
         await this.transactionManager.rollbackTransaction();
         return new CommonResponse(false, 404, 'User not found');
       }
-      await this.cacheManager.set(`user_${userId}`, user, 300);
+      await this.cacheManager.set(`user_${reqModel.userId}`, user, 300);
       await this.transactionManager.commitTransaction();
-       return new CommonResponse(true, 200, 'User fetched successfully', user);
+      return new CommonResponse(true, 200, 'User fetched successfully', user);
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
@@ -161,17 +159,19 @@ export class UserService {
     }
   }
 
-  async updateUser(userId: string, updateUserDto: UpdateUserModel): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction(); 
+  async updateUser(reqModel: UpdateUserModel): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
     try {
       const userRepo = this.transactionManager.getRepository(this.userRepository);
-      const user = await userRepo.findOne({ where: { id: userId } });
+      const user = await userRepo.findOne({ where: { id: reqModel.userId } });
+
       if (!user) {
         await this.transactionManager.rollbackTransaction();
         return new CommonResponse(false, 404, 'User not found');
       }
-      await userRepo.update(userId, updateUserDto);
-      const updatedUser = await userRepo.findOne({ where: { id: userId } });
+
+      await userRepo.update(reqModel.userId, reqModel);
+      const updatedUser = await userRepo.findOne({ where: { id: reqModel.userId } });
       await this.transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'User updated successfully', updatedUser);
     } catch (error) {
@@ -179,12 +179,12 @@ export class UserService {
       return new CommonResponse(false, 500, 'Error updating user');
     }
   }
-  
-  async deleteUser(userId: string): Promise<CommonResponse> {
+
+  async deleteUser(reqModel: UserIdRequestModel): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
     try {
       const userRepo = this.transactionManager.getRepository(this.userRepository);
-      const user = await userRepo.findOne({ where: { id: userId } });
+      const user = await userRepo.findOne({ where: { id: reqModel.userId } });
       if (!user) {
         await this.transactionManager.rollbackTransaction();
         return new CommonResponse(false, 404, 'User not found');
@@ -198,30 +198,30 @@ export class UserService {
     }
   }
 
-  async logoutUser(userId: string): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction(); 
+  async logoutUser(reqModel: UserIdRequestModel): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
     try {
       const userRepo = this.transactionManager.getRepository(this.userRepository);
-      const user = await userRepo.findOne({ where: { id: userId } });
+      const user = await userRepo.findOne({ where: { id: reqModel.userId } });
       if (!user) {
         await this.transactionManager.rollbackTransaction();
         return new CommonResponse(false, 404, 'User not found');
       }
-      await userRepo.update(userId, { status: 'offline' });
+      await userRepo.update(reqModel.userId, { status: 'offline' });
       await this.transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'User logged out successfully');
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
-      console.error('Logout error:', error); 
+      console.error('Logout error:', error);
       return new CommonResponse(false, 500, 'Error logging out user');
     }
   }
-  
-  async checkUserStatus(userId: string): Promise<CommonResponse> {
+
+  async checkUserStatus(reqModel: UserIdRequestModel): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
     try {
       const userRepo = this.transactionManager.getRepository(this.userRepository);
-      const user = await userRepo.findOne({ where: { id: userId } });
+      const user = await userRepo.findOne({ where: { id: reqModel.userId } });
       if (!user) {
         await this.transactionManager.rollbackTransaction();
         return new CommonResponse(false, 404, 'User not found');
@@ -234,28 +234,28 @@ export class UserService {
     }
   }
 
-  async sendResetPasswordEmail(email: string): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction(); 
+  async sendResetPasswordEmail(reqModel: EmailRequestModel): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
 
     try {
       const userRepo = this.transactionManager.getRepository(this.userRepository);
-      const user = await userRepo.findOne({ where: { email } });
+      const user = await userRepo.findOne({ where: { email: reqModel.email } });
       if (!user) {
         await this.transactionManager.rollbackTransaction();
         return new CommonResponse(false, 404, 'User not found');
       }
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      const resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000); 
+      const resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000);
       await userRepo.update(user.id, { resetPasswordOtp: otp, resetPasswordExpires });
       await this.transactionManager.commitTransaction();
       const transporter = nodemailer.createTransport({
         service: 'gmail',
-        auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS},
+        auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
       });
 
       await transporter.sendMail({
         from: process.env.EMAIL_USER,
-        to: email,
+        to: reqModel.email,
         subject: 'Password Reset OTP',
         text: `Your OTP for password reset is ${otp}`,
       });
@@ -266,24 +266,24 @@ export class UserService {
     }
   }
 
-  async resetPassword(email: string, otp: string, newPassword: string): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction(); 
+  async resetPassword(reqModel: ResetPassowordModel): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
     try {
       const userRepo = this.transactionManager.getRepository(this.userRepository);
-      const user = await userRepo.findOne({ where: { email } });
+      const user = await userRepo.findOne({ where: { email: reqModel.email } });
       if (!user) {
         await this.transactionManager.rollbackTransaction();
         return new CommonResponse(false, 404, 'User not found');
       }
-      if (user.resetPasswordOtp !== otp || !user.resetPasswordExpires || user.resetPasswordExpires < new Date()) {
+      if (user.resetPasswordOtp !== reqModel.otp || !user.resetPasswordExpires || user.resetPasswordExpires < new Date()) {
         await this.transactionManager.rollbackTransaction();
         return new CommonResponse(false, 401, 'Invalid or expired OTP');
       }
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      const hashedPassword = await bcrypt.hash(reqModel.newPassword, 10);
       await userRepo.update(user.id, {
         password: hashedPassword,
-        resetPasswordOtp: null as any,  
-        resetPasswordExpires: null as any, 
+        resetPasswordOtp: null as any,
+        resetPasswordExpires: null as any,
       });
       await this.transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'Password reset successfully');

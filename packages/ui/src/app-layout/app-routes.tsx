@@ -17,7 +17,7 @@ const AppRoutes: React.FC = () => {
       <Route path="/" element={
         isAuthenticated ? 
           <AppLayout children={undefined} /> : 
-          <Navigate to="/login" />
+          <Navigate to="/" />
       } />
 
       {/* Catch all route */}

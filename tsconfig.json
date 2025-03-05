@@ -9,9 +9,6 @@
   },
   "references": [
     {
-      "path": "./packages/mobile"
-    },
-    {
       "path": "./packages/libs/shared-services"
     },
     {

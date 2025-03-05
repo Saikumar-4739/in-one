@@ -22,8 +22,8 @@ export class CallEntity {
     status: 'missed' | 'completed' | 'declined' | 'ongoing';
 
     @CreateDateColumn()
-    createdAt: Date; // ✅ Auto-generated timestamp
+    createdAt: Date; 
 
     @UpdateDateColumn()
-    updatedAt: Date; // ✅ Auto-generated timestamp
+    updatedAt: Date; 
 }
