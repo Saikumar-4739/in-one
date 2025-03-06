@@ -10,7 +10,7 @@ import { multerOptions } from './multer.config';
 export class VideoController {
   constructor(private readonly videoService: VideoService) {}
 
-  @Post('upload')
+  @Post('uploadVideo')
   @UseInterceptors(FileInterceptor('file', multerOptions))
   async uploadVideo( @UploadedFile() file: Express.Multer.File, @Body() reqModel: CreateVideoModel): Promise<CommonResponse> {
     try {

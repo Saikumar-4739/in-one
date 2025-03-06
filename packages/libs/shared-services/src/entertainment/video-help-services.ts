@@ -1,9 +1,6 @@
 import { AxiosRequestConfig } from 'axios';
 import { CommonAxiosService } from '../common-axios-service';
-import { 
-    CommonResponse, 
-    UpdateVideoModel 
-} from '@in-one/shared-models';
+import { CommonResponse, LikeVideoModel, UpdateVideoModel, VideoIdRequestModel } from '@in-one/shared-models';
 import FormData from 'form-data';
 
 
@@ -13,7 +10,7 @@ export class VideoHelpService extends CommonAxiosService {
     }
 
     async uploadVideo(formData: FormData, config?: AxiosRequestConfig): Promise<CommonResponse> {
-        return await this.axiosPostCall(this.getURLwithMainEndPoint('upload'), formData, {
+        return await this.axiosPostCall(this.getURLwithMainEndPoint('uploadVideo'), formData, {
             ...config,
             headers: { 'Content-Type': 'multipart/form-data' }
         });
@@ -23,19 +20,19 @@ export class VideoHelpService extends CommonAxiosService {
         return await this.axiosPostCall(this.getURLwithMainEndPoint('getAll'), {}, config);
     }
 
-    async updateVideo(updateData: UpdateVideoModel & { id: string }, config?: AxiosRequestConfig): Promise<CommonResponse> {
-        return await this.axiosPostCall(this.getURLwithMainEndPoint('update'), updateData, config);
+    async updateVideo(reqModel: UpdateVideoModel , config?: AxiosRequestConfig): Promise<CommonResponse> {
+        return await this.axiosPostCall(this.getURLwithMainEndPoint('updateVideo'), reqModel , config);
     }
 
-    async deleteVideo(id: string, config?: AxiosRequestConfig): Promise<CommonResponse> {
-        return await this.axiosPostCall(this.getURLwithMainEndPoint('delete'), { id }, config);
+    async deleteVideo(reqModel: VideoIdRequestModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
+        return await this.axiosPostCall(this.getURLwithMainEndPoint('deleteVideo'), reqModel, config);
     }
 
-    async likeVideo(videoId: string, userId: string, config?: AxiosRequestConfig): Promise<CommonResponse> {
-        return await this.axiosPostCall(this.getURLwithMainEndPoint('like'), { videoId, userId }, config);
+    async likeVideo(reqModel: LikeVideoModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
+        return await this.axiosPostCall(this.getURLwithMainEndPoint('likeVideo'), reqModel, config);
     }
 
-    async unlikeVideo(videoId: string, userId: string, config?: AxiosRequestConfig): Promise<CommonResponse> {
-        return await this.axiosPostCall(this.getURLwithMainEndPoint('unlike'), { videoId, userId }, config);
+    async unlikeVideo(reqModel: LikeVideoModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
+        return await this.axiosPostCall(this.getURLwithMainEndPoint('unlikeVideo'), reqModel, config);
     }
 }

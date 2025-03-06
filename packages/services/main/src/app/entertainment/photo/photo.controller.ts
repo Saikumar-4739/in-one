@@ -31,7 +31,7 @@ export class PhotoController {
 
   @Post('updatePhoto')
   @ApiBody({ type: UpdatePhotoModel })
-  async update(@Body() reqModel: UpdatePhotoModel): Promise<CommonResponse> {
+  async updatePhoto(@Body() reqModel: UpdatePhotoModel): Promise<CommonResponse> {
     try {
       return await this.photoService.updatePhoto(reqModel);
     } catch (error) {
@@ -41,7 +41,7 @@ export class PhotoController {
 
   @Post('deletePhoto')
   @ApiBody({ type: PhotoIdRequestModel})
-  async delete(@Body('id') reqModel: PhotoIdRequestModel): Promise<CommonResponse> {
+  async deletePhoto(@Body('id') reqModel: PhotoIdRequestModel): Promise<CommonResponse> {
     try {
       return await this.photoService.deletePhoto(reqModel);
     } catch (error) {
