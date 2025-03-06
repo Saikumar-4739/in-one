@@ -1,4 +1,6 @@
-export class UpdateNewsModel {
+import { NewsIdRequestModel } from "./news-id-request-model";
+
+export class UpdateNewsModel extends NewsIdRequestModel {
     title?: string;
     content?: string;
     summary?: string;
@@ -13,6 +15,7 @@ export class UpdateNewsModel {
     publishedAt?: Date;
   
     constructor(
+      newsId: string,
       title?: string,
       content?: string,
       summary?: string,
@@ -26,6 +29,7 @@ export class UpdateNewsModel {
       isBreaking?: boolean,
       publishedAt?: Date,
     ) {
+      super(newsId)
       this.title = title;
       this.content = content;
       this.summary = summary;

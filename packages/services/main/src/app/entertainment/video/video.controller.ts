@@ -1,5 +1,5 @@
 import { Controller, Post, Body, UseInterceptors, UploadedFile } from '@nestjs/common';
-import { CreateVideoModel, UpdateVideoModel, CommonResponse, ExceptionHandler } from '@in-one/shared-models';
+import { CreateVideoModel, UpdateVideoModel, CommonResponse, ExceptionHandler, VideoIdRequestModel, LikeVideoModel } from '@in-one/shared-models';
 import { ApiTags, ApiBody, ApiConsumes, ApiOperation } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { VideoService } from './video.service';
@@ -11,63 +11,59 @@ export class VideoController {
   constructor(private readonly videoService: VideoService) {}
 
   @Post('upload')
-  @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('file', multerOptions))
-  async uploadVideo(
-    @UploadedFile() file: Express.Multer.File,
-    @Body() createVideoDto: CreateVideoModel & { userId: string }
-  ): Promise<CommonResponse> {
+  async uploadVideo( @UploadedFile() file: Express.Multer.File, @Body() reqModel: CreateVideoModel): Promise<CommonResponse> {
     try {
-      return await this.videoService.create(createVideoDto, createVideoDto.userId, file);
+      return await this.videoService.createVideo(reqModel, file);
     } catch (error) {
       return ExceptionHandler.handleError(error, 'Error uploading video');
     }
   }
 
-  @Post('getAll')
+  @Post('getAllVideos')
   async getAllVideos(): Promise<CommonResponse> {
     try {
-      return await this.videoService.findAll();
+      return await this.videoService.getAllVideos();
     } catch (error) {
       return ExceptionHandler.handleError(error, 'Error fetching videos');
     }
   }
 
-  @Post('update')
+  @Post('updateVideo')
   @ApiBody({ type: UpdateVideoModel })
-  async updateVideo(@Body() updateVideoDto: UpdateVideoModel & { id: string }): Promise<CommonResponse> {
+  async updateVideo(@Body() reqModel: UpdateVideoModel): Promise<CommonResponse> {
     try {
-      return await this.videoService.update(updateVideoDto.id, updateVideoDto);
+      return await this.videoService.updateVideo(reqModel);
     } catch (error) {
       return ExceptionHandler.handleError(error, 'Error updating video');
     }
   }
 
-  @Post('delete')
-  @ApiBody({ schema: { properties: { id: { type: 'string' } } } })
-  async deleteVideo(@Body() body: { id: string }): Promise<CommonResponse> {
+  @Post('deleteVideo')
+  @ApiBody({ type: VideoIdRequestModel})
+  async deleteVideo(@Body() reqModel: VideoIdRequestModel): Promise<CommonResponse> {
     try {
-      return await this.videoService.delete(body.id);
+      return await this.videoService.deleteVideo(reqModel);
     } catch (error) {
       return ExceptionHandler.handleError(error, 'Error deleting video');
     }
   }
 
-  @Post('like')
-  @ApiBody({ schema: { properties: { videoId: { type: 'string' }, userId: { type: 'string' } } } })
-  async likeVideo(@Body() body: { videoId: string; userId: string }): Promise<CommonResponse> {
+  @Post('likeVideo')
+  @ApiBody({ type: LikeVideoModel })
+  async likeVideo(@Body() reqModel: LikeVideoModel): Promise<CommonResponse> {
     try {
-      return await this.videoService.likeVideo(body.videoId, body.userId);
+      return await this.videoService.likeVideo(reqModel);
     } catch (error) {
       return ExceptionHandler.handleError(error, 'Error liking video');
     }
   }
 
-  @Post('unlike')
-  @ApiBody({ schema: { properties: { videoId: { type: 'string' }, userId: { type: 'string' } } } })
-  async unlikeVideo(@Body() body: { videoId: string; userId: string }): Promise<CommonResponse> {
+  @Post('unlikeVideo')
+  @ApiBody({type : LikeVideoModel})
+  async unlikeVideo(@Body() reqModel: LikeVideoModel): Promise<CommonResponse> {
     try {
-      return await this.videoService.unlikeVideo(body.videoId, body.userId);
+      return await this.videoService.unlikeVideo(reqModel);
     } catch (error) {
       return ExceptionHandler.handleError(error, 'Error unliking video');
     }

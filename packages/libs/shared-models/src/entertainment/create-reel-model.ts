@@ -1,4 +1,6 @@
-export class CreateReelModel {
+import { UserIdRequestModel } from "../authentication/userid-request-model";
+
+export class CreateReelModel extends UserIdRequestModel {
     reelUrl: string;
     title: string;
     description?: string;
@@ -6,12 +8,14 @@ export class CreateReelModel {
     authorId: string;
   
     constructor(
+      userId : string,
       title: string,
       reelUrl: string,
       authorId: string,
       description: string = '',
       visibility: 'public' | 'private' = 'public'
     ) {
+      super(userId)
       this.title = title;
       this.reelUrl = reelUrl;
       this.authorId = authorId;

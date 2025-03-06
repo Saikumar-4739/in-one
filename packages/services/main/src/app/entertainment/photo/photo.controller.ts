@@ -1,5 +1,5 @@
 import { Controller, Post, Body, Get, Put, Delete, UseInterceptors, UploadedFile } from '@nestjs/common';
-import { CommonResponse, CreatePhotoModel, UpdatePhotoModel } from '@in-one/shared-models';
+import { CommonResponse, CreatePhotoModel, LikeRequestModel, PhotoIdRequestModel, UpdatePhotoModel } from '@in-one/shared-models';
 import { ApiTags, ApiBody, ApiConsumes, ApiOperation } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PhotoService } from './photo.service';
@@ -10,64 +10,60 @@ import { multerOptions } from '../video/multer.config';
 export class PhotoController {
   constructor(private readonly photoService: PhotoService) {}
 
-  @Post('upload')
-  @ApiConsumes('multipart/form-data')
+  @Post('uploadPhoto')
   @UseInterceptors(FileInterceptor('file', multerOptions))
-  async uploadPhoto(
-    @UploadedFile() file: Express.Multer.File,
-    @Body() createPhotoDto: CreatePhotoModel & { userId: string }
-  ): Promise<CommonResponse> {
+  async uploadPhoto( @UploadedFile() file: Express.Multer.File, @Body() reqModel: CreatePhotoModel & { userId: string }): Promise<CommonResponse> {
     try {
-      return await this.photoService.create(createPhotoDto, createPhotoDto.userId, file);
+      return await this.photoService.createPhoto(reqModel, file);
     } catch (error) {
       return new CommonResponse(false, 500, 'Error uploading photo');
     }
   }
 
-  @Post('all')
-  async findAll(): Promise<CommonResponse> {
+  @Post('getAllPhotos')
+  async getAllPhotos(): Promise<CommonResponse> {
     try {
-      return await this.photoService.findAll();
+      return await this.photoService.getAllPhotos();
     } catch (error) {
       return new CommonResponse(false, 500, 'Error fetching photos');
     }
   }
 
-  @Post('update')
+  @Post('updatePhoto')
   @ApiBody({ type: UpdatePhotoModel })
-  async update(@Body('id') id: string, @Body() updatePhotoDto: UpdatePhotoModel): Promise<CommonResponse> {
+  async update(@Body() reqModel: UpdatePhotoModel): Promise<CommonResponse> {
     try {
-      return await this.photoService.update(id, updatePhotoDto);
+      return await this.photoService.updatePhoto(reqModel);
     } catch (error) {
       return new CommonResponse(false, 500, 'Error updating photo');
     }
   }
 
-  @Post('delete')
-  @ApiBody({ schema: { properties: { id: { type: 'string' } } } })
-  async delete(@Body('id') id: string): Promise<CommonResponse> {
+  @Post('deletePhoto')
+  @ApiBody({ type: PhotoIdRequestModel})
+  async delete(@Body('id') reqModel: PhotoIdRequestModel): Promise<CommonResponse> {
     try {
-      return await this.photoService.delete(id);
+      return await this.photoService.deletePhoto(reqModel);
     } catch (error) {
       return new CommonResponse(false, 500, 'Error deleting photo');
     }
   }
 
-  @Post('like')
-  @ApiBody({ schema: { properties: { photoId: { type: 'string' }, userId: { type: 'string' } } } })
-  async likePhoto(@Body() body: { photoId: string; userId: string }): Promise<CommonResponse> {
+  @Post('likePhoto')
+  @ApiBody({ type: LikeRequestModel})
+  async likePhoto(@Body() reqModel: LikeRequestModel): Promise<CommonResponse> {
     try {
-      return await this.photoService.likePhoto(body.photoId, body.userId);
+      return await this.photoService.likePhoto(reqModel);
     } catch (error) {
       return new CommonResponse(false, 500, 'Error liking photo');
     }
   }
 
-  @Post('unlike')
-  @ApiBody({ schema: { properties: { photoId: { type: 'string' }, userId: { type: 'string' } } } })
-  async unlikePhoto(@Body() body: { photoId: string; userId: string }): Promise<CommonResponse> {
+  @Post('unlikePhoto')
+  @ApiBody({ type: LikeRequestModel })
+  async unlikePhoto(@Body() reqModel: LikeRequestModel): Promise<CommonResponse> {
     try {
-      return await this.photoService.unlikePhoto(body.photoId, body.userId);
+      return await this.photoService.unlikePhoto(reqModel);
     } catch (error) {
       return new CommonResponse(false, 500, 'Error unliking photo');
     }
