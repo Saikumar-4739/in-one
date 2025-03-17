@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { UserEntity } from './entities/user.entity';
+import { UserEntity, UserStatus } from './entities/user.entity';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { CommonResponse, CreateUserModel, EmailRequestModel, ResetPassowordModel, UpdateUserModel, UserIdRequestModel, UserLoginModel, UserRole, WelcomeRequestModel } from '@in-one/shared-models';
@@ -29,7 +29,7 @@ export class UserService {
         ...reqModel,
         password: hashedPassword,
         profilePicture: reqModel.profilePicture,
-        status: 'offline',
+        status: UserStatus.OFFLINE,
         role: reqModel.role || UserRole.USER, // Assign role, default to 'USER'
       });
       const savedUser = await userRepo.save(user);
@@ -116,7 +116,7 @@ export class UserService {
       const accessToken = this.jwtService.sign(payload, { expiresIn: '7d' });
       const refreshToken = this.jwtService.sign(payload, { expiresIn: '15d' });
 
-      await userRepo.update(user.id, { status: 'online' });
+      await userRepo.update(user.id, { status: UserStatus.ONLINE });
 
       await this.transactionManager.commitTransaction();
 
@@ -202,7 +202,7 @@ export class UserService {
         await this.transactionManager.rollbackTransaction();
         return new CommonResponse(false, 404, 'User not found');
       }
-      await userRepo.update(userId, { status: 'offline' });
+      await userRepo.update(userId, { status: UserStatus.OFFLINE });
       await this.transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'User logged out successfully');
     } catch (error) {

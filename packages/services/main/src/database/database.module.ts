@@ -16,7 +16,7 @@ export const DatabaseModule = TypeOrmModule.forRoot({
   username: DB_USER,
   password: DB_PASSWORD,
   database: DB_NAME,
-  migrations: ['dist/database/migrations/*.js*{.ts,.js}'],
+  migrations: ['dist/database/migrations/*.{ts,js}'],
   synchronize: true,
   autoLoadEntities: true,
   ssl: {

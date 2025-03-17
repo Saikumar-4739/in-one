@@ -13,6 +13,12 @@ import { CalendarEntity } from 'src/app/notes-calender/entities/calender.entity'
 import { NoteEntity } from 'src/app/notes-calender/entities/notes.entity';
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, ManyToMany } from 'typeorm';
 
+export enum UserStatus {
+  ONLINE = 'online',
+  OFFLINE = 'offline',
+  BUSY = 'busy',
+}
+
 @Entity('users')
 export class UserEntity {
   @PrimaryGeneratedColumn('uuid')
@@ -45,16 +51,16 @@ export class UserEntity {
   @Column({ nullable: true })
   twoFactorExpires?: Date;
 
-  @Column({ type: 'enum', enum: ['online', 'offline', 'busy'], default: 'offline', nullable: true })
-  status?: 'online' | 'offline' | 'busy';
+  @Column({ type: 'enum', enum: UserStatus, default: UserStatus.OFFLINE, nullable: true })
+  status?: UserStatus;
 
-  @Column({ type: 'text', default: [], nullable: true })
+  @Column({ type: 'simple-array', nullable: true })
   contacts?: string[];
 
-  @CreateDateColumn()  // ✅ FIX: Auto-sets createdAt
+  @CreateDateColumn({ type: 'datetime', })
   createdAt: Date;
 
-  @UpdateDateColumn()  // ✅ FIX: Auto-updates on changes
+  @UpdateDateColumn({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP(6)', onUpdate: 'CURRENT_TIMESTAMP(6)' })
   updatedAt: Date;
 
   @OneToMany(() => AudioMessageEntity, (audioMessage) => audioMessage.sender)
@@ -63,13 +69,13 @@ export class UserEntity {
   @OneToMany(() => AudioMessageEntity, (audioMessage) => audioMessage.receiver)
   receivedAudioMessages: AudioMessageEntity[];
 
-  @OneToMany(() => CallEntity, call => call.caller)
+  @OneToMany(() => CallEntity, (call) => call.caller)
   callsMade: CallEntity[];
 
-  @OneToMany(() => CallEntity, call => call.receiver)
+  @OneToMany(() => CallEntity, (call) => call.receiver)
   callsReceived: CallEntity[];
 
-  @ManyToMany(() => ChatRoomEntity, chatRoom => chatRoom.participants)
+  @ManyToMany(() => ChatRoomEntity, (chatRoom) => chatRoom.participants)
   chatRooms: ChatRoomEntity[];
 
   @OneToMany(() => MessageEntity, (message) => message.sender)
@@ -99,10 +105,6 @@ export class UserEntity {
   @OneToMany(() => ReelEntity, (reel) => reel.author)
   reels: ReelEntity[];
 
-  @OneToMany(() => CommentEntity, (comment) => comment.author)
-  userComments: CommentEntity[];
-
   @OneToMany(() => LikeEntity, (like) => like.user)
   likes: LikeEntity[];
-
 }
