@@ -1,39 +1,39 @@
 import { UserEntity } from 'src/app/authentication/entities/user.entity';
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('notes')
 export class NoteEntity {
-  @PrimaryGeneratedColumn()
+  @PrimaryGeneratedColumn('uuid')  // ✅ Ensure UUID is used
   id: string;
 
   @ManyToOne(() => UserEntity, (user) => user.notes)
   @JoinColumn({ name: 'user_id' })
   user: UserEntity; 
 
-  @Column({ default: '' })
+  @Column({ type: 'varchar', length: 255, default: '' })  // ✅ Define length explicitly
   title: string;
 
-  @Column('text', { default: '' })
+  @Column({ type: 'text', nullable: false })  // ✅ Ensure `nullable: false`
   content: string; 
 
-  @Column('text', { array: true, default: [] })
+  @Column({ type: 'json', nullable: false })  // ✅ Fix JSON default
   attachments: string[];
 
-  @Column({ default: false })
+  @Column({ type: 'boolean', default: false, nullable: false })
   isArchived: boolean; 
 
-  @Column({ default: false })
+  @Column({ type: 'boolean', default: false, nullable: false })
   isPinned: boolean; 
 
-  @Column({ default: '' })
+  @Column({ type: 'varchar', length: 500, default: '' })  // ✅ Define varchar length
   voiceNoteUrl: string; 
 
-  @Column('text', { array: true, default: [] })
-  sharedWith: string[]; 
-
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @Column({ type: 'json', nullable: false })  // ✅ Fix JSON default
+  sharedWith: string[];
+  
+  @CreateDateColumn()  // ✅ FIX: Auto-sets createdAt
   createdAt: Date;
 
-  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+  @UpdateDateColumn()  // ✅ FIX: Auto-updates on changes
   updatedAt: Date;
 }

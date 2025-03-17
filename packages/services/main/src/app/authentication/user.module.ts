@@ -18,7 +18,7 @@ import { UserRepository } from './repository/user.repository';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: '1h' },
+        signOptions: { expiresIn: '30d' },
       }),
     }),
     CacheModule.register({ isGlobal: true, ttl: 300 }), 

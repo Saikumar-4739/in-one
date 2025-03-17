@@ -25,23 +25,23 @@ export class CalendarEventEntity {
   @Column({ default: '' })
   location: string;
 
-  @Column({ type: 'timestamp', nullable: true })
-  reminder: Date | null;
+  @Column({nullable: true })
+  reminder: Date;
 
   @Column({ default: false })
   isAllDay: boolean;
 
-  @Column('text', { array: true, default: [] })
+  @Column({ type: 'json', nullable: true })  // ✅ Use JSON instead of array
   participants: string[];
 
-  @Column({ default: false })
+  @Column({ type: 'boolean', default: false })  // ✅ Explicit boolean type
   isRecurring: boolean;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'json', nullable: true })
   recurringRule: any; 
 
-  @Column({ default: 'upcoming', enum: ['upcoming', 'completed', 'cancelled'] })
-  status: string;
+  @Column({ type: 'enum', enum: ['upcoming', 'completed', 'cancelled'], default: 'upcoming' })  // ✅ Enum type corrected
+  status: 'upcoming' | 'completed' | 'cancelled';
 
   @CreateDateColumn()
   createdAt: Date;

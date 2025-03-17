@@ -1,3 +1,4 @@
+import { UserRole } from '@in-one/shared-models';
 import { AudioMessageEntity } from 'src/app/chat/entities/audio.entity';
 import { CallEntity } from 'src/app/chat/entities/call.entity';
 import { ChatRoomEntity } from 'src/app/chat/entities/chatroom.entity';
@@ -29,29 +30,32 @@ export class UserEntity {
   @Column({ type: 'text', nullable: true })
   profilePicture?: string;
 
+  @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
+  role: UserRole;
+
   @Column({ nullable: true })
   resetPasswordOtp?: string;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ nullable: true })
   resetPasswordExpires?: Date;
 
   @Column({ nullable: true })
   twoFactorOtp?: string;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ nullable: true })
   twoFactorExpires?: Date;
 
   @Column({ type: 'enum', enum: ['online', 'offline', 'busy'], default: 'offline', nullable: true })
   status?: 'online' | 'offline' | 'busy';
 
-  @Column({ type: 'text', array: true, default: [], nullable: true })
+  @Column({ type: 'text', default: [], nullable: true })
   contacts?: string[];
 
-  @CreateDateColumn({ nullable: true })
-  createdAt?: Date;
+  @CreateDateColumn()  // ✅ FIX: Auto-sets createdAt
+  createdAt: Date;
 
-  @UpdateDateColumn({ nullable: true })
-  updatedAt?: Date;
+  @UpdateDateColumn()  // ✅ FIX: Auto-updates on changes
+  updatedAt: Date;
 
   @OneToMany(() => AudioMessageEntity, (audioMessage) => audioMessage.sender)
   sentAudioMessages: AudioMessageEntity[];
@@ -75,16 +79,16 @@ export class UserEntity {
   receivedMessages: MessageEntity[];
 
   @OneToMany(() => NoteEntity, (note) => note.user)
-  notes: NoteEntity[]; 
+  notes: NoteEntity[];
 
   @OneToMany(() => CalendarEntity, (calendar) => calendar.user)
-  calendars: CalendarEntity[]; 
+  calendars: CalendarEntity[];
 
   @OneToMany(() => CommentEntity, (comment) => comment.author, { cascade: true })
   comments: CommentEntity[];
-  
+
   @OneToMany(() => NewsEntity, (news) => news.author, { cascade: true })
-  news: NewsEntity[]; 
+  news: NewsEntity[];
 
   @OneToMany(() => VideoEntity, (video) => video.author)
   videos: VideoEntity[];

@@ -15,14 +15,6 @@
     ],
     "sharedGlobals": ["{workspaceRoot}/.github/workflows/ci.yml"]
   },
-  "targetDefaults": {
-    "run-python": {
-      "executor": "nx:run-commands",
-      "options": {
-        "command": "python apps/python-app/main.py"
-      }
-    }
-  },
   "nxCloudId": "67beadce97580053fbe71fa4",
   "plugins": [
     {

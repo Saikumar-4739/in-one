@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { UserEntity } from './entities/user.entity';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { CommonResponse, CreateUserModel, EmailRequestModel, ResetPassowordModel, UpdateUserModel, UserIdRequestModel, UserLoginModel, WelcomeRequestModel } from '@in-one/shared-models';
+import { CommonResponse, CreateUserModel, EmailRequestModel, ResetPassowordModel, UpdateUserModel, UserIdRequestModel, UserLoginModel, UserRole, WelcomeRequestModel } from '@in-one/shared-models';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
 import * as nodemailer from 'nodemailer';
 import type { Cache } from 'cache-manager';
@@ -30,6 +30,7 @@ export class UserService {
         password: hashedPassword,
         profilePicture: reqModel.profilePicture,
         status: 'offline',
+        role: reqModel.role || UserRole.USER, // Assign role, default to 'USER'
       });
       const savedUser = await userRepo.save(user);
       await this.transactionManager.commitTransaction();
@@ -40,6 +41,7 @@ export class UserService {
       return new CommonResponse(false, 500, 'Error creating user', null);
     }
   }
+
 
   async send2FAOtp(reqModel: EmailRequestModel): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
@@ -136,28 +138,21 @@ export class UserService {
   }
 
   async getUserById(reqModel: UserIdRequestModel): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
     try {
-      const cachedUser = await this.cacheManager.get<UserEntity>(`user_${reqModel.userId}`);
-      if (cachedUser) {
-        await this.transactionManager.commitTransaction();
-        return new CommonResponse(true, 200, 'User fetched from cache', cachedUser);
-      }
-      const userRepo = this.transactionManager.getRepository(this.userRepository);
-      const user = await userRepo.findOne({ where: { id: reqModel.userId } });
+      // 🔹 Fetch user directly from the database
+      const user = await this.userRepository.findOne({ where: { id: reqModel.userId } });
+  
       if (!user) {
-        await this.transactionManager.rollbackTransaction();
         return new CommonResponse(false, 404, 'User not found');
       }
-      await this.cacheManager.set(`user_${reqModel.userId}`, user, 300);
-      await this.transactionManager.commitTransaction();
+  
       return new CommonResponse(true, 200, 'User fetched successfully', user);
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       return new CommonResponse(false, 500, errorMessage);
     }
   }
+  
 
   async updateUser(reqModel: UpdateUserModel): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();

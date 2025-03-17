@@ -1,16 +1,16 @@
 export class CreateCalendarEventModel {
-    title: string;
-    description: string;
-    startDate: Date;
-    endDate: Date;
-    location: string;
-    reminder: Date | null;
-    isAllDay: boolean;
-    participants: string[];
-    isRecurring: boolean;
-    recurringRule: string | null;
-    status: string;
-    calendarId: string;
+  calendarId: string;
+  title: string;
+  description?: string;
+  startDate: Date;
+  endDate: Date;
+  location?: string;
+  reminder?: Date;
+  isAllDay?: boolean;
+  participants?: string[];
+  isRecurring?: boolean;
+  recurringRule?: any;
+  status?: 'upcoming' | 'completed' | 'cancelled';
   
     constructor(
       title: string,
@@ -18,13 +18,13 @@ export class CreateCalendarEventModel {
       startDate: Date,
       endDate: Date,
       location: string = '',
-      reminder: Date | null = null,
+      reminder: Date,
       isAllDay: boolean = false,
       participants: string[] = [],
       isRecurring: boolean = false,
       recurringRule: string | null = null,
-      status: string = 'upcoming',
       calendarId: string,
+      status?: 'upcoming' | 'completed' | 'cancelled',
     ) {
       this.title = title;
       this.description = description;
@@ -36,8 +36,8 @@ export class CreateCalendarEventModel {
       this.participants = participants;
       this.isRecurring = isRecurring;
       this.recurringRule = recurringRule;
-      this.status = status;
       this.calendarId = calendarId;
+      this.status = status;
     }
   }
   

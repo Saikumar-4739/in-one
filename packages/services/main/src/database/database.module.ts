@@ -10,7 +10,7 @@ const DB_PASSWORD = process.env.DB_PASSWORD;
 const DB_NAME = process.env.DB_NAME;
 
 export const DatabaseModule = TypeOrmModule.forRoot({
-  type: 'postgres',
+  type: 'mysql',
   host: DB_HOST,
   port: DB_PORT,
   username: DB_USER,

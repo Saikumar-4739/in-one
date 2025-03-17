@@ -30,14 +30,14 @@ export class UserController {
 
   @Post('getUserById')
   @ApiBody({ type: UserIdRequestModel })
-  async getUserById(@Body('userId') reqModel: UserIdRequestModel ): Promise<CommonResponse> {
+  async getUserById(@Body() reqModel: UserIdRequestModel): Promise<CommonResponse> {
     try {
       return await this.userService.getUserById(reqModel);
     } catch (error) {
       return ExceptionHandler.handleError(error, 'Error fetching user');
     }
   }
-
+  
   @Post('updateUser')
   @ApiBody({type: UpdateUserModel})
   async updateUser( @Body('userId') reqModel: UpdateUserModel): Promise<CommonResponse> {
