@@ -2,11 +2,13 @@
 
 npm install
 
-UI: nx serve ui
+frontend: npx nx run ui:start
 
-Serveices: nx serve services-main
+backend: npx nx serve services-main
 
-Mobile : npx nx serve mobile
+mobile : npx nx serve mobile
+
+mobile - anroid: 
 
 anroid: npx nx serve android
 

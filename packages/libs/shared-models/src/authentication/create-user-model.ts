@@ -1,4 +1,4 @@
-import { UserRole } from "src/enums";
+import { UserRole } from "../enums/user-role-enum";
 
 export class CreateUserModel {
     username: string;

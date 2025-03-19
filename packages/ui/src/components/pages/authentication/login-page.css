@@ -1,0 +1,170 @@
+/* Login Page Styling */
+.login-container {
+  display: flex;
+  height: 100vh;
+  margin: 0;
+  background-color: #FFFFFF;
+  padding: 0;
+}
+
+/* Left Side - Background Image */
+.login-image-section {
+  width: 80%;
+  height: 100vh;
+  background: url(../../common/images/login-page.png) no-repeat center center;
+  background-size: contain;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background-color: #FFFFFF;
+}
+
+/* Right Side - Login Box */
+.login-box {
+  width: 20%;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  border-radius: 10px;
+  background-color: #FFFFFF;
+  color: #000;
+}
+
+/* Sidebar Logo */
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  gap: 4px;
+  justify-content: center;
+}
+
+/* Logo Circle */
+.logo-circle {
+  width: 50px;
+  height: 50px;
+  background-color: #be92fc;
+  color: #050505;
+  font-weight: bold;
+  font-size: 22px;
+  font-family: 'Montserrat', sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.logo-circle:hover {
+  transform: scale(1.1);
+}
+
+/* Logo Text */
+.logo-text {
+  font-size: 22px;
+  font-weight: bold;
+  font-family: 'Poppins', sans-serif;
+  color: #000;
+}
+
+/* Header Title */
+.text-center {
+  color: #000 !important;
+}
+
+/* Form Styling */
+.ant-form-item-label > label {
+  color: #000 !important;
+}
+
+/* Input Fields */
+.input-field {
+  background: transparent !important;
+  color: #000 !important;
+  border: 1px solid #000;
+}
+
+.input-field::placeholder {
+  color: black !important;
+  opacity: 1; 
+}
+
+/* Remove Background on Focus & Hover */
+.input-field:focus, 
+.input-field:hover {
+  background: #000 !important;
+  color: #FFFFFF !important;
+}
+
+/* Icon Styling */
+.input-icon {
+  color: #000;
+  font-size: 18px;
+  margin-right: 10px;
+}
+
+/* Signup and Forgot Password Text */
+.signup-text, .forgotPassoword-text {
+  text-align: center;
+  margin-top: 15px;
+  color: #000;
+}
+.signup-text a, .forgotPassoword-text a {
+  color: #000;
+  font-weight: bold;
+  text-decoration: none;
+}
+.signup-text a:hover, .forgotPassoword-text a:hover {
+  text-decoration: underline;
+}
+
+/* Buttons Styling */
+.ant-btn-primary {
+  background: #be92fc !important; /* Changed to black */
+  border-color: #000 !important;
+  color: #0a0a0a !important;
+}
+
+.ant-btn-primary:hover {
+  background: #be92fc !important; /* Slightly lighter black */
+  border-color: #000 !important;
+}
+
+/* Allow Button (Different Style) */
+.allow-btn {
+  background: #c8d1e4 !important;
+  border-color: #070707 !important;
+  color: #1E3C72 !important;
+}
+.allow-btn:hover {
+  background: #1E3C72 !important;
+  border-color: #F2C0D6 !important;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .login-container {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .login-image-section {
+    width: 100%;
+    height: 50vh;
+    padding: 0;
+  }
+  .login-box {
+    width: min(90%, 400px);
+    margin-top: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .login-box {
+    padding: 30px;
+  }
+  .text-center {
+    font-size: 20px;
+  }
+}
