@@ -55,46 +55,46 @@ const AppLayout: React.FC = () => {
         }
     }, [navigate]);
 
-    useEffect(() => {
-        const fetchUserDetails = async () => {
-            const userId = localStorage.getItem("userId");
-            if (!userId) return;
-            setLoading(true);
-            try {
-                const response = await userService.getUserById({ userId });
-                if (response.status && response.data) setUser(response.data);
-            } catch (error) {
-                console.error("Failed to fetch user details:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchUserDetails();
-    }, []);
+    // useEffect(() => {
+    //     const fetchUserDetails = async () => {
+    //         const userId = localStorage.getItem("userId");
+    //         if (!userId) return;
+    //         setLoading(true);
+    //         try {
+    //             const response = await userService.getUserById({ userId });
+    //             if (response.status && response.data) setUser(response.data);
+    //         } catch (error) {
+    //             console.error("Failed to fetch user details:", error);
+    //         } finally {
+    //             setLoading(false);
+    //         }
+    //     };
+    //     fetchUserDetails();
+    // }, []);
 
-    useEffect(() => {
-        let blobUrl: string | null = null;
-        if (user?.profilePicture) {
-            try {
-                const byteCharacters = atob(user.profilePicture);
-                const byteNumbers = new Array(byteCharacters.length);
-                for (let i = 0; i < byteCharacters.length; i++) {
-                    byteNumbers[i] = byteCharacters.charCodeAt(i);
-                }
-                const byteArray = new Uint8Array(byteNumbers);
-                const blob = new Blob([byteArray]);
-                blobUrl = URL.createObjectURL(blob);
-                setImageSrc(blobUrl);
-            } catch (error) {
-                console.error("Error converting Base64 to Blob:", error);
-            }
-        }
-        return () => {
-            if (blobUrl) {
-                URL.revokeObjectURL(blobUrl);
-            }
-        };
-    }, [user?.profilePicture]);
+    // useEffect(() => {
+    //     let blobUrl: string | null = null;
+    //     if (user?.profilePicture) {
+    //         try {
+    //             const byteCharacters = atob(user.profilePicture);
+    //             const byteNumbers = new Array(byteCharacters.length);
+    //             for (let i = 0; i < byteCharacters.length; i++) {
+    //                 byteNumbers[i] = byteCharacters.charCodeAt(i);
+    //             }
+    //             const byteArray = new Uint8Array(byteNumbers);
+    //             const blob = new Blob([byteArray]);
+    //             blobUrl = URL.createObjectURL(blob);
+    //             setImageSrc(blobUrl);
+    //         } catch (error) {
+    //             console.error("Error converting Base64 to Blob:", error);
+    //         }
+    //     }
+    //     return () => {
+    //         if (blobUrl) {
+    //             URL.revokeObjectURL(blobUrl);
+    //         }
+    //     };
+    // }, [user?.profilePicture]);
 
     const navItems = [
         { key: "1", icon: <ProjectOutlined />, label: "Dashboard", path: "/dashboard" },
@@ -105,10 +105,10 @@ const AppLayout: React.FC = () => {
         { key: "6", icon: <BulbOutlined />, label: "AI Bot", path: "/ai-bot" },
         { key: "7", icon: <VideoCameraOutlined />, label: "Videos", path: "/videos" },
         { key: "8", icon: <PictureOutlined />, label: "Photos", path: "/photos" },
-        { key: "9", icon: <DollarOutlined />, label: "Reels", path: "/reels" },
-        { key: "10", icon: <LineChartOutlined />, label: "News", path: "/latest-news" },
-        { key: "11", icon: <GlobalOutlined />, label: "Tech", path: "/technology-news" },
-        { key: "12", icon: <AppstoreAddOutlined />, label: "Plugins", path: "/plugins" },
+        // { key: "9", icon: <DollarOutlined />, label: "Reels", path: "/reels" },
+        { key: "9", icon: <LineChartOutlined />, label: "News", path: "/latest-news" },
+        { key: "10", icon: <GlobalOutlined />, label: "Tech", path: "/technology-news" },
+        { key: "11", icon: <AppstoreAddOutlined />, label: "Plugins", path: "/plugins" },
     ];
 
     const navVariants = {

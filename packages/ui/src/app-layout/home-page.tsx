@@ -45,7 +45,7 @@ const HomePage: React.FC = () => {
     { icon: <CalendarOutlined />, name: "Calendar", color: "#4ecdc4" },
     { icon: <MessageOutlined />, name: "Chat", color: "#45b7d1" },
     { icon: <BulbOutlined />, name: "AI Bot", color: "#96ceb4" },
-    { icon: <VideoCameraOutlined />, name: "Reels", color: "#8a2be2" },
+    { icon: <VideoCameraOutlined />, name: "Videos", color: "#8a2be2" },
   ];
 
   const carouselImages = [
