@@ -5,6 +5,7 @@ import { UserLoginModel, CommonResponse, EmailRequestModel, CreateUserModel } fr
 import "./login-page.css";
 import { useNavigate } from "react-router-dom";
 import { UserHelpService } from "@in-one/shared-services";
+import CryptoJS from 'crypto-js';
 
 const { Title, Text } = Typography;
 
@@ -41,10 +42,14 @@ const LoginPage: React.FC = () => {
     }
   
     setLoading(true);
-    const loginData = new UserLoginModel(email, password);
+  
+    // Encrypt the password before sending
+    const secretKey = 'your-secret-key'; // This should be stored securely (e.g., in an environment variable)
+    const encryptedPassword = CryptoJS.AES.encrypt(password, secretKey).toString();
+    const loginData = new UserLoginModel(email, encryptedPassword);
   
     try {
-      const response: CommonResponse = await userService.loginUser(loginData);
+      const response = await userService.loginUser(loginData);
   
       if (response.status && response.data?.accessToken) {
         message.success("Login successful!");
@@ -78,23 +83,32 @@ const LoginPage: React.FC = () => {
       setLoading(false);
     }
   };
-  
+
 
   const handleSignup = async () => {
     if (!email || !password || !username) {
       message.error("Please fill in all fields.");
       return;
     }
-
+  
+    // Password validation
+    const passwordRegex = /^(?=(.*[a-z]){2,})(?=(.*[A-Z]){2,})(?=(.*\d){2,})(?=(.*[@$!%*?&\#_\-\+\/]){2,})[A-Za-z\d@$!%*?&\#_\-\+\/]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      message.error(
+        "Password must be at least 8 characters long, with at least 2 uppercase letters, 2 lowercase letters, 2 numbers, and 2 special characters (@, $, !, %, *, ?, &, #, _, -, +, /)"
+      );
+      return;
+    }
+  
     setLoading(true);
-
+  
     try {
       const signupData = new CreateUserModel(username, email, password, profilePicture);
-      const response: CommonResponse = await userService.createUser(signupData);
+      const response = await userService.createUser(signupData);
       if (response.status) {
         message.success("Sign-up successful! Please log in.");
         setIsSignup(false); // Switch back to login
-        setEmail("");  // Reset fields
+        setEmail(""); // Reset fields
         setPassword("");
         setUsername("");
         setProfilePicture("");

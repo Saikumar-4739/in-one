@@ -9,6 +9,7 @@ import type { Cache } from 'cache-manager';
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { UserRepository } from './repository/user.repository';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as CryptoJS from 'crypto-js';
 
 @Injectable()
 export class UserService {
@@ -23,19 +24,37 @@ export class UserService {
   async createUser(reqModel: CreateUserModel): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
     try {
-      const hashedPassword = await bcrypt.hash(reqModel.password, 10);
+      // Password validation
+      const passwordRegex = /^(?=(.*[a-z]){2,})(?=(.*[A-Z]){2,})(?=(.*\d){2,})(?=(.*[@$!%*?&\#_\-\+\/]){2,})[A-Za-z\d@$!%*?&\#_\-\+\/]{8,}$/;
+      if (!passwordRegex.test(reqModel.password)) {
+        await this.transactionManager.rollbackTransaction();
+        return new CommonResponse(
+          false,
+          400,
+          'Password must be at least 8 characters long, with at least 2 uppercase letters, 2 lowercase letters, 2 numbers, and 2 special characters (@, $, !, %, *, ?, &, #, _, -, +, /)',
+          null,
+        );
+      }
+  
+      // Hash the password with a defined salt rounds value
+      const saltRounds = 10; // Adjust based on your security needs
+      const hashedPassword = await bcrypt.hash(reqModel.password, saltRounds);
+  
       const userRepo = this.transactionManager.getRepository(this.userRepository);
       const user = userRepo.create({
         ...reqModel,
         password: hashedPassword,
         profilePicture: reqModel.profilePicture,
         status: UserStatus.OFFLINE,
-        role: reqModel.role || UserRole.USER, // Assign role, default to 'USER'
+        role: reqModel.role || UserRole.USER,
       });
       const savedUser = await userRepo.save(user);
       await this.transactionManager.commitTransaction();
       await this.sendWelcomeEmail(new WelcomeRequestModel(reqModel.email, reqModel.username));
-      return new CommonResponse(true, 0, 'User created successfully', savedUser);
+  
+      // Exclude sensitive fields from the response
+      const { password, ...userResponse } = savedUser;
+      return new CommonResponse(true, 201, 'User created successfully', userResponse);
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
       return new CommonResponse(false, 500, 'Error creating user', null);
@@ -95,20 +114,24 @@ export class UserService {
   }
 
   async loginUser(reqModel: UserLoginModel): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
     try {
-      const userRepo = this.transactionManager.getRepository(this.userRepository);
-
-      const user = await userRepo.findOne({ where: { email: reqModel.email } });
+      const user = await this.userRepository.findOne({ where: { email: reqModel.email } });
 
       if (!user) {
-        await this.transactionManager.rollbackTransaction();
         return new CommonResponse(false, 401, 'Invalid credentials');
       }
 
-      const isPasswordValid = await bcrypt.compare(reqModel.password, user.password);
+      // Decrypt the password
+      const secretKey = process.env.ENCRYPTION_KEY;
+      if (!secretKey) {
+        throw new Error("Missing ENCRYPTION_KEY in environment variables");
+      }
+
+      const decryptedPassword = CryptoJS.AES.decrypt(reqModel.password, secretKey).toString(CryptoJS.enc.Utf8);
+
+
+      const isPasswordValid = await bcrypt.compare(decryptedPassword, user.password);
       if (!isPasswordValid) {
-        await this.transactionManager.rollbackTransaction();
         return new CommonResponse(false, 401, 'Invalid credentials');
       }
 
@@ -116,9 +139,7 @@ export class UserService {
       const accessToken = this.jwtService.sign(payload, { expiresIn: '7d' });
       const refreshToken = this.jwtService.sign(payload, { expiresIn: '15d' });
 
-      await userRepo.update(user.id, { status: UserStatus.ONLINE });
-
-      await this.transactionManager.commitTransaction();
+      await this.userRepository.update(user.id, { status: UserStatus.ONLINE });
 
       return new CommonResponse(true, 200, 'User logged in successfully', {
         accessToken,
@@ -131,7 +152,6 @@ export class UserService {
         },
       });
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       return new CommonResponse(false, 500, errorMessage);
     }
@@ -141,18 +161,18 @@ export class UserService {
     try {
       // 🔹 Fetch user directly from the database
       const user = await this.userRepository.findOne({ where: { id: reqModel.userId } });
-  
+
       if (!user) {
         return new CommonResponse(false, 404, 'User not found');
       }
-  
+
       return new CommonResponse(true, 200, 'User fetched successfully', user);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
       return new CommonResponse(false, 500, errorMessage);
     }
   }
-  
+
 
   async updateUser(reqModel: UpdateUserModel): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
@@ -194,7 +214,7 @@ export class UserService {
   }
 
   async logoutUser(userId: string): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction(); 
+    await this.transactionManager.startTransaction();
     try {
       const userRepo = this.transactionManager.getRepository(this.userRepository);
       const user = await userRepo.findOne({ where: { id: userId } });
@@ -207,7 +227,7 @@ export class UserService {
       return new CommonResponse(true, 200, 'User logged out successfully');
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
-      console.error('Logout error:', error); 
+      console.error('Logout error:', error);
       return new CommonResponse(false, 500, 'Error logging out user');
     }
   }

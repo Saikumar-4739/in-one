@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -10,12 +10,27 @@ import { NewsModule } from './news/news.module';
 import { VideoModule } from './entertainment/video/video.module';
 import { PhotoModule } from './entertainment/photo/photo.module';
 import { ReelModule } from './entertainment/reels/reels.module';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { JwtModule } from '@nestjs/jwt';
+import { LoggerMiddleware } from './authentication/logger.middleware';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '../../env', 
+    }),
+    JwtModule.register({
+      secret: process.env.JWT_SECRET, 
+      signOptions: { expiresIn: '7d' },
+    }),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60000, 
+          limit: 10, 
+        },
+      ],
     }),
     DatabaseModule,
     UserModule,
@@ -29,4 +44,8 @@ import { ReelModule } from './entertainment/reels/reels.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(LoggerMiddleware).forRoutes('*');
+  }
+}
