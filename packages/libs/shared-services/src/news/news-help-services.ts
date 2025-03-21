@@ -5,7 +5,7 @@ import { GlobalResponseObject, CreateNewsModel, UpdateNewsModel, CreateCommentMo
 export class NewsHelpService extends CommonAxiosService {
   
   private getURLwithMainEndPoint(childUrl: string): string {
-    return `/news/${childUrl}`; // Replace with actual API endpoint
+    return `/news/${childUrl}`; 
   }
 
   async createNews(createNewsDto: CreateNewsModel, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {

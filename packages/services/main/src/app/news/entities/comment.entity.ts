@@ -2,8 +2,8 @@ import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, CreateDat
 import { UserEntity } from 'src/app/authentication/entities/user.entity';
 import { NewsEntity } from 'src/app/news/entities/news.entity';
   
-  @Entity('comments')
-  export class CommentEntity {
+  @Entity('news_comments')
+  export class NewsCommentEntity {
     @PrimaryGeneratedColumn('uuid')
     id: string; 
   
@@ -19,11 +19,11 @@ import { NewsEntity } from 'src/app/news/entities/news.entity';
     @ManyToOne(() => NewsEntity, (news) => news.comments, { nullable: false, onDelete: 'CASCADE' })
     news: NewsEntity;
   
-    @ManyToOne(() => CommentEntity, (comment) => comment.replies, { nullable: true, onDelete: 'CASCADE' })
-    parentComment?: CommentEntity; 
+    @ManyToOne(() => NewsCommentEntity, (comment) => comment.replies, { nullable: true, onDelete: 'CASCADE' })
+    parentComment?: NewsCommentEntity; 
   
-    @OneToMany(() => CommentEntity, (comment) => comment.parentComment, { cascade: true })
-    replies: CommentEntity[]; 
+    @OneToMany(() => NewsCommentEntity, (comment) => comment.parentComment, { cascade: true })
+    replies: NewsCommentEntity[]; 
   
     @Column({ type: 'enum', enum: ['visible', 'hidden', 'deleted'], default: 'visible' })
     status: 'visible' | 'hidden' | 'deleted'; 

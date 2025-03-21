@@ -7,7 +7,7 @@ import { LikeEntity } from 'src/app/entertainment/entities/like.entity';
 import { PhotoEntity } from 'src/app/entertainment/entities/photo.entity';
 import { ReelEntity } from 'src/app/entertainment/entities/reel.entity';
 import { VideoEntity } from 'src/app/entertainment/entities/video.entity';
-import { CommentEntity } from 'src/app/news/entities/comment.entity';
+import { NewsCommentEntity } from 'src/app/news/entities/comment.entity';
 import { NewsEntity } from 'src/app/news/entities/news.entity';
 import { CalendarEntity } from 'src/app/notes-calender/entities/calender.entity';
 import { NoteEntity } from 'src/app/notes-calender/entities/notes.entity';
@@ -90,8 +90,8 @@ export class UserEntity {
   @OneToMany(() => CalendarEntity, (calendar) => calendar.user)
   calendars: CalendarEntity[];
 
-  @OneToMany(() => CommentEntity, (comment) => comment.author, { cascade: true })
-  comments: CommentEntity[];
+  @OneToMany(() => NewsCommentEntity, (comment) => comment.author, { cascade: true })
+  comments: NewsCommentEntity[];
 
   @OneToMany(() => NewsEntity, (news) => news.author, { cascade: true })
   news: NewsEntity[];

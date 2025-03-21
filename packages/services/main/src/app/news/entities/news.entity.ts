@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { UserEntity } from 'src/app/authentication/entities/user.entity';
-import { CommentEntity } from './comment.entity';
+import { NewsCommentEntity } from './comment.entity';
 
 @Entity('news')
 export class NewsEntity {
@@ -50,8 +50,8 @@ export class NewsEntity {
   @Column({ type: 'int', default: 0 })
   likes: number;
 
-  @OneToMany(() => CommentEntity, (comment) => comment.news, { cascade: true })
-  comments: CommentEntity[];
+  @OneToMany(() => NewsCommentEntity, (comment) => comment.news, { cascade: true })
+  comments: NewsCommentEntity[];
 
   @ManyToOne(() => UserEntity, (user) => user.news, { nullable: false })
   author: UserEntity;

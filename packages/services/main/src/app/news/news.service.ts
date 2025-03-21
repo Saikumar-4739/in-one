@@ -6,6 +6,8 @@ import { CommentRepository } from './repository/comment.repository';
 import { UserEntity } from '../authentication/entities/user.entity';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
 import { CommonResponse, CreateCommentModel, CreateNewsModel, UpdateNewsModel } from '@in-one/shared-models';
+import { promises as fs } from 'fs';
+import { join } from 'path';
 
 
 @Injectable()
@@ -15,7 +17,7 @@ export class NewsService {
     @InjectRepository(CommentRepository) private readonly commentRepository: CommentRepository,
     @InjectRepository(UserEntity) private readonly userRepository: Repository<UserEntity>,
     private readonly transactionManager: GenericTransactionManager
-  ) {}
+  ) { }
 
   async createNews(createNewsDto: CreateNewsModel): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
@@ -26,7 +28,45 @@ export class NewsService {
       const author = await userRepo.findOne({ where: { id: createNewsDto.authorId } });
       if (!author) throw new Error('Author not found');
 
-      const newNews = newsRepo.create({ ...createNewsDto, author });
+      // Process images if they exist
+      let processedImages: string[] | undefined;
+      if (createNewsDto.images && createNewsDto.images.length > 0) {
+        processedImages = await Promise.all(
+          createNewsDto.images.map(async (base64, index) => {
+            const matches = base64.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
+            if (!matches) throw new Error('Invalid base64 image format');
+            const ext = matches[1]; // e.g., 'jpeg', 'png'
+            const data = matches[2]; // base64 data
+            const buffer = Buffer.from(data, 'base64');
+            const fileName = `news_${Date.now()}_${index}.${ext}`;
+            const filePath = join(__dirname, 'uploads', fileName); // Adjust path as needed
+            await fs.writeFile(filePath, new Uint8Array(buffer)); // Convert Buffer to Uint8Array
+            return `/uploads/${fileName}`; // Return URL or path
+          })
+        );
+      }
+
+      // Process thumbnail if it exists
+      let processedThumbnail: string | undefined;
+      if (createNewsDto.thumbnail) {
+        const matches = createNewsDto.thumbnail.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
+        if (!matches) throw new Error('Invalid base64 thumbnail format');
+        const ext = matches[1];
+        const data = matches[2];
+        const buffer = Buffer.from(data, 'base64');
+        const fileName = `thumbnail_${Date.now()}.${ext}`;
+        const filePath = join(__dirname, 'uploads', fileName);
+        await fs.writeFile(filePath, new Uint8Array(buffer)); // Convert Buffer to Uint8Array
+        processedThumbnail = `/uploads/${fileName}`;
+      }
+
+      // Create news entity with processed image paths
+      const newNews = newsRepo.create({
+        ...createNewsDto,
+        author,
+        images: processedImages,
+        thumbnail: processedThumbnail,
+      });
       const savedNews = await newsRepo.save(newNews);
 
       await this.transactionManager.commitTransaction();

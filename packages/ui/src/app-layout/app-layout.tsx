@@ -107,8 +107,8 @@ const AppLayout: React.FC = () => {
         { key: "8", icon: <PictureOutlined />, label: "Photos", path: "/photos" },
         // { key: "9", icon: <DollarOutlined />, label: "Reels", path: "/reels" },
         { key: "9", icon: <LineChartOutlined />, label: "News", path: "/latest-news" },
-        { key: "10", icon: <GlobalOutlined />, label: "Tech", path: "/technology-news" },
-        { key: "11", icon: <AppstoreAddOutlined />, label: "Plugins", path: "/plugins" },
+        // { key: "10", icon: <GlobalOutlined />, label: "Tech", path: "/technology-news" },
+        { key: "10", icon: <AppstoreAddOutlined />, label: "Plugins", path: "/plugins" },
     ];
 
     const navVariants = {
