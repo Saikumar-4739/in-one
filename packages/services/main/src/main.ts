@@ -10,7 +10,6 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
 
-  // ✅ Improved CORS Handling
   app.enableCors({
     origin: '*', 
     methods: 'GET,POST,PUT,DELETE,OPTIONS',
@@ -19,17 +18,14 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // ✅ Properly Serve Static Images
   app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
 
-  // ✅ Optional Rate Limiting (increase the max limit)
   app.use(rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, 
+    max: 500, 
     message: 'Too many requests, please try again later.',
   }));
 
-  // ✅ Swagger Documentation
   const config = new DocumentBuilder()
     .setTitle('In One API')
     .setDescription('API Documentation for In One App')

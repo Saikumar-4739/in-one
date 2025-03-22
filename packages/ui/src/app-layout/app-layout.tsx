@@ -2,22 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Layout, Button, Spin, Avatar, Modal, Typography } from "antd";
 import { Link, Outlet, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-    ProjectOutlined,
-    LineChartOutlined,
-    DollarOutlined,
-    PictureOutlined,
-    CalendarOutlined,
-    MessageOutlined,
-    FileOutlined,
-    BulbOutlined,
-    NotificationOutlined,
-    PoweroffOutlined,
-    AppstoreAddOutlined,
-    VideoCameraOutlined,
-    GlobalOutlined,
-    UserOutlined,
-} from "@ant-design/icons";
+import { ProjectOutlined, LineChartOutlined, PictureOutlined, CalendarOutlined, MessageOutlined, FileOutlined, BulbOutlined, PoweroffOutlined, AppstoreAddOutlined, VideoCameraOutlined, UserOutlined } from "@ant-design/icons";
 import "./app-layout.css";
 import { UserHelpService } from "@in-one/shared-services";
 
@@ -55,60 +40,15 @@ const AppLayout: React.FC = () => {
         }
     }, [navigate]);
 
-    // useEffect(() => {
-    //     const fetchUserDetails = async () => {
-    //         const userId = localStorage.getItem("userId");
-    //         if (!userId) return;
-    //         setLoading(true);
-    //         try {
-    //             const response = await userService.getUserById({ userId });
-    //             if (response.status && response.data) setUser(response.data);
-    //         } catch (error) {
-    //             console.error("Failed to fetch user details:", error);
-    //         } finally {
-    //             setLoading(false);
-    //         }
-    //     };
-    //     fetchUserDetails();
-    // }, []);
-
-    // useEffect(() => {
-    //     let blobUrl: string | null = null;
-    //     if (user?.profilePicture) {
-    //         try {
-    //             const byteCharacters = atob(user.profilePicture);
-    //             const byteNumbers = new Array(byteCharacters.length);
-    //             for (let i = 0; i < byteCharacters.length; i++) {
-    //                 byteNumbers[i] = byteCharacters.charCodeAt(i);
-    //             }
-    //             const byteArray = new Uint8Array(byteNumbers);
-    //             const blob = new Blob([byteArray]);
-    //             blobUrl = URL.createObjectURL(blob);
-    //             setImageSrc(blobUrl);
-    //         } catch (error) {
-    //             console.error("Error converting Base64 to Blob:", error);
-    //         }
-    //     }
-    //     return () => {
-    //         if (blobUrl) {
-    //             URL.revokeObjectURL(blobUrl);
-    //         }
-    //     };
-    // }, [user?.profilePicture]);
-
     const navItems = [
-        { key: "1", icon: <ProjectOutlined />, label: "HomePage", path: "/home" },
-        { key: "1", icon: <ProjectOutlined />, label: "Dashboard", path: "/dashboard" },
+        { key: "1", icon: <ProjectOutlined />, label: "Home", path: "/home" },
         { key: "2", icon: <MessageOutlined />, label: "Chat", path: "/chat" },
-        { key: "3", icon: <MessageOutlined />, label: "Groups", path: "/groups" },
         { key: "4", icon: <FileOutlined />, label: "Notes", path: "/notes" },
         { key: "5", icon: <CalendarOutlined />, label: "Calendar", path: "/calendar" },
         { key: "6", icon: <BulbOutlined />, label: "AI Bot", path: "/ai-bot" },
         { key: "7", icon: <VideoCameraOutlined />, label: "Videos", path: "/videos" },
         { key: "8", icon: <PictureOutlined />, label: "Photos", path: "/photos" },
-        // { key: "9", icon: <DollarOutlined />, label: "Reels", path: "/reels" },
         { key: "9", icon: <LineChartOutlined />, label: "News", path: "/latest-news" },
-        // { key: "10", icon: <GlobalOutlined />, label: "Tech", path: "/technology-news" },
         { key: "10", icon: <AppstoreAddOutlined />, label: "Plugins", path: "/plugins" },
     ];
 

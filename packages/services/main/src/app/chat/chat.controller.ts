@@ -132,7 +132,6 @@ export class ChatController {
     }
   }
 
-  // chat.controller.ts
   @Post('getChatHistoryByUsers')
   @ApiBody({ type: Object, schema: { properties: { senderId: { type: 'string' }, receiverId: { type: 'string' } } } })
   async getChatHistoryByUsers(@Body() reqModel: { senderId: string; receiverId: string }): Promise<CommonResponse> {

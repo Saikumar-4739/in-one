@@ -131,9 +131,7 @@ button:hover {
 }
 
 /* Content Area */
-/* No changes needed here beyond what you already have, but ensure the transition works smoothly */
 .content-container {
-  padding: 80px 40px 40px; /* Adjusted for smaller header */
   min-height: 100vh;
   transition: margin-left 0.3s ease; /* Smooth transition for margin shift */
 }

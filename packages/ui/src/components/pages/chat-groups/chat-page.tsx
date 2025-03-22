@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CreateChatRoomModel, PrivateMessegeModel } from '@in-one/shared-models';
-import { Button, Input, Typography, Avatar, message, Space, Dropdown, Menu, Select, Checkbox } from 'antd';
+import { CreateChatRoomModel, PrivateMessegeModel, UserIdRequestModel } from '@in-one/shared-models';
+import { Button, Input, Typography, Avatar, message, Space, Dropdown, Menu, Select, Checkbox, Modal } from 'antd';
 import { SendOutlined, PhoneOutlined, UserOutlined, MoreOutlined, SearchOutlined, FilterOutlined, BellOutlined, PictureOutlined, SettingOutlined, PlusOutlined, VideoCameraOutlined, SmileOutlined, PaperClipOutlined } from '@ant-design/icons';
 import { ChatHelpService } from '@in-one/shared-services';
 import { io, Socket } from 'socket.io-client';
@@ -13,7 +13,9 @@ const { Option } = Select;
 
 const ChatPage: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
+  const [chatRooms, setChatRooms] = useState<any[]>([]); // State for groups
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null); // State for selected group
   const [messages, setMessages] = useState<any[]>([]);
   const [messageInput, setMessageInput] = useState<string>('');
   const [userId] = useState<string | null>(() => localStorage.getItem('userId'));
@@ -35,6 +37,7 @@ const ChatPage: React.FC = () => {
   useEffect(() => {
     if (userId && !hasFetchedUsers) {
       fetchUsers();
+      fetchChatRooms(); // Fetch groups
       initSocket(userId);
       setHasFetchedUsers(true);
     }
@@ -46,8 +49,16 @@ const ChatPage: React.FC = () => {
   useEffect(() => {
     if (selectedUser && userId) {
       fetchChatHistory();
+      setSelectedRoomId(null); // Reset selected group when a user is selected
     }
   }, [selectedUser]);
+
+  useEffect(() => {
+    if (selectedRoomId && userId) {
+      fetchGroupMessages(); // Fetch messages for the selected group
+      setSelectedUser(null); // Reset selected user when a group is selected
+    }
+  }, [selectedRoomId]);
 
   useEffect(() => {
     if (selectedUser && userId) {
@@ -172,6 +183,21 @@ const ChatPage: React.FC = () => {
     }
   };
 
+  const fetchChatRooms = async () => {
+    try {
+      const reqModel = new UserIdRequestModel(userId!);
+      const response = await chatService.getChatRooms(reqModel);
+      if (response.status === true && response.data?.data) {
+        setChatRooms(response.data.data); // Extract the chat rooms array from response.data.data
+      } else {
+        message.error('Failed to fetch chat rooms');
+      }
+    } catch (error) {
+      console.error('Error fetching chat rooms:', error);
+      message.error('An error occurred while fetching chat rooms');
+    }
+  };
+
   const fetchChatHistory = async () => {
     if (!selectedUser || !userId) {
       return;
@@ -194,32 +220,104 @@ const ChatPage: React.FC = () => {
     }
   };
 
+  const fetchGroupMessages = async () => {
+    if (!selectedRoomId || !userId) {
+      return;
+    }
+
+    try {
+      const reqModel = { chatRoomId: selectedRoomId };
+      const response = await chatService.getMessages(reqModel);
+      if (response.status === true) {
+        setMessages(response.data || []);
+        setChatRoomId(selectedRoomId);
+        socket?.emit('joinRoom', selectedRoomId);
+      } else {
+        message.error('Failed to fetch group messages');
+      }
+    } catch (error) {
+      console.error('Error fetching group messages:', error);
+      message.error('An error occurred while fetching group messages');
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!messageInput.trim()) {
       message.warning('Message cannot be empty');
       return;
     }
-    if (!selectedUser || !userId) {
-      message.warning('Please select a user and ensure you are logged in.');
+    if (!userId) {
+      message.warning('Please ensure you are logged in.');
       return;
     }
 
-    const messageData = new PrivateMessegeModel(userId, selectedUser.id, messageInput);
-    const tempMessage = {
-      ...messageData,
-      _id: `temp-${Date.now()}`,
-      chatRoomId: chatRoomId || null,
-      createdAt: new Date().toISOString(),
-      status: 'pending',
-    };
-    setMessages((prev) => [...prev, tempMessage]);
-    setMessageInput('');
-
-    if (!socket || !socket.connected) {
-      message.info('Socket not connected, sending via API...');
+    if (selectedRoomId) {
+      console.log('Sending message with userId:', userId); // Add this
+      const messageData = {
+        chatRoomId: selectedRoomId,
+        senderId: userId,
+        text: messageInput,
+      };
       try {
-        const response = await chatService.sendPrivateMessage(messageData);
-        if (response.status && response.data) {
+        const response = await chatService.sendMessage(messageData);
+        if (response.status === true) {
+          setMessages((prev) => [...prev, { senderId: userId, text: messageInput, createdAt: new Date() }]);
+          setMessageInput('');
+        } else {
+          message.error(response.internalMessage || 'Failed to send message');
+        }
+      } catch (error) {
+        console.error('Error sending group message:', error);
+        message.error('An error occurred while sending the message');
+      }
+    } else if (selectedUser) {
+      // Send private message
+      const messageData = new PrivateMessegeModel(userId, selectedUser.id, messageInput);
+      const tempMessage = {
+        ...messageData,
+        _id: `temp-${Date.now()}`,
+        chatRoomId: chatRoomId || null,
+        createdAt: new Date().toISOString(),
+        status: 'pending',
+      };
+      setMessages((prev) => [...prev, tempMessage]);
+      setMessageInput('');
+
+      if (!socket || !socket.connected) {
+        message.info('Socket not connected, sending via API...');
+        try {
+          const response = await chatService.sendPrivateMessage(messageData);
+          if (response.status && response.data) {
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg._id === tempMessage._id ? { ...response.data, status: 'delivered' } : msg
+              )
+            );
+            if (!chatRoomId && response.data.chatRoomId) {
+              setChatRoomId(response.data.chatRoomId);
+              socket?.emit('joinRoom', response.data.chatRoomId);
+            }
+          } else {
+            throw new Error('Failed to send message via API');
+          }
+        } catch (error) {
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg._id === tempMessage._id ? { ...msg, status: 'failed' } : msg
+            )
+          );
+          message.error('Failed to send message');
+        }
+        return;
+      }
+
+      const messagePayload = {
+        message: messageData,
+        chatRoomId: chatRoomId || null,
+        createdAt: tempMessage.createdAt,
+      };
+      socket.emit('sendMessage', messagePayload, (response: any) => {
+        if (response?.success && response.data) {
           setMessages((prev) =>
             prev.map((msg) =>
               msg._id === tempMessage._id ? { ...response.data, status: 'delivered' } : msg
@@ -227,47 +325,20 @@ const ChatPage: React.FC = () => {
           );
           if (!chatRoomId && response.data.chatRoomId) {
             setChatRoomId(response.data.chatRoomId);
-            socket?.emit('joinRoom', response.data.chatRoomId);
+            socket.emit('joinRoom', response.data.chatRoomId);
           }
         } else {
-          throw new Error('Failed to send message via API');
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg._id === tempMessage._id ? { ...msg, status: 'failed' } : msg
+            )
+          );
+          message.error(response?.message || 'Failed to send message');
         }
-      } catch (error) {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg._id === tempMessage._id ? { ...msg, status: 'failed' } : msg
-          )
-        );
-        message.error('Failed to send message');
-      }
-      return;
+      });
+    } else {
+      message.warning('Please select a user or group to send a message.');
     }
-
-    const messagePayload = {
-      message: messageData,
-      chatRoomId: chatRoomId || null,
-      createdAt: tempMessage.createdAt,
-    };
-    socket.emit('sendMessage', messagePayload, (response: any) => {
-      if (response?.success && response.data) {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg._id === tempMessage._id ? { ...response.data, status: 'delivered' } : msg
-          )
-        );
-        if (!chatRoomId && response.data.chatRoomId) {
-          setChatRoomId(response.data.chatRoomId);
-          socket.emit('joinRoom', response.data.chatRoomId);
-        }
-      } else {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg._id === tempMessage._id ? { ...msg, status: 'failed' } : msg
-          )
-        );
-        message.error(response?.message || 'Failed to send message');
-      }
-    });
   };
 
   const handleStartCall = async () => {
@@ -281,6 +352,12 @@ const ChatPage: React.FC = () => {
 
   const handleUserSelect = (user: any) => {
     setSelectedUser(user);
+    setMessages([]);
+    setChatRoomId(null);
+  };
+
+  const handleGroupSelect = (roomId: string) => {
+    setSelectedRoomId(roomId);
     setMessages([]);
     setChatRoomId(null);
   };
@@ -315,7 +392,7 @@ const ChatPage: React.FC = () => {
         setIsCreatingGroup(false);
         setSelectedUsersForGroup([]);
         setGroupName('');
-        fetchUsers();
+        fetchChatRooms(); // Fetch updated groups
       } else {
         throw new Error('Failed to create group');
       }
@@ -405,41 +482,77 @@ const ChatPage: React.FC = () => {
             </Space>
           </div>
         ) : (
-          <div className="user-list">
-            {users.map((user) => (
-              <motion.div
-                key={user.id}
-                className={`user-item ${selectedUser?.id === user.id ? 'active' : ''}`}
-                onClick={() => handleUserSelect(user)}
-                onMouseEnter={() => setHoveredUserId(user.id)}
-                onMouseLeave={() => setHoveredUserId(null)}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ type: 'spring', stiffness: 300 }}
-              >
-                <Space>
-                  <div className="avatar-container">
-                    <div>{user.username.charAt(0).toUpperCase()}</div>
-                    {onlineUsers.includes(user.id) && <span className="online-dot" />}
-                  </div>
-                  <div className="user-info">
-                    <Text strong>{user.username}</Text>
-                    <Text type="secondary" className="message-preview">
-                      {user.lastMessage || 'No messages yet'}
+          <>
+            {/* Groups Section */}
+            <div className="group-list">
+              <Text strong style={{ display: 'block', padding: '12px 16px' }}>Groups</Text>
+              {chatRooms.length > 0 && chatRooms.some((room) => room.isGroup) ? (
+                chatRooms
+                  .filter((room) => room.isGroup) // Filter to show only groups
+                  .map((room) => (
+                    <motion.div
+                      key={room._id} // Use _id instead of chatRoomId to match API response
+                      className={`user-item ${selectedRoomId === room._id ? 'active' : ''}`}
+                      onClick={() => handleGroupSelect(room._id)} // Use _id instead of chatRoomId
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      transition={{ type: 'spring', stiffness: 300 }}
+                    >
+                      <Space>
+                        <Avatar icon={<UserOutlined />} size={40} />
+                        <div className="user-info">
+                          <Text strong>{room.name || 'Unnamed Group'}</Text>
+                          <Text type="secondary" className="message-preview">
+                            {room.lastMessage || 'No messages yet'}
+                          </Text>
+                        </div>
+                      </Space>
+                    </motion.div>
+                  ))
+              ) : (
+                <Text type="secondary" style={{ padding: '12px 16px' }}>
+                  No groups yet. Create one!
+                </Text>
+              )}
+            </div>
+            {/* Users Section */}
+            <div className="user-list">
+              <Text strong style={{ display: 'block', padding: '12px 16px' }}>Users</Text>
+              {users.map((user) => (
+                <motion.div
+                  key={user.id}
+                  className={`user-item ${selectedUser?.id === user.id ? 'active' : ''}`}
+                  onClick={() => handleUserSelect(user)}
+                  onMouseEnter={() => setHoveredUserId(user.id)}
+                  onMouseLeave={() => setHoveredUserId(null)}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: 'spring', stiffness: 300 }}
+                >
+                  <Space>
+                    <div className="avatar-container">
+                      <div>{user.username.charAt(0).toUpperCase()}</div>
+                      {onlineUsers.includes(user.id) && <span className="online-dot" />}
+                    </div>
+                    <div className="user-info">
+                      <Text strong>{user.username}</Text>
+                      <Text type="secondary" className="message-preview">
+                        {user.lastMessage || 'No messages yet'}
+                      </Text>
+                    </div>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      {user.lastMessageTime ? new Date(user.lastMessageTime).toLocaleTimeString() : ''}
                     </Text>
-                  </div>
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    {user.lastMessageTime ? new Date(user.lastMessageTime).toLocaleTimeString() : ''}
-                  </Text>
-                </Space>
-              </motion.div>
-            ))}
-          </div>
+                  </Space>
+                </motion.div>
+              ))}
+            </div>
+          </>
         )}
       </motion.div>
 
       <div className="chat-area" style={{ background: chatBackground }}>
-        {selectedUser ? (
+        {(selectedUser || selectedRoomId) ? (
           <>
             <motion.div
               className="chat-header"
@@ -449,24 +562,28 @@ const ChatPage: React.FC = () => {
             >
               <Space>
                 <div className="avatar-container">
-                  <div>{selectedUser.username.charAt(0).toUpperCase()}</div>
-                  {onlineUsers.includes(selectedUser.id) ? (
+                  <div>{(selectedUser?.username || selectedRoomId)?.charAt(0).toUpperCase()}</div>
+                  {selectedUser && onlineUsers.includes(selectedUser.id) ? (
                     <span className="status-dot online" />
-                  ) : (
+                  ) : selectedUser ? (
                     <span className="status-dot offline" />
-                  )}
+                  ) : null}
                 </div>
                 <div>
-                  <Title level={4} style={{ margin: 0 }}>{selectedUser.username}</Title>
-                  <Text type="secondary">
-                    {onlineUsers.includes(selectedUser.id)
-                      ? 'Active Now'
-                      : `Last Seen ${new Date(selectedUser.lastSeen || Date.now()).toLocaleString()}`}
+                  <Title level={4} style={{ margin: 0, color: '#8a2be2', fontWeight: 'bold' /* White text for violet background */ }}>
+                    {selectedUser ? selectedUser.username : chatRooms.find((room) => room._id === selectedRoomId)?.name || 'Group Chat'}
+                  </Title>
+                  <Text type="secondary" style={{ color: '#e6e6e6' /* Light gray for secondary text */ }}>
+                    {selectedUser
+                      ? onlineUsers.includes(selectedUser.id)
+                        ? 'Active Now'
+                        : `Last Seen ${new Date(selectedUser.lastSeen || Date.now()).toLocaleString()}`
+                      : 'Group Chat'}
                   </Text>
                 </div>
               </Space>
               <Space>
-                <Button icon={<PhoneOutlined />} type="text" onClick={handleStartCall} />
+                {selectedUser && <Button icon={<PhoneOutlined />} type="text" onClick={handleStartCall} />}
                 <Button icon={<VideoCameraOutlined />} type="text" />
                 <Button icon={<SearchOutlined />} type="text" />
                 <Dropdown overlay={menu} trigger={['click']}>
@@ -475,52 +592,52 @@ const ChatPage: React.FC = () => {
               </Space>
             </motion.div>
             <div className="messages-container" ref={messagesContainerRef}>
-  {messages.length > 0 ? (
-    messages.map((msg, index) => {
-      const showDateSeparator =
-        index === 0 ||
-        new Date(messages[index - 1].createdAt).toDateString() !==
-        new Date(msg.createdAt).toDateString();
-      return (
-        <React.Fragment key={msg._id || index}>
-          {showDateSeparator && (
-            <div className="date-separator">
-              <Text type="secondary">
-                {new Date(msg.createdAt).toLocaleDateString()}
-              </Text>
-            </div>
-          )}
-          <div className={`message ${msg.senderId === userId ? 'sent' : 'received'}`}>
-            {msg.image && <img src={msg.image} alt="message attachment" className="message-image" />}
-            {msg.text && (
-              <>
-                <Text className="message-text">{msg.text}</Text>
-                {msg.text.includes('http') && msg.text.includes('envato') && (
-                  <a href={msg.text} target="_blank" rel="noopener noreferrer">
-                    {msg.text}
-                  </a>
-                )}
-              </>
-            )}
-            <div className="timestamp">
-              <Text>{new Date(msg.createdAt).toLocaleTimeString()}</Text>
-              {msg.senderId === userId && (
-                <span className={`tick ${msg.status === 'delivered' ? 'double' : 'single'}`}>
-                  {msg.status === 'delivered' ? '✓✓' : '✓'}
-                </span>
+              {messages.length > 0 ? (
+                messages.map((msg, index) => {
+                  const showDateSeparator =
+                    index === 0 ||
+                    new Date(messages[index - 1].createdAt).toDateString() !==
+                    new Date(msg.createdAt).toDateString();
+                  return (
+                    <React.Fragment key={msg._id || index}>
+                      {showDateSeparator && (
+                        <div className="date-separator">
+                          <Text type="secondary">
+                            {new Date(msg.createdAt).toUTCString()}
+                          </Text>
+                        </div>
+                      )}
+                      <div className={`message ${msg.senderId === userId ? 'sent' : 'received'}`}>
+                        {msg.image && <img src={msg.image} alt="message attachment" className="message-image" />}
+                        {msg.text || msg.content ? (
+                          <>
+                            <Text className="message-text">{msg.text || msg.content}</Text>
+                            {msg.text?.includes('http') && msg.text?.includes('envato') && (
+                              <a href={msg.text} target="_blank" rel="noopener noreferrer">
+                                {msg.text}
+                              </a>
+                            )}
+                          </>
+                        ) : null}
+                        <div className="timestamp">
+                          <Text>{new Date(msg.createdAt).toLocaleTimeString()}</Text>
+                          {msg.senderId === userId && (
+                            <span className={`tick ${msg.status === 'delivered' ? 'double' : 'single'}`}>
+                              {msg.status === 'delivered' ? '✓✓' : '✓'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </React.Fragment>
+                  );
+                })
+              ) : (
+                <div className="no-messages">
+                  <Text type="secondary">No messages to display</Text>
+                </div>
               )}
+              <div ref={messagesEndRef} />
             </div>
-          </div>
-        </React.Fragment>
-      );
-    })
-  ) : (
-    <div className="no-messages">
-      <Text type="secondary">No messages to display</Text>
-    </div>
-  )}
-  <div ref={messagesEndRef} />
-</div>
 
             <motion.div
               className="input-area"
@@ -548,12 +665,12 @@ const ChatPage: React.FC = () => {
           </>
         ) : (
           <div className="no-selection">
-            <Text type="secondary">Select a user to start chatting</Text>
+            <Text type="secondary">Select a user or group to start chatting</Text>
           </div>
         )}
       </div>
 
-      {selectedUser && (
+      {(selectedUser || selectedRoomId) && (
         <motion.div
           className="right-sidebar"
           initial={{ x: 300 }}
@@ -561,18 +678,15 @@ const ChatPage: React.FC = () => {
           transition={{ type: 'spring', stiffness: 100, damping: 20 }}
         >
           <div className="user-profile">
-            <Avatar src={selectedUser.profilePicture} icon={<UserOutlined />} size={80} />
-            <Title level={4}>{selectedUser.username}</Title>
+            <Avatar src={selectedUser?.profilePicture} icon={<UserOutlined />} size={80} />
+            <Title level={4}>{selectedUser ? selectedUser.username : chatRooms.find((room) => room._id === selectedRoomId)?.name || 'Group Chat'}</Title>
             <Text type="secondary">
-              {onlineUsers.includes(selectedUser.id)
-                ? 'Active Now'
-                : `Last Seen ${new Date(selectedUser.lastSeen || Date.now()).toLocaleString()}`}
+              {selectedUser
+                ? onlineUsers.includes(selectedUser.id)
+                  ? 'Active Now'
+                  : `Last Seen ${new Date(selectedUser.lastSeen || Date.now()).toLocaleString()}`
+                : 'Group Chat'}
             </Text>
-          </div>
-          <div className="options">
-            <Button icon={<BellOutlined />} type="text" block>Mute</Button>
-            <Button icon={<PictureOutlined />} type="text" block>Media</Button>
-            <Button icon={<SettingOutlined />} type="text" block>Options</Button>
           </div>
           <div className="shared-media">
             <Text strong>Shared Media</Text>
