@@ -6,7 +6,7 @@ import { ApiBody } from '@nestjs/swagger';
 
 @Controller('chat')
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(private readonly chatService: ChatService) { }
 
   @Post('sendMessage')
   @ApiBody({ type: CreateMessageModel })
@@ -20,7 +20,7 @@ export class ChatController {
   }
 
   @Post('getAllMessages')
-  @ApiBody({ type: ChatRoomIdRequestModel})
+  @ApiBody({ type: ChatRoomIdRequestModel })
   async getMessages(@Body() reqModel: ChatRoomIdRequestModel): Promise<CommonResponse> {
     try {
       const messages = await this.chatService.getChatHistory(reqModel);
@@ -53,7 +53,7 @@ export class ChatController {
   }
 
   @Post('getChatRooms')
-  @ApiBody({ type: UserIdRequestModel})
+  @ApiBody({ type: UserIdRequestModel })
   async getChatRooms(@Body('userId') reqModel: UserIdRequestModel): Promise<CommonResponse> {
     try {
       const chatRooms = await this.chatService.getChatRoomsForUser(reqModel);
@@ -85,8 +85,8 @@ export class ChatController {
   }
 
   @Post('privateMessege')
-  @ApiBody({ type: PrivateMessegeModel})
-  async sendPrivateMessage( @Body() reqModel: PrivateMessegeModel): Promise<CommonResponse> {
+  @ApiBody({ type: PrivateMessegeModel })
+  async sendPrivateMessage(@Body() reqModel: PrivateMessegeModel): Promise<CommonResponse> {
     try {
       return await this.chatService.sendPrivateMessage(reqModel);
     } catch (error) {
@@ -131,4 +131,17 @@ export class ChatController {
       throw new HttpException({ success: false, message: 'Error ending call', error }, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
+
+  // chat.controller.ts
+  @Post('getChatHistoryByUsers')
+  @ApiBody({ type: Object, schema: { properties: { senderId: { type: 'string' }, receiverId: { type: 'string' } } } })
+  async getChatHistoryByUsers(@Body() reqModel: { senderId: string; receiverId: string }): Promise<CommonResponse> {
+    try {
+      const messages = await this.chatService.getChatHistoryByUsers(reqModel);
+      return new CommonResponse(true, 200, 'Chat history retrieved', messages);
+    } catch (error) {
+      return ExceptionHandler.handleError(error, 'Failed to retrieve chat history');
+    }
+  }
+
 }

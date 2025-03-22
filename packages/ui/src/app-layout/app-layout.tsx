@@ -97,6 +97,7 @@ const AppLayout: React.FC = () => {
     // }, [user?.profilePicture]);
 
     const navItems = [
+        { key: "1", icon: <ProjectOutlined />, label: "HomePage", path: "/home" },
         { key: "1", icon: <ProjectOutlined />, label: "Dashboard", path: "/dashboard" },
         { key: "2", icon: <MessageOutlined />, label: "Chat", path: "/chat" },
         { key: "3", icon: <MessageOutlined />, label: "Groups", path: "/groups" },

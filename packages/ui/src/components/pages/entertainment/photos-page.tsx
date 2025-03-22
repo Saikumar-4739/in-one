@@ -52,8 +52,9 @@ const PhotosPage: React.FC = () => {
     }
     const createModel: CreatePhotoModel = {
       userId,
-      title: file.name.split('.')[0], // Default title from filename
-      description: '',
+      caption: '',
+      imageUrl: '',
+      authorId: ''
     };
     try {
       const response = await photoService.uploadPhoto(createModel, file);

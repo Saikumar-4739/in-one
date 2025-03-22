@@ -2,7 +2,7 @@ import { WebSocketGateway, WebSocketServer, SubscribeMessage, MessageBody, Conne
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
 import { HttpException, HttpStatus, Logger } from '@nestjs/common';
-import { ChatRoomIdRequestModel, EndCallModel } from '@in-one/shared-models';
+import { ChatRoomIdRequestModel, EndCallModel, PrivateMessegeModel } from '@in-one/shared-models';
 
 @WebSocketGateway({ cors: true })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -45,16 +45,26 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+  // chat.gateway.ts
   @SubscribeMessage('sendMessage')
-  async handleSendMessage(@MessageBody() data: { senderId: string; receiverId: string; text: string; chatRoomId: string }, @ConnectedSocket() socket: Socket) {
+  async handleSendMessage(
+    @MessageBody() data: { message: PrivateMessegeModel; chatRoomId?: string; createdAt: string },
+    @ConnectedSocket() socket: Socket,
+  ) {
     try {
-      this.logger.log(`📩 Received message from userId ${data.senderId} in chatRoomId: ${data.chatRoomId}`);
-      const newMessage = await this.chatService.createMessage(data);
-      this.server.to(data.chatRoomId).emit('newMessage', { success: true, message: newMessage });
-      if (!data.chatRoomId) {
-        this.server.to(data.receiverId).emit('privateMessage', { success: true, message: newMessage });
+      this.logger.log(`📩 Received message from userId ${data.message.senderId}`);
+      const response = await this.chatService.sendPrivateMessage(data.message);
+      if (response.status && response.data) {
+        const newMessage = response.data;
+        const chatRoomId = newMessage.chatRoomId;
+        // Emit to all clients in the chat room, including the sender
+        this.server.to(chatRoomId).emit('privateMessage', { success: true, message: newMessage });
+        // Also emit to the sender explicitly if needed
+        socket.emit('privateMessage', { success: true, message: newMessage });
+        return { success: true, data: newMessage };
+      } else {
+        throw new Error('Failed to send message');
       }
-      return { success: true, message: 'Message sent successfully', data: newMessage };
     } catch (error) {
       this.logger.error(`❌ Error in handleSendMessage: ${error}`);
       return { success: false, message: 'Failed to send message', error: error };
@@ -158,5 +168,39 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const audioMessage = await this.chatService.sendAudioMessage(data);
     this.server.to(data.chatRoomId).emit('newAudioMessage', audioMessage);
   }
+
+  @SubscribeMessage('sendPrivateMessage')
+async handleSendPrivateMessage(
+  @MessageBody() data: PrivateMessegeModel,
+  @ConnectedSocket() socket: Socket,
+) {
+  try {
+    this.logger.log(`📩 Received private message from userId ${data.senderId} to ${data.receiverId}`);
+    
+    // Use ChatService to send the private message and get chatRoomId
+    const response = await this.chatService.sendPrivateMessage(data);
+    if (!response.status || !response.data) {
+      throw new Error('Failed to process private message');
+    }
+
+    const newMessage = response.data;
+    const chatRoomId = newMessage.chatRoomId;
+
+    // Emit to both sender and receiver (using user IDs or chat room)
+    this.server.to(data.senderId).to(data.receiverId).emit('privateMessage', {
+      success: true,
+      message: newMessage,
+    });
+
+    // Join the sender to the chat room if not already joined
+    socket.join(chatRoomId);
+
+    // Send callback with the message details
+    return { success: true, data: newMessage };
+  } catch (error) {
+    this.logger.error(`❌ Error in handleSendPrivateMessage: ${error}`);
+    return { success: false, message: 'Failed to send private message', error: error };
+  }
+}
 }
 

@@ -18,9 +18,6 @@
       "path": "./packages/services/main"
     },
     {
-      "path": "./packages/mobile"
-    },
-    {
       "path": "./packages/ui"
     }
   ]

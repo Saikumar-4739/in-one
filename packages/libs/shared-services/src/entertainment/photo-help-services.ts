@@ -16,7 +16,7 @@ export class PhotoHelpService extends CommonAxiosService {
         Object.keys(reqModel).forEach(key => {
             formData.append(key, (reqModel as any)[key]);
         });        
-        return await this.axiosPostCall(this.getURLwithMainEndPoint('upload'), formData, { ...config, headers: { 'Content-Type': 'multipart/form-data' } });
+        return await this.axiosPostCall(this.getURLwithMainEndPoint('uploadPhoto'), formData, { ...config, headers: { 'Content-Type': 'multipart/form-data' } });
     }
 
     async getAllPhotos(config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
