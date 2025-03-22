@@ -24,6 +24,12 @@
       }
     ],
     "typescript-config/is-valid": "off",
-    "disown-opener": "off"
+    "disown-opener": "off",
+    "axe/forms": [
+      "default",
+      {
+        "label": "off"
+      }
+    ]
   }
 }

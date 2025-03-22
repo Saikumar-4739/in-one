@@ -171,7 +171,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('sendPrivateMessage')
-  async handleSendPrivateMessage( @MessageBody() data: PrivateMessegeModel, @ConnectedSocket() socket: Socket) {
+  async handleSendPrivateMessage(@MessageBody() data: PrivateMessegeModel, @ConnectedSocket() socket: Socket) {
     try {
       this.logger.log(`📩 Received private message from userId ${data.senderId} to ${data.receiverId}`);
 
@@ -200,5 +200,43 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return { success: false, message: 'Failed to send private message', error: error };
     }
   }
+
+  @SubscribeMessage('sendGroupMessage')
+async handleSendGroupMessage(
+  @MessageBody() data: { chatRoomId: string; senderId: string; text: string; createdAt: string },
+  @ConnectedSocket() socket: Socket,
+) {
+  try {
+    this.logger.log(`📩 Received group message for chatRoomId ${data.chatRoomId} from userId ${data.senderId}`);
+
+    const messageData = {
+      chatRoomId: data.chatRoomId,
+      senderId: data.senderId,
+      text: data.text,
+    };
+    this.logger.log(`📝 Saving message: ${JSON.stringify(messageData)}`);
+    const response = await this.chatService.createMessage(messageData);
+
+    if (!response || !response._id) {
+      throw new Error('Failed to create group message - no response ID');
+    }
+
+    const newMessage = {
+      _id: response._id,
+      senderId: response.senderId,
+      chatRoomId: response.chatRoomId,
+      text: response.text,
+      createdAt: response.createdAt,
+    };
+    this.logger.log(`✅ Message saved: ${JSON.stringify(newMessage)}`);
+
+    this.server.to(data.chatRoomId).emit('groupMessage', { success: true, message: newMessage });
+    this.logger.log(`📤 Emitted groupMessage to room ${data.chatRoomId}`);
+    return { success: true, data: newMessage };
+  } catch (error) {
+    this.logger.error(`❌ Error in handleSendGroupMessage: ${error}`, error);
+    return { success: false, message: 'Failed to send group message', error: error };
+  }
+}
 }
 
