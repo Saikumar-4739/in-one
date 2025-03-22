@@ -1,40 +1,62 @@
-import {  Entity,  PrimaryGeneratedColumn, Column, ManyToOne, ManyToMany, JoinTable, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  ManyToMany,
+  JoinTable,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { UserEntity } from 'src/app/authentication/entities/user.entity';
 import { ChatRoomEntity } from './chatroom.entity';
 
 @Entity('messages')
 export class MessageEntity {
-    @PrimaryGeneratedColumn('uuid') 
-    id: string;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-    @ManyToOne(() => UserEntity, (user) => user.sentMessages, { nullable: false, onDelete: 'CASCADE' }) 
-    sender: UserEntity; 
+  @ManyToOne(() => UserEntity, (user) => user.sentMessages, {
+    nullable: false,
+    onDelete: 'CASCADE',
+  })
+  sender: UserEntity;
 
-    @ManyToOne(() => UserEntity, (user) => user.receivedMessages, { nullable: false, onDelete: 'CASCADE' }) 
-    receiver: UserEntity; 
+  @ManyToOne(() => UserEntity, (user) => user.receivedMessages, {
+    nullable: true,
+    onDelete: 'CASCADE',
+  })
+  receiver: UserEntity;
 
-    @ManyToOne(() => ChatRoomEntity, (chatRoom) => chatRoom.messages, { nullable: false, onDelete: 'CASCADE' }) 
-    chatRoom: ChatRoomEntity; 
+  @ManyToOne(() => ChatRoomEntity, (chatRoom) => chatRoom.messages, {
+    nullable: false,
+    onDelete: 'CASCADE',
+  })
+  chatRoom: ChatRoomEntity;
 
-    @Column({ type: 'text', nullable: true })
-    text: string;
+  @Column({ type: 'text', nullable: true })
+  text: string;
 
-    @Column({ type: 'varchar', nullable: true })
-    emoji: string; 
+  @Column({ type: 'varchar', nullable: true })
+  emoji: string;
 
-    @Column({ type: 'varchar', nullable: true })
-    fileUrl: string; 
+  @Column({ type: 'varchar', nullable: true })
+  fileUrl: string;
 
-    @Column({ type: 'enum', enum: ['image', 'video', 'audio', 'document'], nullable: true })
-    fileType: 'image' | 'video' | 'audio' | 'document';
+  @Column({
+    type: 'enum',
+    enum: ['image', 'video', 'audio', 'document'],
+    nullable: true,
+  })
+  fileType: 'image' | 'video' | 'audio' | 'document';
 
-    @ManyToMany(() => UserEntity)
-    @JoinTable({ name: 'message_reads' })
-    readBy: UserEntity[];
+  @ManyToMany(() => UserEntity)
+  @JoinTable({ name: 'message_reads' })
+  readBy: UserEntity[];
 
-    @CreateDateColumn()
-    createdAt: Date;
+  @CreateDateColumn()
+  createdAt: Date;
 
-    @UpdateDateColumn()
-    updatedAt: Date;
+  @UpdateDateColumn()
+  updatedAt: Date;
 }
