@@ -10,7 +10,7 @@ export class MessageEntity {
     @ManyToOne(() => UserEntity, (user) => user.sentMessages, { nullable: false, onDelete: 'CASCADE' }) 
     sender: UserEntity; 
 
-    @ManyToOne(() => UserEntity, (user) => user.receivedMessages, { nullable: false, onDelete: 'CASCADE' }) 
+    @ManyToOne(() => UserEntity, (user) => user.receivedMessages, { nullable: true, onDelete: 'CASCADE' }) 
     receiver: UserEntity; 
 
     @ManyToOne(() => ChatRoomEntity, (chatRoom) => chatRoom.messages, { nullable: false, onDelete: 'CASCADE' }) 

@@ -25,24 +25,33 @@ export class ChatService {
     try {
       const messageRepo = this.transactionManager.getRepository(this.messageRepository);
       const chatRoomRepo = this.transactionManager.getRepository(this.chatRoomRepository);
-
-      const sender = await this.userRepository.findOne({ where: { id: reqModel.chatRoomId } });
-      if (!sender) throw new HttpException('Sender not found', HttpStatus.NOT_FOUND);
-
+  
+      const sender = await this.userRepository.findOne({ where: { id: reqModel.senderId } });
+      if (!sender) {
+        console.error(`❌ Sender not found: ${reqModel.senderId}`);
+        throw new HttpException('Sender not found', HttpStatus.NOT_FOUND);
+      }
+  
       const chatRoom = await chatRoomRepo.findOne({ where: { id: reqModel.chatRoomId } });
-      if (!chatRoom) throw new HttpException('Chat room not found', HttpStatus.NOT_FOUND);
-
+      if (!chatRoom) {
+        console.error(`❌ Chat room not found: ${reqModel.chatRoomId}`);
+        throw new HttpException('Chat room not found', HttpStatus.NOT_FOUND);
+      }
+  
       const newMessage = messageRepo.create({
         sender,
         chatRoom,
         text: reqModel.text,
         createdAt: new Date(),
       });
-
+      console.log(`📝 Message entity created: ${JSON.stringify(newMessage)}`);
+  
       const savedMessage = await messageRepo.save(newMessage);
+      console.log(`💾 Message saved to DB: ${JSON.stringify(savedMessage)}`);
+  
       await chatRoomRepo.update(reqModel.chatRoomId, { lastMessage: reqModel.text });
       await this.transactionManager.commitTransaction();
-
+  
       return {
         _id: savedMessage.id,
         senderId: savedMessage.sender.id,
@@ -52,8 +61,8 @@ export class ChatService {
       };
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
-      console.error('❌ Error creating message:', error);
-      throw new HttpException('Error creating message', HttpStatus.INTERNAL_SERVER_ERROR);
+      console.error(`❌ Error in createMessage: ${error}`, error);
+      throw new HttpException(`Error creating message: ${error}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
