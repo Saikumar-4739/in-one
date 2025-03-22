@@ -36,6 +36,7 @@ const ChatPage: React.FC = () => {
   const chatService = new ChatHelpService();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  
 
   useEffect(() => {
     if (userId && !hasFetchedUsers) {
@@ -58,8 +59,9 @@ const ChatPage: React.FC = () => {
 
   useEffect(() => {
     if (selectedRoomId && userId) {
+      console.log('useEffect triggered for selectedRoomId:', selectedRoomId); // Debug log
       fetchGroupMessages();
-      setSelectedUser(null);
+      setSelectedUser(null); // Ensure no user is selected
     }
   }, [selectedRoomId, userId]);
 
@@ -216,24 +218,33 @@ const ChatPage: React.FC = () => {
   };
 
   const fetchGroupMessages = async () => {
-    if (!selectedRoomId || !userId) return;
+    if (!selectedRoomId || !userId) {
+      console.warn('fetchGroupMessages aborted - Missing data:', { selectedRoomId, userId });
+      return;
+    }
     try {
       const reqModel = { chatRoomId: selectedRoomId };
+      console.log('Fetching messages for chatRoomId:', selectedRoomId);
       const response = await chatService.getMessages(reqModel);
       if (response.status && Array.isArray(response.data)) {
-        setMessages(response.data.map((msg: any) => ({
+        const formattedMessages = response.data.map((msg: any) => ({
           _id: msg._id,
           senderId: msg.senderId,
           chatRoomId: msg.chatRoomId,
           text: msg.text,
           createdAt: msg.createdAt,
           status: 'delivered',
-        })));
+        }));
+        setMessages(formattedMessages);
         setChatRoomId(selectedRoomId);
-        socket?.emit('joinRoom', selectedRoomId);
-      } else throw new Error('Invalid response format');
+        if (socket && socket.connected) socket.emit('joinRoom', selectedRoomId);
+      } else {
+        console.error('Invalid response format:', response);
+        throw new Error('Invalid response format');
+      }
     } catch (error) {
-      message.error('Failed to fetch group messages');
+      console.error('Error fetching group messages:', error);
+      message.error('Failed to load group messages');
       setMessages([]);
     }
   };
@@ -365,12 +376,15 @@ const ChatPage: React.FC = () => {
   };
 
   const handleGroupSelect = (roomId: string) => {
-    setSelectedRoomId(roomId);
-    setMessages([]);
-    setChatRoomId(roomId);
-    if (socket && socket.connected) socket.emit('joinRoom', roomId);
-    fetchGroupMessages();
-    setSelectedUser(null);
+    console.log('Selecting group with roomId:', roomId); // Debug log
+    setSelectedRoomId(roomId); // Set the selected room ID
+    setMessages([]); // Reset messages
+    setChatRoomId(roomId); // Set the chat room ID for socket
+    setSelectedUser(null); // Clear selected user
+    if (socket && socket.connected) {
+      socket.emit('joinRoom', roomId); // Join the room via socket
+    }
+    fetchGroupMessages(); // Fetch messages immediately
   };
 
   const handleSortChange = (value: string) => {
@@ -441,7 +455,7 @@ const ChatPage: React.FC = () => {
   );
 
   const filteredUsers = users.filter((user) => user.username.toLowerCase().includes(searchQuery.toLowerCase()));
-  const selectedRoom = chatRooms.find((room) => room._id === selectedRoomId);
+  const selectedRoom = chatRooms.find((room) => room._id === selectedRoomId) || null;
 
   return (
     <div className="chat-container">
@@ -543,68 +557,72 @@ const ChatPage: React.FC = () => {
       </motion.div>
 
       <div className="chat-area" style={{ background: chatBackground }}>
-        {(selectedUser || selectedRoomId) ? (
-          <>
-            <motion.div className="chat-header" initial={{ y: -50 }} animate={{ y: 0 }} transition={{ type: 'spring', stiffness: 100 }}>
-              <Space>
-                <div className="avatar-container">
-                  <div>{(selectedUser?.username || selectedRoomId)?.charAt(0).toUpperCase()}</div>
-                  {selectedUser && onlineUsers.includes(selectedUser.id) ? (
-                    <span className="status-dot online" />
-                  ) : selectedUser ? (
-                    <span className="status-dot offline" />
-                  ) : null}
+  {(selectedUser || selectedRoomId) ? (
+    <>
+      <motion.div className="chat-header" initial={{ y: -50 }} animate={{ y: 0 }} transition={{ type: 'spring', stiffness: 100 }}>
+        <Space>
+          <div className="avatar-container">
+            <div>{(selectedUser?.username || selectedRoom?.name || 'Group')?.charAt(0).toUpperCase()}</div>
+            {selectedUser && onlineUsers.includes(selectedUser.id) ? (
+              <span className="status-dot online" />
+            ) : selectedUser ? (
+              <span className="status-dot offline" />
+            ) : null}
+          </div>
+          <div>
+            <Title level={4} style={{ margin: 0, color: '#8a2be2', fontWeight: 'bold' }}>
+              {selectedUser ? selectedUser.username : selectedRoom?.name || 'Unnamed Group'}
+            </Title>
+            <Text type="secondary" style={{ color: '#e6e6e6' }}>
+              {selectedUser
+                ? onlineUsers.includes(selectedUser.id)
+                  ? 'Active Now'
+                  : `Last Seen ${new Date(selectedUser.lastSeen || Date.now()).toLocaleString()}`
+                : 'Group Chat'}
+            </Text>
+          </div>
+        </Space>
+        <Space>
+          <Button icon={<SearchOutlined />} type="text" />
+          <Dropdown overlay={menu} trigger={['click']}>
+            <Button icon={<MoreOutlined />} type="text" />
+          </Dropdown>
+        </Space>
+      </motion.div>
+      <div className="messages-container" ref={messagesContainerRef}>
+        {messages.length > 0 ? (
+          messages.map((msg, index) => {
+            const showDateSeparator =
+              index === 0 || new Date(messages[index - 1].createdAt).toDateString() !== new Date(msg.createdAt).toDateString();
+            return (
+              <React.Fragment key={msg._id || index}>
+                {showDateSeparator && (
+                  <div className="date-separator">
+                    <Text type="secondary">{new Date(msg.createdAt).toUTCString()}</Text>
+                  </div>
+                )}
+                <div className={`message ${msg.senderId === userId ? 'sent' : 'received'}`}>
+                  {msg.image && <img src={msg.image} alt="message attachment" className="message-image" />}
+                  {msg.text && <Text className="message-text">{msg.text}</Text>}
+                  <div className="timestamp">
+                    <Text>{new Date(msg.createdAt).toLocaleTimeString()}</Text>
+                    {msg.senderId === userId && (
+                      <span className={`tick ${msg.status === 'delivered' ? 'double' : 'single'}`}>
+                        {msg.status === 'delivered' ? '✓✓' : '✓'}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <Title level={4} style={{ margin: 0, color: '#8a2be2', fontWeight: 'bold' }}>
-                    {selectedUser ? selectedUser.username : selectedRoom?.name || 'Group Chat'}
-                  </Title>
-                  <Text type="secondary" style={{ color: '#e6e6e6' }}>
-                    {selectedUser ? (onlineUsers.includes(selectedUser.id) ? 'Active Now' : `Last Seen ${new Date(selectedUser.lastSeen || Date.now()).toLocaleString()}`) : 'Group Chat'}
-                  </Text>
-                </div>
-              </Space>
-              <Space>
-                <Button icon={<SearchOutlined />} type="text" />
-                <Dropdown overlay={menu} trigger={['click']}>
-                  <Button icon={<MoreOutlined />} type="text" />
-                </Dropdown>
-              </Space>
-            </motion.div>
-            <div className="messages-container" ref={messagesContainerRef}>
-              {messages.length > 0 ? (
-                messages.map((msg, index) => {
-                  const showDateSeparator =
-                    index === 0 || new Date(messages[index - 1].createdAt).toDateString() !== new Date(msg.createdAt).toDateString();
-                  return (
-                    <React.Fragment key={msg._id || index}>
-                      {showDateSeparator && (
-                        <div className="date-separator">
-                          <Text type="secondary">{new Date(msg.createdAt).toUTCString()}</Text>
-                        </div>
-                      )}
-                      <div className={`message ${msg.senderId === userId ? 'sent' : 'received'}`}>
-                        {msg.image && <img src={msg.image} alt="message attachment" className="message-image" />}
-                        {msg.text && <Text className="message-text">{msg.text}</Text>}
-                        <div className="timestamp">
-                          <Text>{new Date(msg.createdAt).toLocaleTimeString()}</Text>
-                          {msg.senderId === userId && (
-                            <span className={`tick ${msg.status === 'delivered' ? 'double' : 'single'}`}>
-                              {msg.status === 'delivered' ? '✓✓' : '✓'}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </React.Fragment>
-                  );
-                })
-              ) : (
-                <div className="no-messages">
-                  <Text type="secondary">Start a conversation!</Text>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
+              </React.Fragment>
+            );
+          })
+        ) : (
+          <div className="no-messages">
+            <Text type="secondary">No messages in this group yet. Start chatting!</Text>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
             <motion.div className="input-area" initial={{ y: 50 }} animate={{ y: 0 }} transition={{ type: 'spring', stiffness: 100 }}>
               <Space.Compact className="input-compact">
                 <Button icon={<SmileOutlined />} type="text" onClick={() => setShowEmojiPicker(!showEmojiPicker)} />
@@ -636,18 +654,23 @@ const ChatPage: React.FC = () => {
       </div>
 
       {(selectedUser || selectedRoomId) && (
-        <motion.div className="right-sidebar" initial={{ x: 300 }} animate={{ x: 0 }} transition={{ type: 'spring', stiffness: 100, damping: 20 }}>
-          <div className="user-profile">
-            <Avatar src={selectedUser?.profilePicture} icon={<UserOutlined />} size={80} />
-            <Title level={4}>{selectedUser ? selectedUser.username : selectedRoom?.name || 'Group Chat'}</Title>
-            <Text type="secondary">
-              {selectedUser ? (onlineUsers.includes(selectedUser.id) ? 'Active Now' : `Last Seen ${new Date(selectedUser.lastSeen || Date.now()).toLocaleString()}`) : 'Group Chat'}
-            </Text>
-          </div>
-          {selectedRoomId && selectedRoom?.isGroup && (
-            <div className="group-members">
-              <Text strong>Group Members</Text>
-              {selectedRoom.members.map((memberId: string) => {
+      <motion.div className="right-sidebar" initial={{ x: 300 }} animate={{ x: 0 }} transition={{ type: 'spring', stiffness: 100, damping: 20 }}>
+        <div className="user-profile">
+          <Avatar src={selectedUser?.profilePicture} icon={<UserOutlined />} size={80} />
+          <Title level={4}>{selectedUser ? selectedUser.username : selectedRoom?.name || 'Group Chat'}</Title>
+          <Text type="secondary">
+            {selectedUser
+              ? onlineUsers.includes(selectedUser.id)
+                ? 'Active Now'
+                : `Last Seen ${new Date(selectedUser.lastSeen || Date.now()).toLocaleString()}`
+              : 'Group Chat'}
+          </Text>
+        </div>
+        {(selectedRoomId && selectedRoom?.isGroup) && (
+          <div className="group-members">
+            <Text strong>Group Members</Text>
+            {selectedRoom?.members?.length > 0 ? (
+              selectedRoom.members.map((memberId: string) => {
                 const member = users.find((u) => u.id === memberId);
                 return member ? (
                   <div key={member.id} className="member-item">
@@ -655,7 +678,10 @@ const ChatPage: React.FC = () => {
                     <Text>{member.username}</Text>
                   </div>
                 ) : null;
-              })}
+              })
+            ) : (
+              <Text type="secondary">No members found</Text>
+            )}
             </div>
           )}
           <div className="shared-media">
