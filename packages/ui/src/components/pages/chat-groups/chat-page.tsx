@@ -36,7 +36,7 @@ const ChatPage: React.FC = () => {
   const chatService = new ChatHelpService();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  
+
 
   useEffect(() => {
     if (userId && !hasFetchedUsers) {
@@ -53,7 +53,7 @@ const ChatPage: React.FC = () => {
   useEffect(() => {
     if (selectedUser && userId) {
       fetchChatHistory();
-      setSelectedRoomId(null);
+      setSelectedRoomId(chatRoomId);
     }
   }, [selectedUser, userId]);
 
@@ -146,12 +146,20 @@ const ChatPage: React.FC = () => {
     });
 
     newSocket.on('groupMessage', (data) => {
-      if (!data.success || !data.message) return;
+      if (!data.success || !data.message) {
+        console.warn('Invalid groupMessage data:', data);
+        return;
+      }
       const { senderId, chatRoomId, text, createdAt, _id } = data.message;
+      console.log('Received groupMessage:', { senderId, chatRoomId, text, _id }); // Debug log
       if (chatRoomId === selectedRoomId) {
         setMessages((prev) => {
           const messageExists = prev.some((msg) => msg._id === _id);
-          if (!messageExists) return [...prev, { _id, senderId, text, createdAt, chatRoomId, status: 'delivered' }];
+          if (!messageExists) {
+            const newMessage = { _id, senderId, text, createdAt, chatRoomId, status: 'delivered' };
+            console.log('Adding new message to state:', newMessage); // Debug log
+            return [...prev, newMessage];
+          }
           return prev;
         });
       } else {
@@ -162,8 +170,8 @@ const ChatPage: React.FC = () => {
 
     newSocket.on('onlineUsers', setOnlineUsers);
     newSocket.on('connect_error', () => message.error('Socket connection failed'));
-    newSocket.on('error', () => {});
-    newSocket.on('disconnect', () => {});
+    newSocket.on('error', () => { });
+    newSocket.on('disconnect', () => { });
 
     setSocket(newSocket);
   };
@@ -176,7 +184,6 @@ const ChatPage: React.FC = () => {
         setUsers(filteredUsers);
       } else throw new Error('Invalid response structure');
     } catch (error) {
-      message.error('Failed to fetch users');
     }
   };
 
@@ -455,7 +462,7 @@ const ChatPage: React.FC = () => {
   );
 
   const filteredUsers = users.filter((user) => user.username.toLowerCase().includes(searchQuery.toLowerCase()));
-  const selectedRoom = chatRooms.find((room) => room._id === selectedRoomId) || null;
+  const selectedRoom = chatRooms.find((room) => room._id === selectedRoomId);
 
   return (
     <div className="chat-container">
@@ -547,7 +554,6 @@ const ChatPage: React.FC = () => {
                       <Text type="secondary" className="message-preview">{user.lastMessage || ''}</Text>
                     </div>
                     <Text type="secondary" style={{ fontSize: 12 }}>{user.lastMessageTime ? new Date(user.lastMessageTime).toLocaleTimeString() : ''}</Text>
-                    <span className="emoji">😊</span>
                   </Space>
                 </motion.div>
               ))}
@@ -557,72 +563,72 @@ const ChatPage: React.FC = () => {
       </motion.div>
 
       <div className="chat-area" style={{ background: chatBackground }}>
-  {(selectedUser || selectedRoomId) ? (
-    <>
-      <motion.div className="chat-header" initial={{ y: -50 }} animate={{ y: 0 }} transition={{ type: 'spring', stiffness: 100 }}>
-        <Space>
-          <div className="avatar-container">
-            <div>{(selectedUser?.username || selectedRoom?.name || 'Group')?.charAt(0).toUpperCase()}</div>
-            {selectedUser && onlineUsers.includes(selectedUser.id) ? (
-              <span className="status-dot online" />
-            ) : selectedUser ? (
-              <span className="status-dot offline" />
-            ) : null}
-          </div>
-          <div>
-            <Title level={4} style={{ margin: 0, color: '#8a2be2', fontWeight: 'bold' }}>
-              {selectedUser ? selectedUser.username : selectedRoom?.name || 'Unnamed Group'}
-            </Title>
-            <Text type="secondary" style={{ color: '#e6e6e6' }}>
-              {selectedUser
-                ? onlineUsers.includes(selectedUser.id)
-                  ? 'Active Now'
-                  : `Last Seen ${new Date(selectedUser.lastSeen || Date.now()).toLocaleString()}`
-                : 'Group Chat'}
-            </Text>
-          </div>
-        </Space>
-        <Space>
-          <Button icon={<SearchOutlined />} type="text" />
-          <Dropdown overlay={menu} trigger={['click']}>
-            <Button icon={<MoreOutlined />} type="text" />
-          </Dropdown>
-        </Space>
-      </motion.div>
-      <div className="messages-container" ref={messagesContainerRef}>
-        {messages.length > 0 ? (
-          messages.map((msg, index) => {
-            const showDateSeparator =
-              index === 0 || new Date(messages[index - 1].createdAt).toDateString() !== new Date(msg.createdAt).toDateString();
-            return (
-              <React.Fragment key={msg._id || index}>
-                {showDateSeparator && (
-                  <div className="date-separator">
-                    <Text type="secondary">{new Date(msg.createdAt).toUTCString()}</Text>
-                  </div>
-                )}
-                <div className={`message ${msg.senderId === userId ? 'sent' : 'received'}`}>
-                  {msg.image && <img src={msg.image} alt="message attachment" className="message-image" />}
-                  {msg.text && <Text className="message-text">{msg.text}</Text>}
-                  <div className="timestamp">
-                    <Text>{new Date(msg.createdAt).toLocaleTimeString()}</Text>
-                    {msg.senderId === userId && (
-                      <span className={`tick ${msg.status === 'delivered' ? 'double' : 'single'}`}>
-                        {msg.status === 'delivered' ? '✓✓' : '✓'}
-                      </span>
-                    )}
-                  </div>
+        {(selectedUser || selectedRoomId) ? (
+          <>
+            <motion.div className="chat-header" initial={{ y: -50 }} animate={{ y: 0 }} transition={{ type: 'spring', stiffness: 100 }}>
+              <Space>
+                <div className="avatar-container">
+                  <div>{(selectedUser?.username || selectedRoom?.name || 'Group')?.charAt(0).toUpperCase()}</div>
+                  {selectedUser && onlineUsers.includes(selectedUser.id) ? (
+                    <span className="status-dot online" />
+                  ) : selectedUser ? (
+                    <span className="status-dot offline" />
+                  ) : null}
                 </div>
-              </React.Fragment>
-            );
-          })
-        ) : (
-          <div className="no-messages">
-            <Text type="secondary">No messages in this group yet. Start chatting!</Text>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
+                <div>
+                  <Title level={4} style={{ margin: 0, color: '#8a2be2', fontWeight: 'bold' }}>
+                    {selectedUser ? selectedUser.username : selectedRoom?.name || 'Unnamed Group'}
+                  </Title>
+                  <Text type="secondary" style={{ color: '#e6e6e6' }}>
+                    {selectedUser
+                      ? onlineUsers.includes(selectedUser.id)
+                        ? 'Active Now'
+                        : `Last Seen ${new Date(selectedUser.lastSeen || Date.now()).toLocaleString()}`
+                      : 'Group Chat'}
+                  </Text>
+                </div>
+              </Space>
+              <Space>
+                <Button icon={<SearchOutlined />} type="text" />
+                <Dropdown overlay={menu} trigger={['click']}>
+                  <Button icon={<MoreOutlined />} type="text" />
+                </Dropdown>
+              </Space>
+            </motion.div>
+            <div className="messages-container" ref={messagesContainerRef}>
+              {messages.length > 0 ? (
+                messages.map((msg, index) => {
+                  const showDateSeparator =
+                    index === 0 || new Date(messages[index - 1].createdAt).toDateString() !== new Date(msg.createdAt).toDateString();
+                  return (
+                    <React.Fragment key={msg._id || index}>
+                      {showDateSeparator && (
+                        <div className="date-separator">
+                          <Text type="secondary">{new Date(msg.createdAt).toUTCString()}</Text>
+                        </div>
+                      )}
+                      <div className={`message ${msg.senderId === userId ? 'sent' : 'received'}`}>
+                        {msg.image && <img src={msg.image} alt="message attachment" className="message-image" />}
+                        {msg.text && <Text className="message-text">{msg.text}</Text>}
+                        <div className="timestamp">
+                          <Text>{new Date(msg.createdAt).toLocaleTimeString()}</Text>
+                          {msg.senderId === userId && (
+                            <span className={`tick ${msg.status === 'delivered' ? 'double' : 'single'}`}>
+                              {msg.status === 'delivered' ? '✓✓' : '✓'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </React.Fragment>
+                  );
+                })
+              ) : (
+                <div className="no-messages">
+                  <Text type="secondary">No messages in this group yet. Start chatting!</Text>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
             <motion.div className="input-area" initial={{ y: 50 }} animate={{ y: 0 }} transition={{ type: 'spring', stiffness: 100 }}>
               <Space.Compact className="input-compact">
                 <Button icon={<SmileOutlined />} type="text" onClick={() => setShowEmojiPicker(!showEmojiPicker)} />
@@ -654,44 +660,36 @@ const ChatPage: React.FC = () => {
       </div>
 
       {(selectedUser || selectedRoomId) && (
-      <motion.div className="right-sidebar" initial={{ x: 300 }} animate={{ x: 0 }} transition={{ type: 'spring', stiffness: 100, damping: 20 }}>
-        <div className="user-profile">
-          <Avatar src={selectedUser?.profilePicture} icon={<UserOutlined />} size={80} />
-          <Title level={4}>{selectedUser ? selectedUser.username : selectedRoom?.name || 'Group Chat'}</Title>
-          <Text type="secondary">
-            {selectedUser
-              ? onlineUsers.includes(selectedUser.id)
-                ? 'Active Now'
-                : `Last Seen ${new Date(selectedUser.lastSeen || Date.now()).toLocaleString()}`
-              : 'Group Chat'}
-          </Text>
-        </div>
-        {(selectedRoomId && selectedRoom?.isGroup) && (
-          <div className="group-members">
-            <Text strong>Group Members</Text>
-            {selectedRoom?.members?.length > 0 ? (
-              selectedRoom.members.map((memberId: string) => {
-                const member = users.find((u) => u.id === memberId);
-                return member ? (
-                  <div key={member.id} className="member-item">
-                    <Avatar src={member.profilePicture} icon={<UserOutlined />} size={40} />
-                    <Text>{member.username}</Text>
-                  </div>
-                ) : null;
-              })
-            ) : (
-              <Text type="secondary">No members found</Text>
-            )}
+        <motion.div className="right-sidebar" initial={{ x: 300 }} animate={{ x: 0 }} transition={{ type: 'spring', stiffness: 100, damping: 20 }}>
+          <div className="user-profile">
+            <Avatar src={selectedUser?.profilePicture} icon={<UserOutlined />} size={80} />
+            <Title level={4}>{selectedUser ? selectedUser.username : selectedRoom?.name || 'Group Chat'}</Title>
+            <Text type="secondary">
+              {selectedUser
+                ? onlineUsers.includes(selectedUser.id)
+                  ? 'Active Now'
+                  : `Last Seen ${new Date(selectedUser.lastSeen || Date.now()).toLocaleString()}`
+                : 'Group Chat'}
+            </Text>
+          </div>
+          {(selectedRoomId && selectedRoom?.isGroup) && (
+            <div className="group-members">
+              <Text strong>Group Members</Text>
+              {selectedRoom?.members?.length > 0 ? (
+                selectedRoom.members.map((memberId: string) => {
+                  const member = users.find((u) => u.id === memberId);
+                  return member ? (
+                    <div key={member.id} className="member-item">
+                      <Avatar src={member.profilePicture} icon={<UserOutlined />} size={40} />
+                      <Text>{member.username}</Text>
+                    </div>
+                  ) : null;
+                })
+              ) : (
+                <Text type="secondary">No members found</Text>
+              )}
             </div>
           )}
-          <div className="shared-media">
-            <Text strong>Shared Media</Text>
-            <Space>
-              <div className="media-preview" style={{ backgroundImage: 'url(https://example.com/media1.jpg)' }} />
-              <div className="media-preview" style={{ backgroundImage: 'url(https://example.com/media2.jpg)' }} />
-              <div className="media-preview" style={{ backgroundImage: 'url(https://example.com/media3.jpg)' }} />
-            </Space>
-          </div>
           <div className="customize-section">
             <Text strong>Customize</Text>
             <div className="customize-option">
@@ -702,35 +700,6 @@ const ChatPage: React.FC = () => {
                 <motion.div className="theme-circle red" whileHover={{ scale: 1.2 }} onClick={() => handleBackgroundChange('#ff4d4f')} />
                 <motion.div className="theme-circle purple" whileHover={{ scale: 1.2 }} onClick={() => handleBackgroundChange('#8a2be2')} />
                 <motion.div className="theme-circle orange" whileHover={{ scale: 1.2 }} onClick={() => handleBackgroundChange('#fa8c16')} />
-              </Space>
-            </div>
-            <div className="customize-option">
-              <Text>Change Background</Text>
-              <Space>
-                <motion.div
-                  className="background-option"
-                  style={{ backgroundImage: 'url(https://example.com/background1.jpg)' }}
-                  whileHover={{ scale: 1.1 }}
-                  onClick={() => handleBackgroundChange('url(https://example.com/background1.jpg)')}
-                />
-                <motion.div
-                  className="background-option"
-                  style={{ backgroundImage: 'url(https://example.com/background2.jpg)' }}
-                  whileHover={{ scale: 1.1 }}
-                  onClick={() => handleBackgroundChange('url(https://example.com/background2.jpg)')}
-                />
-                <motion.div
-                  className="background-option"
-                  style={{ backgroundImage: 'url(https://example.com/background3.jpg)' }}
-                  whileHover={{ scale: 1.1 }}
-                  onClick={() => handleBackgroundChange('url(https://example.com/background3.jpg)')}
-                />
-                <motion.div
-                  className="background-option"
-                  style={{ backgroundImage: 'url(https://example.com/background4.jpg)' }}
-                  whileHover={{ scale: 1.1 }}
-                  onClick={() => handleBackgroundChange('url(https://example.com/background4.jpg)')}
-                />
               </Space>
             </div>
           </div>
