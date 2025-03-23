@@ -8,40 +8,25 @@ export class CalendarEventEntity {
 
   @ManyToOne(() => CalendarEntity, (calendar) => calendar.events)
   @JoinColumn({ name: 'calendar_id' })
-  calendar: CalendarEntity; 
+  calendar: CalendarEntity;
 
   @Column()
   title: string;
 
-  @Column({ default: '' })
+  @Column({ nullable: true })
   description: string;
 
   @Column()
-  startDate: Date;
+  startDate: Date; // Changed to match entity (was startTime in model)
 
   @Column()
-  endDate: Date;
+  endDate: Date;   // Changed to match entity (was endTime in model)
 
-  @Column({ default: '' })
-  location: string;
-
-  @Column({nullable: true })
-  reminder: Date;
-
-  @Column({ default: false })
-  isAllDay: boolean;
-
-  @Column({ type: 'json', nullable: true })  // ✅ Use JSON instead of array
-  participants: string[];
-
-  @Column({ type: 'boolean', default: false })  // ✅ Explicit boolean type
-  isRecurring: boolean;
+  @Column()
+  meetLink: string; // Added for Google Meet
 
   @Column({ type: 'json', nullable: true })
-  recurringRule: any; 
-
-  @Column({ type: 'enum', enum: ['upcoming', 'completed', 'cancelled'], default: 'upcoming' })  // ✅ Enum type corrected
-  status: 'upcoming' | 'completed' | 'cancelled';
+  participants: string[]; // Array of participant user IDs
 
   @CreateDateColumn()
   createdAt: Date;

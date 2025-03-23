@@ -4,3 +4,4 @@ export * from './create-calendar-event-model';
 export * from './create-calender-model';
 export * from './update-calender-event-model';
 export * from './update-calender-model';
+export * from './meeting-event-model'

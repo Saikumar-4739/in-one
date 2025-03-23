@@ -6,6 +6,7 @@ export class CreateNoteModel {
     isPinned?: boolean;
     voiceNoteUrl?: string;
     userId: string; 
+    sharedWith?: string[];
   
     constructor(
       title: string,
@@ -14,7 +15,8 @@ export class CreateNoteModel {
       attachments?: string[],
       isArchived?: boolean,
       isPinned?: boolean,
-      voiceNoteUrl?: string
+      voiceNoteUrl?: string,
+      sharedWith?: string[]
     ) {
       this.title = title;
       this.content = content;
@@ -23,6 +25,7 @@ export class CreateNoteModel {
       this.isArchived = isArchived;
       this.isPinned = isPinned;
       this.voiceNoteUrl = voiceNoteUrl;
+      this.sharedWith = sharedWith;
     }
   }
   

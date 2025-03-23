@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { CreateNewsModel, UpdateNewsModel, CreateCommentModel } from '@in-one/shared-models';
 import { Button, Card, message, Space, Typography, Input, Modal, Form, Pagination, List, Upload } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, LikeOutlined, DislikeOutlined, CommentOutlined, UploadOutlined, } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, LikeOutlined, DislikeOutlined, CommentOutlined, UploadOutlined } from '@ant-design/icons';
 import { NewsHelpService } from '@in-one/shared-services';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { UploadFile } from 'antd/es/upload/interface';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
+
+// Animation variants
+const cardVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 },
+  hover: { scale: 1.03, boxShadow: '0 8px 24px rgba(0,0,0,0.1)' }
+};
 
 const NewsPage: React.FC = () => {
   const [news, setNews] = useState<any[]>([]);
@@ -27,23 +34,26 @@ const NewsPage: React.FC = () => {
   const [updateForm] = Form.useForm();
   const [commentForm] = Form.useForm();
   const newsService = new NewsHelpService();
+  const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
     fetchNews();
   }, [currentPage]);
 
   const fetchNews = async () => {
+    setLoading(true);
     try {
       const response = await newsService.getAllNews(currentPage, pageSize);
-      if (response.status === true) {
-        setNews(response.data.news || response.data);
-        setTotal(response.data.total || response.data.length);
+      if (response.status) {
+        setNews(response.data.news || []);
+        setTotal(response.data.total || 0);
       } else {
-        message.error('Failed to fetch news');
+        message.error(response.internalMessage || 'Failed to fetch news');
       }
-    } catch (error) {
-      console.error('Error fetching news:', error);
-      message.error('An error occurred while fetching news');
+    } catch (error: any) {
+      message.error(error.message || 'An error occurred while fetching news');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -53,45 +63,32 @@ const NewsPage: React.FC = () => {
       return;
     }
 
-    let imageBase64: string[] = [];
-    if (fileList.length > 0 && fileList[0].originFileObj) {
-      try {
-        const base64DataUrl = await fileToBase64(fileList[0].originFileObj);
-        console.log('Full Base64 Data URL:', base64DataUrl); // Log full data URL for debugging
-        const base64String = base64DataUrl.split(',')[1]; // Strip prefix (e.g., "data:image/jpeg;base64,")
-        console.log('Stripped Base64 String:', base64String); // Log stripped Base64 for debugging
-        imageBase64 = [base64String];
-      } catch (error) {
-        console.error('Error converting image to Base64:', error);
-        message.error('Failed to process the uploaded image');
-        return;
-      }
-    } else {
-      console.warn('No image file selected or file object missing');
-    }
-
-    const createModel: CreateNewsModel = new CreateNewsModel(
-      values.title || '',
-      values.content || '',
-      userId,
-      values.summary,
-      values.category || '',
-      values.tags ? values.tags.split(',').map((tag: string) => tag.trim()) : undefined,
-      imageBase64.length > 0 ? imageBase64 : undefined,
-      values.thumbnail,
-      'draft',
-      'public',
-      false,
-      false,
-      new Date()
-    );
-
-    console.log('CreateNewsModel:', createModel); // Log the model to verify data
-
+    setLoading(true);
     try {
+      let imageBase64: string[] = [];
+      if (fileList.length > 0 && fileList[0].originFileObj) {
+        const base64DataUrl = await fileToBase64(fileList[0].originFileObj);
+        imageBase64 = [base64DataUrl.split(',')[1]];
+      }
+
+      const createModel: CreateNewsModel = new CreateNewsModel(
+        values.title,
+        values.content,
+        userId,
+        values.summary || '',
+        values.category,
+        values.tags ? values.tags.split(',').map((tag: string) => tag.trim()) : [],
+        imageBase64.length > 0 ? imageBase64 : undefined,
+        values.thumbnail || '',
+        'draft',
+        'public',
+        false,
+        false,
+        new Date()
+      );
+
       const response = await newsService.createNews(createModel);
-      console.log('Backend Response:', response); // Log the response for debugging
-      if (response.status === true) {
+      if (response.status) {
         setIsCreateModalVisible(false);
         createForm.resetFields();
         setFileList([]);
@@ -100,9 +97,10 @@ const NewsPage: React.FC = () => {
       } else {
         message.error(response.internalMessage || 'Failed to create news');
       }
-    } catch (error) {
-      console.error('Error creating news:', error);
-      message.error('An error occurred while creating news');
+    } catch (error: any) {
+      message.error(error.message || 'An error occurred while creating news');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -111,14 +109,16 @@ const NewsPage: React.FC = () => {
       message.error('User ID or News ID missing');
       return;
     }
-    const updateModel: UpdateNewsModel = {
-      title: values.title,
-      content: values.content,
-      newsId: editingNewsId,
-    };
+
+    setLoading(true);
     try {
+      const updateModel: UpdateNewsModel = {
+        title: values.title,
+        content: values.content,
+        newsId: editingNewsId,
+      };
       const response = await newsService.updateNews(editingNewsId, updateModel);
-      if (response.status === true) {
+      if (response.status) {
         setIsUpdateModalVisible(false);
         setEditingNewsId(null);
         updateForm.resetFields();
@@ -127,24 +127,28 @@ const NewsPage: React.FC = () => {
       } else {
         message.error(response.internalMessage || 'Failed to update news');
       }
-    } catch (error) {
-      console.error('Error updating news:', error);
-      message.error('An error occurred while updating news');
+    } catch (error: any) {
+      message.error(error.message || 'An error occurred while updating news');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDeleteNews = async (id: string) => {
+    setLoading(true);
     try {
       const response = await newsService.deleteNews(id);
-      if (response.status === true) {
+      if (response.status) {
         fetchNews();
+        setIsFullViewModalVisible(false);
         message.success('News deleted successfully');
       } else {
         message.error(response.internalMessage || 'Failed to delete news');
       }
-    } catch (error) {
-      console.error('Error deleting news:', error);
-      message.error('An error occurred while deleting news');
+    } catch (error: any) {
+      message.error(error.message || 'An error occurred while deleting news');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -153,17 +157,20 @@ const NewsPage: React.FC = () => {
       message.error('Please log in to like news');
       return;
     }
+
+    setLoading(true);
     try {
       const response = await newsService.toggleLikeNews(id);
-      if (response.status === true) {
+      if (response.status) {
         fetchNews();
         message.success(`News ${isLiked ? 'unliked' : 'liked'} successfully`);
       } else {
         message.error(response.internalMessage || `Failed to ${isLiked ? 'unlike' : 'like'} news`);
       }
-    } catch (error) {
-      console.error(`Error ${isLiked ? 'unliking' : 'liking'} news:`, error);
-      message.error(`An error occurred while ${isLiked ? 'unliking' : 'liking'} the news`);
+    } catch (error: any) {
+      message.error(error.message || `An error occurred while ${isLiked ? 'unliking' : 'liking'} news`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -172,14 +179,16 @@ const NewsPage: React.FC = () => {
       message.error('User ID or News ID missing');
       return;
     }
-    const commentModel: CreateCommentModel = {
-      authorId: userId,
-      newsId: commentNewsId,
-      content: values.content,
-    };
+
+    setLoading(true);
     try {
+      const commentModel: CreateCommentModel = {
+        authorId: userId,
+        newsId: commentNewsId,
+        content: values.content,
+      };
       const response = await newsService.addComment(commentModel);
-      if (response.status === true) {
+      if (response.status) {
         setIsCommentModalVisible(false);
         commentForm.resetFields();
         fetchNews();
@@ -187,24 +196,27 @@ const NewsPage: React.FC = () => {
       } else {
         message.error(response.internalMessage || 'Failed to add comment');
       }
-    } catch (error) {
-      console.error('Error adding comment:', error);
-      message.error('An error occurred while adding the comment');
+    } catch (error: any) {
+      message.error(error.message || 'An error occurred while adding comment');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleDeleteComment = async (commentId: string) => {
+    setLoading(true);
     try {
       const response = await newsService.deleteComment(commentId);
-      if (response.status === true) {
+      if (response.status) {
         fetchNews();
         message.success('Comment deleted successfully');
       } else {
         message.error(response.internalMessage || 'Failed to delete comment');
       }
-    } catch (error) {
-      console.error('Error deleting comment:', error);
-      message.error('An error occurred while deleting the comment');
+    } catch (error: any) {
+      message.error(error.message || 'An error occurred while deleting comment');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -220,7 +232,6 @@ const NewsPage: React.FC = () => {
   const handleComment = (newsId: string) => {
     setCommentNewsId(newsId);
     setIsCommentModalVisible(true);
-    commentForm.resetFields();
   };
 
   const handleFullView = (newsItem: any) => {
@@ -232,12 +243,10 @@ const NewsPage: React.FC = () => {
     newsItem.images && newsItem.images.length > 0 ? newsItem.images[0] : null;
 
   const uploadProps = {
-    onRemove: (file: UploadFile) => {
-      setFileList(fileList.filter((item) => item.uid !== file.uid));
-    },
+    onRemove: () => setFileList([]),
     beforeUpload: (file: UploadFile) => {
       setFileList([file]);
-      return false; // Prevent automatic upload
+      return false;
     },
     fileList,
     accept: 'image/*',
@@ -254,228 +263,199 @@ const NewsPage: React.FC = () => {
   };
 
   return (
-    <div style={{ width: '100%', height: '100vh', padding: '20px', backgroundColor: '#fff', overflow: 'auto', scrollbarWidth: "none" }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        {/* Header Section */}
+    <div style={{
+      width: '100%',
+      minHeight: '100vh',
+      backgroundColor: "#fff",
+      padding: '80px 20px 20px',
+    }}>
+      <div style={{
+        maxWidth: '1240px',
+        margin: '0 auto',
+        background: '#fff',
+        borderRadius: '12px',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+        padding: '24px',
+      }}>
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}
+          transition={{ duration: 0.6 }}
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '32px',
+          }}
         >
-          <Title level={2} style={{ margin: 0, color: '#000' }}>
-            Latest News
+          <Title level={2} style={{ margin: 0, color: '#1a1a1a' }}>
+        News
           </Title>
           {userId && (
             <Button
               type="primary"
               icon={<PlusOutlined />}
               onClick={() => setIsCreateModalVisible(true)}
-              style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', borderRadius: '8px' }}
+              style={{
+                background: 'linear-gradient(45deg, #1890ff, #40c4ff)',
+                border: 'none',
+              }}
             >
               Create News
             </Button>
           )}
         </motion.div>
 
-        {/* News List with Square Cards */}
         <AnimatePresence>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '15px' }}>
-            {news.map((newsItem) => (
-              <motion.div
-                key={newsItem.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.3 }}
-                onClick={() => handleFullView(newsItem)}
-              >
-                <Card
-                  hoverable
-                  cover={
-                    getNewsImage(newsItem) ? (
-                      <img
-                        alt="News Image"
-                        src={getNewsImage(newsItem)}
-                        style={{
-                          width: '250px',
-                          height: '250px',
-                          objectFit: 'cover',
-                          borderRadius: '8px 8px 0 0',
-                        }}
-                      />
-                    ) : (
-                      <div
-                        style={{
-                          width: '250px',
-                          height: '250px',
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <Text>Loading...</Text>
+            </div>
+          ) : (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: '24px',
+            }}>
+              {news.map((newsItem) => (
+                <motion.div
+                  key={newsItem.id}
+                  variants={cardVariants}
+                  initial="hidden"
+                  animate="visible"
+                  whileHover="hover"
+                  transition={{ duration: 0.4 }}
+                  onClick={() => handleFullView(newsItem)}
+                >
+                  <Card
+                    hoverable
+                    cover={
+                      getNewsImage(newsItem) ? (
+                        <img
+                          alt={newsItem.title}
+                          src={getNewsImage(newsItem)}
+                          style={{
+                            width: '100%',
+                            height: '200px',
+                            objectFit: 'cover',
+                            borderRadius: '12px 12px 0 0',
+                          }}
+                        />
+                      ) : (
+                        <div style={{
+                          width: '100%',
+                          height: '200px',
+                          background: '#f0f2f5',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          backgroundColor: '#f0f0f0',
-                          color: '#bfbfbf',
-                          fontSize: '18px',
-                          borderRadius: '8px 8px 0 0',
-                          textAlign: 'center',
-                        }}
-                      >
-                        <span>News Image</span>
-                      </div>
-                    )
-                  }
-                  style={{
-                    width: '250px',
-                    borderRadius: '8px',
-                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
-                    cursor: 'pointer',
-                  }}
-                  bodyStyle={{ padding: '10px' }}
-                >
-                  <Text strong style={{ color: '#1890ff', fontSize: '14px' }}>
-                    {newsItem.title.slice(0, 50)}{newsItem.title.length > 50 ? '...' : ''}
-                  </Text>
-                  <div style={{ marginTop: '5px', display: 'flex', justifyContent: 'space-between' }}>
-                    <Text style={{ color: '#fa8c16' }}>
-                      <LikeOutlined /> {newsItem.likes || 0}
+                          borderRadius: '12px 12px 0 0',
+                        }}>
+                          No Image
+                        </div>
+                      )
+                    }
+                    style={{
+                      borderRadius: '12px',
+                      border: 'none',
+                      overflow: 'hidden',
+                    }}
+                    bodyStyle={{ padding: '16px' }}
+                  >
+                    <Text strong style={{ display: 'block', marginBottom: '8px' }}>
+                      {newsItem.title.slice(0, 60)}{newsItem.title.length > 60 ? '...' : ''}
                     </Text>
-                    <Text style={{ color: '#eb2f96' }}>
-                      <CommentOutlined /> {newsItem.comments?.length || 0}
-                    </Text>
-                  </div>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
+                    <Space>
+                      <Text><LikeOutlined /> {newsItem.likes || 0}</Text>
+                      <Text><CommentOutlined /> {newsItem.comments?.length || 0}</Text>
+                    </Space>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </AnimatePresence>
 
-        {/* Pagination */}
         <Pagination
           current={currentPage}
           pageSize={pageSize}
           total={total}
           onChange={(page) => setCurrentPage(page)}
-          style={{ marginTop: '20px', textAlign: 'center', color: '#1890ff' }}
+          style={{ marginTop: '32px', textAlign: 'center' }}
+          disabled={loading}
         />
 
-        {/* Create News Modal */}
+        {/* Create Modal */}
         <Modal
-          title={<Text strong style={{ color: '#ff4d4f' }}>Create News</Text>}
+          title="Create News"
           visible={isCreateModalVisible}
           onCancel={() => setIsCreateModalVisible(false)}
           footer={null}
-          bodyStyle={{ padding: '24px', backgroundColor: '#fff' }}
         >
           <Form form={createForm} onFinish={handleCreateNews} layout="vertical">
-            <Form.Item
-              name="title"
-              label="Title"
-              rules={[{ required: true, message: 'Please enter a title' }]}
-            >
-              <Input placeholder="News Title" />
+            <Form.Item name="title" label="Title" rules={[{ required: true }]}>
+              <Input />
             </Form.Item>
-            <Form.Item
-              name="content"
-              label="Content"
-              rules={[{ required: true, message: 'Please enter content' }]}
-            >
-              <TextArea rows={4} placeholder="News Content" />
+            <Form.Item name="content" label="Content" rules={[{ required: true }]}>
+              <TextArea rows={4} />
             </Form.Item>
-            <Form.Item
-              name="category"
-              label="Category"
-              rules={[{ required: true, message: 'Please enter a category' }]}
-            >
-              <Input placeholder="e.g., Science, Technology" />
+            <Form.Item name="category" label="Category" rules={[{ required: true }]}>
+              <Input />
             </Form.Item>
-            <Form.Item name="tags" label="Tags (comma-separated)">
-              <Input placeholder="e.g., news, update, science" />
+            <Form.Item name="tags" label="Tags">
+              <Input placeholder="comma-separated tags" />
             </Form.Item>
-            <Form.Item name="image" label="Upload Image">
+            <Form.Item name="image" label="Image">
               <Upload {...uploadProps}>
-                <Button icon={<UploadOutlined />}>Select Image</Button>
+                <Button icon={<UploadOutlined />}>Upload</Button>
               </Upload>
             </Form.Item>
-            <Form.Item>
-              <Button
-                type="primary"
-                htmlType="submit"
-                block
-                style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', borderRadius: '8px' }}
-              >
-                Create
-              </Button>
-            </Form.Item>
+            <Button type="primary" htmlType="submit" loading={loading} block>
+              Create
+            </Button>
           </Form>
         </Modal>
 
-        {/* Update News Modal */}
+        {/* Update Modal */}
         <Modal
-          title={<Text strong style={{ color: '#ff4d4f' }}>Edit News</Text>}
+          title="Update News"
           visible={isUpdateModalVisible}
           onCancel={() => setIsUpdateModalVisible(false)}
           footer={null}
-          bodyStyle={{ backgroundColor: '#fff' }}
         >
           <Form form={updateForm} onFinish={handleUpdateNews} layout="vertical">
-            <Form.Item
-              name="title"
-              label="Title"
-              rules={[{ required: true, message: 'Please enter a title' }]}
-            >
-              <Input placeholder="News Title" />
+            <Form.Item name="title" label="Title" rules={[{ required: true }]}>
+              <Input />
             </Form.Item>
-            <Form.Item
-              name="content"
-              label="Content"
-              rules={[{ required: true, message: 'Please enter content' }]}
-            >
-              <TextArea rows={4} placeholder="News Content" />
+            <Form.Item name="content" label="Content" rules={[{ required: true }]}>
+              <TextArea rows={4} />
             </Form.Item>
-            <Form.Item>
-              <Button
-                type="primary"
-                htmlType="submit"
-                block
-                style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', borderRadius: '8px' }}
-              >
-                Update
-              </Button>
-            </Form.Item>
+            <Button type="primary" htmlType="submit" loading={loading} block>
+              Update
+            </Button>
           </Form>
         </Modal>
 
         {/* Comment Modal */}
         <Modal
-          title={<Text strong style={{ color: '#ff4d4f' }}>Add Comment</Text>}
+          title="Add Comment"
           visible={isCommentModalVisible}
           onCancel={() => setIsCommentModalVisible(false)}
           footer={null}
-          bodyStyle={{ backgroundColor: '#fff' }}
         >
           <Form form={commentForm} onFinish={handleAddComment} layout="vertical">
-            <Form.Item
-              name="content"
-              label="Comment"
-              rules={[{ required: true, message: 'Please enter a comment' }]}
-            >
-              <TextArea rows={4} placeholder="Your comment" />
+            <Form.Item name="content" label="Comment" rules={[{ required: true }]}>
+              <TextArea rows={4} />
             </Form.Item>
-            <Form.Item>
-              <Button
-                type="primary"
-                htmlType="submit"
-                block
-                style={{ backgroundColor: '#52c41a', borderColor: '#52c41a', borderRadius: '8px' }}
-              >
-                Add Comment
-              </Button>
-            </Form.Item>
+            <Button type="primary" htmlType="submit" loading={loading} block>
+              Add Comment
+            </Button>
           </Form>
         </Modal>
 
-        {/* Full View News Modal */}
+        {/* Full View Modal */}
         <Modal
-          title={<Text strong style={{ color: '#ff4d4f' }}>{selectedNews?.title}</Text>}
+          title={selectedNews?.title}
           visible={isFullViewModalVisible}
           onCancel={() => setIsFullViewModalVisible(false)}
           footer={[
@@ -483,14 +463,13 @@ const NewsPage: React.FC = () => {
               <Button
                 icon={selectedNews?.isLiked ? <DislikeOutlined /> : <LikeOutlined />}
                 onClick={() => handleToggleLike(selectedNews.id, selectedNews.isLiked)}
-                style={{ color: '#fa8c16' }}
+                loading={loading}
               >
                 {selectedNews?.likes || 0}
               </Button>
               <Button
                 icon={<CommentOutlined />}
-                onClick={() => handleComment(selectedNews.id)}
-                style={{ color: '#eb2f96' }}
+                onClick={() => handleComment(selectedNews?.id)}
               >
                 {selectedNews?.comments?.length || 0}
               </Button>
@@ -499,7 +478,6 @@ const NewsPage: React.FC = () => {
                   <Button
                     icon={<EditOutlined />}
                     onClick={() => handleEdit(selectedNews)}
-                    style={{ color: '#1890ff' }}
                   >
                     Edit
                   </Button>
@@ -507,6 +485,7 @@ const NewsPage: React.FC = () => {
                     icon={<DeleteOutlined />}
                     danger
                     onClick={() => handleDeleteNews(selectedNews.id)}
+                    loading={loading}
                   >
                     Delete
                   </Button>
@@ -515,73 +494,48 @@ const NewsPage: React.FC = () => {
             </Space>,
           ]}
           width="80%"
-          bodyStyle={{ padding: '24px', backgroundColor: '#fff', maxHeight: '70vh', overflowY: 'auto' }}
         >
           {selectedNews && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
-              {getNewsImage(selectedNews) ? (
+            <>
+              {getNewsImage(selectedNews) && (
                 <img
                   src={getNewsImage(selectedNews)}
                   alt={selectedNews.title}
-                  style={{ width: '600px', height: '300px', objectFit: 'cover', borderRadius: '8px', marginBottom: '15px' }}
+                  style={{ width: '100%', maxHeight: '400px', objectFit: 'cover', marginBottom: '16px' }}
                 />
-              ) : (
-                <div
-                  style={{
-                    width: '600px',
-                    height: '300px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: '#f0f0f0',
-                    color: '#bfbfbf',
-                    fontSize: '20px',
-                    borderRadius: '8px',
-                    marginBottom: '15px',
-                  }}
-                >
-                  No Image
-                </div>
               )}
-              <Text strong style={{ color: '#1890ff' }}>Category:</Text>{' '}
-              <Text>{selectedNews.category || 'Uncategorized'}</Text>
-              <br />
-              <Text strong style={{ color: '#1890ff' }}>Published:</Text>{' '}
-              <Text>{new Date(selectedNews.publishedAt).toLocaleString()}</Text>
-              <br />
-              <Text strong style={{ color: '#1890ff' }}>Content:</Text>
-              <p style={{ marginTop: '10px', color: '#595959' }}>{selectedNews.content}</p>
-              {selectedNews.tags && (
+              <Text strong>Category:</Text> <Text>{selectedNews.category}</Text><br />
+              <Text strong>Published:</Text> <Text>{new Date(selectedNews.publishedAt).toLocaleString()}</Text><br />
+              <Text strong>Content:</Text> <p>{selectedNews.content}</p>
+              {selectedNews.tags?.length > 0 && (
                 <div>
-                  <Text strong style={{ color: '#1890ff' }}>Tags:</Text>{' '}
+                  <Text strong>Tags:</Text>{' '}
                   {selectedNews.tags.map((tag: string) => (
-                    <span key={tag} style={{ marginRight: '8px', color: '#722ed1' }}>
-                      #{tag}
-                    </span>
+                    <span key={tag} style={{ marginRight: '8px' }}>#{tag}</span>
                   ))}
                 </div>
               )}
-              {selectedNews.comments && selectedNews.comments.length > 0 && (
+              {selectedNews.comments?.length > 0 && (
                 <List
-                  header={<Text strong style={{ color: '#eb2f96' }}>Comments</Text>}
+                  header={<Text strong>Comments</Text>}
                   dataSource={selectedNews.comments}
                   renderItem={(comment: any) => (
                     <List.Item
                       actions={
                         comment.userId === userId
-                          ? [<Button type="link" onClick={() => handleDeleteComment(comment.id)} style={{ color: '#ff4d4f' }}>Delete</Button>]
+                          ? [<Button type="link" onClick={() => handleDeleteComment(comment.id)}>Delete</Button>]
                           : []
                       }
                     >
                       <List.Item.Meta
-                        title={<Text style={{ color: '#fa8c16' }}>{comment.userName || 'Anonymous'}</Text>}
-                        description={<Text style={{ color: '#595959' }}>{comment.content}</Text>}
+                        title={comment.userName || 'Anonymous'}
+                        description={comment.content}
                       />
                     </List.Item>
                   )}
                 />
               )}
-            </motion.div>
+            </>
           )}
         </Modal>
       </div>

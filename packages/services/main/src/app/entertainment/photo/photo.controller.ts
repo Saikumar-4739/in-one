@@ -3,7 +3,7 @@ import { CommonResponse, CreatePhotoModel, LikeRequestModel, PhotoIdRequestModel
 import { ApiTags, ApiBody, ApiConsumes, ApiOperation } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PhotoService } from './photo.service';
-import { multerOptions } from '../video/multer.config';
+import { photMulterOptions } from './photo.multer.config';
 
 @ApiTags('Photos')
 @Controller('photos')
@@ -11,7 +11,8 @@ export class PhotoController {
   constructor(private readonly photoService: PhotoService) {}
 
   @Post('uploadPhoto')
-  @UseInterceptors(FileInterceptor('file', multerOptions))
+  @UseInterceptors(FileInterceptor('file', photMulterOptions))
+  @ApiConsumes('multipart/form-data')
   async uploadPhoto( @UploadedFile() file: Express.Multer.File, @Body() reqModel: CreatePhotoModel & { userId: string }): Promise<CommonResponse> {
     try {
       return await this.photoService.createPhoto(reqModel, file);

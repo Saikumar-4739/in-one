@@ -13,16 +13,15 @@ export class LoggerMiddleware implements NestMiddleware {
       })
     ),
     transports: [
-      new winston.transports.Console(), // Logs to terminal
-      new winston.transports.File({ filename: '../../../../documents/logs/http.log' }) // Logs to file
-    ]
+      new winston.transports.Console(),
+      new winston.transports.File({ filename: 'http.log' }) 
+    ],
   });
 
   use(req: Request, res: Response, next: NextFunction) {
-    const { password, ...safeBody } = req.body; // Remove sensitive data
-    // const logMessage = `Request to ${req.method} ${req.url} with body: ${JSON.stringify(safeBody)}`;
-
-    // this.logger.info(logMessage); // Logs to both console and file
+    const { password, ...safeBody } = req.body;
+    const logMessage = `Request to ${req.method} ${req.url} with body: ${JSON.stringify(safeBody)}`;
+    // this.logger.info(logMessage);
     next();
   }
 }

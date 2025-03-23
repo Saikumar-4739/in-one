@@ -1,27 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { CreateNoteModel, UpdateNoteModel } from '@in-one/shared-models';
 import { NotesCalenderHelpService } from '@in-one/shared-services';
-import { Button, Card, Input, Form, Space, Typography, Badge, message, Switch } from 'antd';
+import { Button, Card, Input, Form, Space, Typography, Badge, message, Select, Modal } from 'antd';
 import {
   PlusOutlined,
   EditOutlined,
-  DeleteOutlined,
   PushpinOutlined,
   FolderOutlined,
   SearchOutlined,
-  UploadOutlined,
+  ShareAltOutlined,
 } from '@ant-design/icons';
+import { motion, AnimatePresence } from 'framer-motion';
+import './notes-page.css';
 
 const { Title } = Typography;
 const { TextArea } = Input;
+const { Option } = Select;
 
 const NotesPage: React.FC = () => {
   const [notes, setNotes] = useState<any[]>([]);
   const [form] = Form.useForm();
+  const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedColor, setSelectedColor] = useState<string>('#ffffff');
+  const [previewNote, setPreviewNote] = useState<any | null>(null);
   const [userId] = useState<string | null>(() => localStorage.getItem('userId') || null);
   const notesService = new NotesCalenderHelpService();
+
+  const colors = [
+    { name: 'White', value: '#ffffff' },
+    { name: 'Yellow', value: '#fff9b1' },
+    { name: 'Orange', value: '#ffcc99' },
+    { name: 'Green', value: '#ccffcc' },
+    { name: 'Blue', value: '#cce5ff' },
+  ];
 
   useEffect(() => {
     if (userId) {
@@ -30,12 +43,9 @@ const NotesPage: React.FC = () => {
   }, [userId]);
 
   const fetchNotes = async () => {
-    if (!userId) {
-      console.error('No user ID found in localStorage');
-      return;
-    }
+    if (!userId) return;
     try {
-      const response = await notesService.findAll(userId);
+      const response = await notesService.getUserNotes(userId);
       if (response.status === true) {
         setNotes(response.data);
       } else {
@@ -50,22 +60,17 @@ const NotesPage: React.FC = () => {
   const handleCreateOrUpdate = async (values: {
     title: string;
     content: string;
-    attachments?: string[];
-    isPinned?: boolean;
-    isArchived?: boolean;
-    voiceNoteUrl?: string;
+    color?: string;
   }) => {
-    if (!userId) {
-      console.error('No user ID found in localStorage');
-      return;
-    }
+    if (!userId) return;
     try {
       if (editingNoteId) {
         const updateNote: UpdateNoteModel = values;
-        const response = await notesService.update(editingNoteId, updateNote);
+        const response = await notesService.updateNote(editingNoteId, updateNote, userId);
         if (response.status === true) {
           setEditingNoteId(null);
           form.resetFields();
+          setIsFormVisible(false);
           fetchNotes();
           message.success('Note updated successfully');
         } else {
@@ -76,14 +81,18 @@ const NotesPage: React.FC = () => {
           values.title,
           values.content,
           userId,
-          values.attachments || [],
-          values.isArchived || false,
-          values.isPinned || false,
-          values.voiceNoteUrl || undefined
+          [], // No attachments
+          false,
+          false,
+          undefined,
+          []
         );
-        const response = await notesService.create(newNote);
+        (newNote as any).color = values.color || '#ffffff';
+        const response = await notesService.createNote(newNote);
         if (response.status === true) {
           form.resetFields();
+          setIsFormVisible(false);
+          setSelectedColor('#ffffff');
           fetchNotes();
           message.success('Note created successfully');
         } else {
@@ -96,44 +105,21 @@ const NotesPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!userId) {
-      console.error('No user ID found in localStorage');
-      return;
-    }
-    try {
-      const response = await notesService.delete(id);
-      if (response.status === true) {
-        fetchNotes();
-        message.success('Note deleted successfully');
-      } else {
-        message.error('Failed to delete note');
-      }
-    } catch (error) {
-      console.error('Error deleting note:', error);
-      message.error('An error occurred while deleting the note');
-    }
-  };
-
   const handleEdit = (note: any) => {
     setEditingNoteId(note.id);
+    setIsFormVisible(true);
     form.setFieldsValue({
       title: note.title,
       content: note.content,
-      attachments: note.attachments?.join(', ') || '', // Convert array to string for display
-      isPinned: note.isPinned,
-      isArchived: note.isArchived,
-      voiceNoteUrl: note.voiceNoteUrl,
+      color: note.color || '#ffffff',
     });
+    setSelectedColor(note.color || '#ffffff');
   };
 
   const handlePinToggle = async (id: string) => {
-    if (!userId) {
-      console.error('No user ID found in localStorage');
-      return;
-    }
+    if (!userId) return;
     try {
-      await notesService.togglePin(id);
+      await notesService.togglePin(id, userId);
       fetchNotes();
       message.success('Pin status updated');
     } catch (error) {
@@ -143,12 +129,9 @@ const NotesPage: React.FC = () => {
   };
 
   const handleArchiveToggle = async (id: string) => {
-    if (!userId) {
-      console.error('No user ID found in localStorage');
-      return;
-    }
+    if (!userId) return;
     try {
-      await notesService.toggleArchive(id);
+      await notesService.toggleArchive(id, userId);
       fetchNotes();
       message.success('Archive status updated');
     } catch (error) {
@@ -157,187 +140,209 @@ const NotesPage: React.FC = () => {
     }
   };
 
+  const handleShare = (note: any) => {
+    message.info(`Note "${note.title}" shared to chat!`);
+    console.log('Shared note:', note);
+  };
+
+  const handlePreview = (note: any) => {
+    setPreviewNote(note);
+  };
+
+  const filteredNotes = notes.filter(
+    (note) =>
+      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      note.content.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (!userId) {
     return (
-      <div
-        style={{
-          width: '100%',
-          height: '100vh',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: '#f0f2f5',
-        }}
-      >
+      <div className="login-prompt">
         <Title level={3}>Please log in to view your notes</Title>
       </div>
     );
   }
 
   return (
-    <div
-      style={{
-        width: '100%',
-        height: '100vh',
-        padding: '20px',
-        backgroundColor: '#fff',
-        overflow: 'auto',
-      }}
-    >
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        {/* Header Section */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '20px',
-          }}
-        >
-          <Title level={2} style={{ margin: 0 }}>
-            Notes
-          </Title>
+    <div className="notes-page">
+      <div className="notes-container">
+        {/* Header */}
+        <div className="notes-header">
+          <Title level={2}>Notes</Title>
           <Space>
             <Input
               prefix={<SearchOutlined />}
               placeholder="Search notes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ width: '200px' }}
+              className="search-input"
             />
+          </Space>
+        </div>
+
+        {/* Note Creation Form */}
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: isFormVisible ? 'auto' : 0, opacity: isFormVisible ? 1 : 0 }}
+          transition={{ duration: 0.3 }}
+          className="form-container"
+          style={{ backgroundColor: selectedColor }}
+        >
+          <Form form={form} onFinish={handleCreateOrUpdate}>
+            <Form.Item name="title" rules={[{ required: true, message: 'Please enter a title' }]}>
+              <Input placeholder="Title" className="form-title" />
+            </Form.Item>
+            <Form.Item name="content" rules={[{ required: true, message: 'Please enter content' }]}>
+              <TextArea rows={4} placeholder="Take a note..." className="form-content" />
+            </Form.Item>
+            <Form.Item name="color" label="Color">
+              <Select value={selectedColor} onChange={setSelectedColor}>
+                {colors.map((color) => (
+                  <Option key={color.value} value={color.value}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <div
+                        style={{
+                          width: '16px',
+                          height: '16px',
+                          backgroundColor: color.value,
+                          marginRight: '8px',
+                          border: '1px solid #d9d9d9',
+                        }}
+                      />
+                      {color.name}
+                    </div>
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item>
+              <Button type="primary" htmlType="submit" className="save-btn">
+                {editingNoteId ? 'Update' : 'Save'}
+              </Button>
+              <Button
+                onClick={() => {
+                  setIsFormVisible(false);
+                  setEditingNoteId(null);
+                  form.resetFields();
+                  setSelectedColor('#ffffff');
+                }}
+                className="cancel-btn"
+              >
+                Cancel
+              </Button>
+            </Form.Item>
+          </Form>
+        </motion.div>
+
+        {/* Add Note Button */}
+        {!isFormVisible && (
+          <motion.div
+            initial={{ scale: 0.95 }}
+            animate={{ scale: 1 }}
+            transition={{ duration: 0.2 }}
+            className="add-note-btn-container"
+          >
             <Button
               type="primary"
               icon={<PlusOutlined />}
               onClick={() => {
                 setEditingNoteId(null);
                 form.resetFields();
+                setIsFormVisible(true);
               }}
+              className="add-note-btn"
             >
               Add Note
             </Button>
-          </Space>
-        </div>
+          </motion.div>
+        )}
 
-        {/* Note Creation/Update Form */}
-        <Form
-          form={form}
-          onFinish={(values) => {
-            // Convert attachments string to array
-            const attachments = values.attachments
-              ? values.attachments.split(',').map((url: string) => url.trim())
-              : [];
-            handleCreateOrUpdate({ ...values, attachments });
-          }}
-          style={{
-            backgroundColor: '#fff',
-            padding: '20px',
-            borderRadius: '8px',
-            marginBottom: '20px',
-          }}
-        >
-          <Form.Item
-            name="title"
-            rules={[{ required: true, message: 'Please enter a title' }]}
-          >
-            <Input placeholder="Note Title" />
-          </Form.Item>
-          <Form.Item
-            name="content"
-            rules={[{ required: true, message: 'Please enter content' }]}
-          >
-            <TextArea rows={4} placeholder="Note Content" />
-          </Form.Item>
-          <Form.Item name="attachments">
-            <Input
-              prefix={<UploadOutlined />}
-              placeholder="Attachments (comma-separated URLs)"
-            />
-          </Form.Item>
-          <Form.Item name="voiceNoteUrl" label="Voice Note URL">
-            <Input placeholder="Voice Note URL (optional)" />
-          </Form.Item>
-          <Form.Item name="isPinned" label="Pinned" valuePropName="checked">
-            <Switch />
-          </Form.Item>
-          <Form.Item name="isArchived" label="Archived" valuePropName="checked">
-            <Switch />
-          </Form.Item>
-          <Form.Item>
-            <Button type="primary" htmlType="submit">
-              {editingNoteId ? 'Update Note' : 'Create Note'}
-            </Button>
-          </Form.Item>
-        </Form>
+        {/* Notes Grid */}
+        <motion.div layout className="notes-grid">
+          <AnimatePresence>
+            {filteredNotes.map((note) => (
+              <motion.div
+                key={note.id}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.3 }}
+                onClick={() => handlePreview(note)}
+              >
+                <Card
+                  className={`note-card ${note.isPinned ? 'pinned' : ''} ${note.isArchived ? 'archived' : ''}`}
+                  style={{ backgroundColor: note.color || '#ffffff' }}
+                  title={
+                    <div className="card-title">
+                      <span>{note.title}</span>
+                      <Badge dot={note.isPinned} color="yellow" />
+                    </div>
+                  }
+                  actions={[
+                    <PushpinOutlined
+                      key="pin"
+                      className={note.isPinned ? 'pinned-icon' : ''}
+                      onClick={(e) => { e.stopPropagation(); handlePinToggle(note.id); }}
+                    />,
+                    <EditOutlined
+                      key="edit"
+                      onClick={(e) => { e.stopPropagation(); handleEdit(note); }}
+                    />,
+                    <FolderOutlined
+                      key="archive"
+                      className={note.isArchived ? 'archived-icon' : ''}
+                      onClick={(e) => { e.stopPropagation(); handleArchiveToggle(note.id); }}
+                    />,
+                    <ShareAltOutlined
+                      key="share"
+                      onClick={(e) => { e.stopPropagation(); handleShare(note); }}
+                    />,
+                  ]}
+                >
+                  <p>{note.content.length > 100 ? `${note.content.substring(0, 100)}...` : note.content}</p>
+                </Card>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </motion.div>
 
-        {/* Notes List */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-            gap: '20px',
-          }}
-        >
-          {notes.map((note) => (
-            <Card
-              key={note.id}
-              title={note.title}
-              extra={
-                <Space>
-                  <Button
-                    icon={<PushpinOutlined />}
-                    type={note.isPinned ? 'primary' : 'default'}
-                    onClick={() => handlePinToggle(note.id)}
-                  />
-                  <Button
-                    icon={<EditOutlined />}
-                    onClick={() => handleEdit(note)}
-                  />
-                  <Button
-                    icon={<FolderOutlined />}
-                    type={note.isArchived ? 'primary' : 'default'}
-                    onClick={() => handleArchiveToggle(note.id)}
-                  />
-                  <Button
-                    icon={<DeleteOutlined />}
-                    danger
-                    onClick={() => handleDelete(note.id)}
-                  />
-                </Space>
-              }
-              style={{ boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)' }}
-            >
-              <p>{note.content}</p>
-              {note.attachments && note.attachments.length > 0 && (
-                <div>
-                  <p>Attachments:</p>
-                  <ul>
-                    {note.attachments.map((url: string, index: number) => (
-                      <li key={index}>
-                        <a href={url} target="_blank" rel="noopener noreferrer">
-                          Attachment {index + 1}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {note.voiceNoteUrl && (
-                <p>
-                  <a href={note.voiceNoteUrl} target="_blank" rel="noopener noreferrer">
-                    Voice Note
-                  </a>
-                </p>
-              )}
-            </Card>
-          ))}
-        </div>
-
-        {/* Total Notes Count */}
-        <div style={{ marginTop: '20px', textAlign: 'right' }}>
-          <Badge count={notes.length} showZero>
-            <span style={{ marginRight: '10px' }}>Total Notes</span>
+        {/* Notes Count */}
+        <div className="notes-count">
+          <Badge count={filteredNotes.length} showZero>
+            <span>Total Notes</span>
           </Badge>
         </div>
+
+        {/* Preview Modal */}
+        <Modal
+          title={previewNote?.title}
+          visible={!!previewNote}
+          onCancel={() => setPreviewNote(null)}
+          footer={[
+            <Button key="close" onClick={() => setPreviewNote(null)}>
+              Close
+            </Button>,
+          ]}
+          className="preview-modal"
+        >
+          <div style={{ backgroundColor: previewNote?.color || '#ffffff', padding: '16px', borderRadius: '8px' }}>
+            <p style={{ margin: 0, fontSize: '16px', color: '#333' }}>{previewNote?.content}</p>
+            {previewNote?.attachments && previewNote.attachments.length > 0 && (
+              <div className="attachments" style={{ marginTop: '16px' }}>
+                <p style={{ fontSize: '14px', color: '#888' }}>Attachments:</p>
+                <ul>
+                  {previewNote.attachments.map((url: string, index: number) => (
+                    <li key={index}>
+                      <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: '#6200ea' }}>
+                        Attachment {index + 1}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </Modal>
       </div>
     </div>
   );

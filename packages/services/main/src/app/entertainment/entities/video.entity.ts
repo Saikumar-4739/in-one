@@ -1,5 +1,5 @@
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { UserEntity } from 'src/app/authentication/entities/user.entity';
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 import { CommentEntity } from './comment.entity';
 import { LikeEntity } from './like.entity';
 
@@ -29,13 +29,13 @@ export class VideoEntity {
   @Column({ type: 'enum', enum: ['public', 'private', 'unlisted'], default: 'public' })
   visibility: 'public' | 'private' | 'unlisted';
 
-  @ManyToOne(() => UserEntity, (user) => user.videos, { onDelete: 'CASCADE' })
+  @ManyToOne(() => UserEntity, user => user.videos, { onDelete: 'CASCADE' })
   author: UserEntity;
 
-  @OneToMany(() => CommentEntity, (comment) => comment.video, { cascade: true })
-  comments: CommentEntity[]; 
+  @OneToMany(() => CommentEntity, comment => comment.video, { cascade: true })
+  comments: CommentEntity[];
 
-  @OneToMany(() => LikeEntity, (like) => like.video, { cascade: true })
+  @OneToMany(() => LikeEntity, like => like.video, { cascade: true })
   likes: LikeEntity[];
 
   @CreateDateColumn()

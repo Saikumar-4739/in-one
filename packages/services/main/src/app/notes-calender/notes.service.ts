@@ -5,7 +5,6 @@ import { NotesRepository } from './repository/notes.repository';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
 import { CommonResponse, CreateNoteModel, UpdateNoteModel } from '@in-one/shared-models';
 
-
 @Injectable()
 export class NotesService {
     constructor(
@@ -14,11 +13,19 @@ export class NotesService {
         private readonly transactionManager: GenericTransactionManager
     ) { }
 
-    async create(createNoteDto: CreateNoteModel): Promise<CommonResponse> {
+    async createNote(createNoteDto: CreateNoteModel): Promise<CommonResponse> {
         await this.transactionManager.startTransaction();
         try {
             const noteRepo = this.transactionManager.getRepository(this.notesRepository);
-            const newNote = noteRepo.create(createNoteDto);
+            const noteWithUser = { 
+                ...createNoteDto, 
+                userId: { id: createNoteDto.userId },
+                isPinned: createNoteDto.isPinned ?? false,
+                isArchived: createNoteDto.isArchived ?? false,
+                attachments: createNoteDto.attachments || [],
+                sharedWith: createNoteDto.sharedWith || []
+            };
+            const newNote = noteRepo.create(noteWithUser);
             const savedNote = await noteRepo.save(newNote);
             await this.transactionManager.commitTransaction();
             return new CommonResponse(true, 200, 'Note created successfully', savedNote);
@@ -29,13 +36,18 @@ export class NotesService {
         }
     }
 
-    async update(id: string, updateNoteDto: UpdateNoteModel): Promise<CommonResponse> {
+    async updateNote(id: string, updateNoteDto: UpdateNoteModel, userId: string): Promise<CommonResponse> {
         await this.transactionManager.startTransaction();
         try {
             const noteRepo = this.transactionManager.getRepository(this.notesRepository);
-            const existingNote = await noteRepo.findOne({ where: { id } });
+            const existingNote = await noteRepo.findOne({ 
+                where: { 
+                    id,
+                    userId: { id: userId }
+                } 
+            });
             if (!existingNote) {
-                throw new Error('Note not found');
+                throw new Error('Note not found or unauthorized');
             }
             const updatedNote = noteRepo.merge(existingNote, updateNoteDto);
             const savedNote = await noteRepo.save(updatedNote);
@@ -48,140 +60,101 @@ export class NotesService {
         }
     }
 
-    async remove(id: string): Promise<CommonResponse> {
-        await this.transactionManager.startTransaction();
+    async getUserNotes(userId: string, includeArchived: boolean = false): Promise<CommonResponse> {
         try {
-            const noteRepo = this.transactionManager.getRepository(this.notesRepository);
-            const note = await noteRepo.findOne({ where: { id } });
-            if (!note) {
-                throw new Error('Note not found');
-            }
-            await noteRepo.remove(note);
-            await this.transactionManager.commitTransaction();
-            return new CommonResponse(true, 200, 'Note deleted successfully', null);
-        } catch (error) {
-            await this.transactionManager.rollbackTransaction();
-            console.error('❌ Error deleting note:', error);
-            return new CommonResponse(false, 500, 'Error deleting note', error);
-        }
-    }
-
-    async bulkCreate(notes: CreateNoteModel[]): Promise<CommonResponse> {
-        await this.transactionManager.startTransaction();
-        try {
-            const noteRepo = this.transactionManager.getRepository(this.notesRepository);
-            const createdNotes = [];
-            for (let noteDto of notes) {
-                const newNote = noteRepo.create(noteDto);
-                const savedNote = await noteRepo.save(newNote);
-                createdNotes.push(savedNote);
-            }
-            await this.transactionManager.commitTransaction();
-            return new CommonResponse(true, 200, 'Bulk notes created successfully', createdNotes);
-        } catch (error) {
-            await this.transactionManager.rollbackTransaction();
-            console.error('❌ Error in bulk create:', error);
-            return new CommonResponse(false, 500, 'Error in bulk create', error);
-        }
-    }
-
-    async findAll(id: string): Promise<CommonResponse> {
-        await this.transactionManager.startTransaction();
-        try {
-            const noteRepo = this.transactionManager.getRepository(this.notesRepository);
-            const notes = await noteRepo.find({ where: { id } });
-            await this.transactionManager.commitTransaction();
+            const whereClause = includeArchived 
+                ? { userId: { id: userId } }
+                : { userId: { id: userId }, isArchived: false };
+            
+            const notes = await this.notesRepository.find({
+                where: whereClause,
+                order: {
+                    isPinned: 'DESC',
+                    createdAt: 'DESC'
+                }
+            });
             return new CommonResponse(true, 200, 'Notes retrieved successfully', notes);
         } catch (error) {
-            await this.transactionManager.rollbackTransaction();
             console.error('❌ Error retrieving notes:', error);
             return new CommonResponse(false, 500, 'Error retrieving notes', error);
         }
     }
 
-    async findOne(id: string): Promise<CommonResponse> {
-        await this.transactionManager.startTransaction();
+    async togglePin(id: string, userId: string): Promise<CommonResponse> {
         try {
-            const noteRepo = this.transactionManager.getRepository(this.notesRepository);
-            const note = await noteRepo.findOne({ where: { id } });
+            const note = await this.notesRepository.findOne({ 
+                where: { 
+                    id, 
+                    userId: { id: userId }
+                } 
+            });
             if (!note) {
-                throw new Error('Note not found');
-            }
-            await this.transactionManager.commitTransaction();
-            return new CommonResponse(true, 200, 'Note retrieved successfully', note);
-        } catch (error) {
-            await this.transactionManager.rollbackTransaction();
-            console.error('❌ Error retrieving note:', error);
-            return new CommonResponse(false, 500, 'Error retrieving note', error);
-        }
-    }
-
-    async togglePin(id: string): Promise<CommonResponse> {
-        await this.transactionManager.startTransaction();
-        try {
-            const noteRepo = this.transactionManager.getRepository(this.notesRepository);
-            const note = await noteRepo.findOne({ where: { id } });
-            if (!note) {
-                throw new Error('Note not found');
+                throw new Error('Note not found or unauthorized');
             }
             note.isPinned = !note.isPinned;
-            const savedNote = await noteRepo.save(note);
-            await this.transactionManager.commitTransaction();
+            const savedNote = await this.notesRepository.save(note);
             return new CommonResponse(true, 200, `Note ${note.isPinned ? 'pinned' : 'unpinned'} successfully`, savedNote);
         } catch (error) {
-            await this.transactionManager.rollbackTransaction();
             console.error('❌ Error toggling pin:', error);
             return new CommonResponse(false, 500, 'Error toggling pin', error);
         }
     }
 
-    async toggleArchive(id: string): Promise<CommonResponse> {
-        await this.transactionManager.startTransaction();
+    async toggleArchive(id: string, userId: string): Promise<CommonResponse> {
         try {
-            const noteRepo = this.transactionManager.getRepository(this.notesRepository);
-            const note = await noteRepo.findOne({ where: { id } });
+            const note = await this.notesRepository.findOne({ 
+                where: { 
+                    id, 
+                    userId: { id: userId }
+                } 
+            });
             if (!note) {
-                throw new Error('Note not found');
+                throw new Error('Note not found or unauthorized');
             }
             note.isArchived = !note.isArchived;
-            const savedNote = await noteRepo.save(note);
-            await this.transactionManager.commitTransaction();
+            const savedNote = await this.notesRepository.save(note);
             return new CommonResponse(true, 200, `Note ${note.isArchived ? 'archived' : 'unarchived'} successfully`, savedNote);
         } catch (error) {
-            await this.transactionManager.rollbackTransaction();
             console.error('❌ Error toggling archive:', error);
             return new CommonResponse(false, 500, 'Error toggling archive', error);
         }
     }
 
-    async search(query: string, id: string): Promise<CommonResponse> {
-        await this.transactionManager.startTransaction();
+    async searchNote(userId: string, query: string): Promise<CommonResponse> {
         try {
-            const noteRepo = this.transactionManager.getRepository(this.notesRepository);
-            const notes = await noteRepo.find({
+            const notes = await this.notesRepository.find({
                 where: [
-                    { title: Like(`%${query}%`), id },
-                    { content: Like(`%${query}%`), id }
+                    { 
+                        title: Like(`%${query}%`), 
+                        userId: { id: userId }
+                    },
+                    { 
+                        content: Like(`%${query}%`), 
+                        userId: { id: userId }
+                    }
                 ],
+                order: {
+                    isPinned: 'DESC',
+                    createdAt: 'DESC'
+                }
             });
-            await this.transactionManager.commitTransaction();
             return new CommonResponse(true, 200, 'Notes found successfully', notes);
         } catch (error) {
-            await this.transactionManager.rollbackTransaction();
             console.error('❌ Error searching notes:', error);
             return new CommonResponse(false, 500, 'Error searching notes', error);
         }
     }
 
-    async countUserNotes(id: string): Promise<CommonResponse> {
-        await this.transactionManager.startTransaction();
+    async countUserNotes(userId: string): Promise<CommonResponse> {
         try {
-            const noteRepo = this.transactionManager.getRepository(this.notesRepository);
-            const noteCount = await noteRepo.count({ where: { id } });
-            await this.transactionManager.commitTransaction();
-            return new CommonResponse(true, 200, 'Note count retrieved successfully', noteCount);
+            const [total, active, archived] = await Promise.all([
+                this.notesRepository.count({ where: { userId: { id: userId } } }),
+                this.notesRepository.count({ where: { userId: { id: userId }, isArchived: false } }),
+                this.notesRepository.count({ where: { userId: { id: userId }, isArchived: true } })
+            ]);
+            const counts = { total, active, archived };
+            return new CommonResponse(true, 200, 'Note counts retrieved successfully', counts);
         } catch (error) {
-            await this.transactionManager.rollbackTransaction();
             console.error('❌ Error counting notes:', error);
             return new CommonResponse(false, 500, 'Error counting notes', error);
         }

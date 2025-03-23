@@ -28,8 +28,8 @@ export class UserHelpService extends CommonAxiosService {
         return await this.axiosPostCall(this.getURLwithMainEndPoint('deleteUser'), reqModel, config); 
     }
 
-    async logoutUser(userId: string, config?: AxiosRequestConfig): Promise<CommonResponse> {
-        return await this.axiosPostCall(this.getURLwithMainEndPoint('logoutUser'), { userId }, config); 
+    async logoutUser(reqModel: UserIdRequestModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
+        return await this.axiosPostCall(this.getURLwithMainEndPoint('logoutUser'), reqModel, config); 
     }
 
     async checkUserStatus(reqModel: UserIdRequestModel, config?: AxiosRequestConfig): Promise<CommonResponse> {

@@ -16,7 +16,6 @@ export class AudioMessageEntity {
     @ManyToOne(() => ChatRoomEntity, (chatRoom) => chatRoom.messages, { nullable: false, onDelete: 'CASCADE' })
     chatRoom: ChatRoomEntity;
 
-
     @Column({ type: 'text', nullable: false }) 
     audioUrl: string;
 

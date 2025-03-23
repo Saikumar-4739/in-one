@@ -11,14 +11,31 @@ export class VideoController {
   constructor(private readonly videoService: VideoService) {}
 
   @Post('uploadVideo')
-  @UseInterceptors(FileInterceptor('file', multerOptions))
-  async uploadVideo( @UploadedFile() file: Express.Multer.File, @Body() reqModel: CreateVideoModel): Promise<CommonResponse> {
-    try {
-      return await this.videoService.createVideo(reqModel, file);
-    } catch (error) {
-      return ExceptionHandler.handleError(error, 'Error uploading video');
-    }
+@UseInterceptors(FileInterceptor('file', multerOptions))
+@ApiConsumes('multipart/form-data')
+@ApiBody({
+  schema: {
+    type: 'object',
+    properties: {
+      file: { type: 'string', format: 'binary' },
+      userId: { type: 'string' },
+    },
+  },
+})
+async uploadVideo(
+  @UploadedFile() file: Express.Multer.File,
+  @Body() reqModel: CreateVideoModel,
+): Promise<CommonResponse> {
+  console.log('Received file in controller:', file); // Debug log
+  if (!file) {
+    return new CommonResponse(false, 400, 'Empty file');
   }
+  try {
+    return await this.videoService.createVideo(reqModel, file);
+  } catch (error) {
+    return ExceptionHandler.handleError(error, 'Error uploading video');
+  }
+}
 
   @Post('getAllVideos')
   async getAllVideos(): Promise<CommonResponse> {

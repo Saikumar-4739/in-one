@@ -16,9 +16,7 @@ import { AudioRepository } from './repository/audio.repository';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([ChatRoomEntity, MessageEntity, UserEntity, CallEntity, AudioMessageEntity]),
-  ],
+  imports: [ TypeOrmModule.forFeature([ChatRoomEntity, MessageEntity, UserEntity, CallEntity, AudioMessageEntity])],
   providers: [ChatService, ChatGateway, ChatRoomRepository, MessegeRepository, UserRepository, CallRepository, AudioRepository, GenericTransactionManager],
   controllers: [ChatController],
 })

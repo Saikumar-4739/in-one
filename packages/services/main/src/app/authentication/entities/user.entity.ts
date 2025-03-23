@@ -1,4 +1,4 @@
-import { UserRole } from '@in-one/shared-models';
+import { UserRole, UserStatus } from '@in-one/shared-models';
 import { AudioMessageEntity } from 'src/app/chat/entities/audio.entity';
 import { CallEntity } from 'src/app/chat/entities/call.entity';
 import { ChatRoomEntity } from 'src/app/chat/entities/chatroom.entity';
@@ -12,12 +12,6 @@ import { NewsEntity } from 'src/app/news/entities/news.entity';
 import { CalendarEntity } from 'src/app/notes-calender/entities/calender.entity';
 import { NoteEntity } from 'src/app/notes-calender/entities/notes.entity';
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, ManyToMany } from 'typeorm';
-
-export enum UserStatus {
-  ONLINE = 'online',
-  OFFLINE = 'offline',
-  BUSY = 'busy',
-}
 
 @Entity('users')
 export class UserEntity {
@@ -84,7 +78,7 @@ export class UserEntity {
   @OneToMany(() => MessageEntity, (message) => message.receiver)
   receivedMessages: MessageEntity[];
 
-  @OneToMany(() => NoteEntity, (note) => note.user)
+  @OneToMany(() => NoteEntity, (note) => note.userId)
   notes: NoteEntity[];
 
   @OneToMany(() => CalendarEntity, (calendar) => calendar.user)

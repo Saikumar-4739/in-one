@@ -2,7 +2,7 @@ import { WebSocketGateway, WebSocketServer, SubscribeMessage, MessageBody, Conne
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
 import { HttpException, HttpStatus, Logger } from '@nestjs/common';
-import { ChatRoomIdRequestModel, EndCallModel, PrivateMessegeModel } from '@in-one/shared-models';
+import { EndCallModel, PrivateMessegeModel } from '@in-one/shared-models';
 
 @WebSocketGateway({ cors: true })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -19,11 +19,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleConnection(socket: Socket) {
     try {
       const userId = socket.handshake.query.userId as string;
-      this.logger.log(`🔗 New client connected: ${socket.id}, userId: ${userId}`);
       if (userId) {
         this.activeUsers.set(userId, socket.id);
         this.server.emit('onlineUsers', Array.from(this.activeUsers.keys()));
-        this.logger.log(`🟢 User connected: ${userId} | Total active users: ${this.activeUsers.size}`);
       }
     } catch (error) {
       this.logger.error(`❌ Error in handleConnection: ${error}`);
@@ -36,31 +34,20 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (userId) {
         this.activeUsers.delete(userId);
         this.server.emit('onlineUsers', Array.from(this.activeUsers.keys()));
-        this.logger.log(`🔴 User disconnected: ${userId} | Remaining active users: ${this.activeUsers.size}`);
-      } else {
-        this.logger.log(`⚠️ Unknown socket disconnected: ${socket.id}`);
       }
     } catch (error) {
       this.logger.error(`❌ Error in handleDisconnect: ${error}`);
     }
   }
 
-
-  // chat.gateway.ts
   @SubscribeMessage('sendMessage')
-  async handleSendMessage(
-    @MessageBody() data: { message: PrivateMessegeModel; chatRoomId?: string; createdAt: string },
-    @ConnectedSocket() socket: Socket,
-  ) {
+  async handleSendMessage( @MessageBody() data: { message: PrivateMessegeModel; chatRoomId?: string; createdAt: string }, @ConnectedSocket() socket: Socket) {
     try {
-      this.logger.log(`📩 Received message from userId ${data.message.senderId}`);
       const response = await this.chatService.sendPrivateMessage(data.message);
       if (response.status && response.data) {
         const newMessage = response.data;
         const chatRoomId = newMessage.chatRoomId;
-        // Emit to all clients in the chat room, including the sender
         this.server.to(chatRoomId).emit('privateMessage', { success: true, message: newMessage });
-        // Also emit to the sender explicitly if needed
         socket.emit('privateMessage', { success: true, message: newMessage });
         return { success: true, data: newMessage };
       } else {
@@ -76,7 +63,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleJoinRoom(@MessageBody() chatRoomId: string, @ConnectedSocket() socket: Socket) {
     try {
       socket.join(chatRoomId);
-      this.logger.log(`👥 User joined room: ${chatRoomId}, Socket ID: ${socket.id}`);
       this.server.to(chatRoomId).emit('userJoined', { success: true, userId: socket.id });
       return { success: true, message: `Joined room: ${chatRoomId}` };
     } catch (error) {
@@ -89,7 +75,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleLeaveRoom(@MessageBody() chatRoomId: string, @ConnectedSocket() socket: Socket) {
     try {
       socket.leave(chatRoomId);
-      this.logger.log(`🚪 User left room: ${chatRoomId}, Socket ID: ${socket.id}`);
       this.server.to(chatRoomId).emit('userLeft', { success: true, userId: socket.id });
       return { success: true, message: `Left room: ${chatRoomId}` };
     } catch (error) {
@@ -104,10 +89,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (typeof reqModel !== 'object' || !reqModel.chatRoomId) {
         throw new Error('Invalid request payload: Expected an object with chatRoomId.');
       }
-
-      this.logger.log(`📜 Fetching chat history for room: ${reqModel.chatRoomId}`);
       const messages = await this.chatService.getChatHistory(reqModel.chatRoomId);
-
       return { success: true, message: 'Chat history retrieved', data: messages };
     } catch (error) {
       this.logger.error(`❌ Error in handleGetChatHistory: ${error}`);
@@ -115,11 +97,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-
   @SubscribeMessage('getOnlineUsers')
   async handleGetOnlineUsers() {
     try {
-      this.logger.log(`👤 Fetching online users (${this.activeUsers.size} users online)`);
       return { success: true, data: Array.from(this.activeUsers.keys()) };
     } catch (error) {
       this.logger.error(`❌ Error in handleGetOnlineUsers: ${error}`);
@@ -173,9 +153,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('sendPrivateMessage')
   async handleSendPrivateMessage(@MessageBody() data: PrivateMessegeModel, @ConnectedSocket() socket: Socket) {
     try {
-      this.logger.log(`📩 Received private message from userId ${data.senderId} to ${data.receiverId}`);
-
-      // Use ChatService to send the private message and get chatRoomId
       const response = await this.chatService.sendPrivateMessage(data);
       if (!response.status || !response.data) {
         throw new Error('Failed to process private message');
@@ -184,16 +161,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const newMessage = response.data;
       const chatRoomId = newMessage.chatRoomId;
 
-      // Emit to both sender and receiver (using user IDs or chat room)
       this.server.to(data.senderId).to(data.receiverId).emit('privateMessage', {
         success: true,
         message: newMessage,
       });
 
-      // Join the sender to the chat room if not already joined
       socket.join(chatRoomId);
 
-      // Send callback with the message details
       return { success: true, data: newMessage };
     } catch (error) {
       this.logger.error(`❌ Error in handleSendPrivateMessage: ${error}`);
@@ -202,41 +176,32 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('sendGroupMessage')
-async handleSendGroupMessage(
-  @MessageBody() data: { chatRoomId: string; senderId: string; text: string; createdAt: string },
-  @ConnectedSocket() socket: Socket,
-) {
-  try {
-    this.logger.log(`📩 Received group message for chatRoomId ${data.chatRoomId} from userId ${data.senderId}`);
+  async handleSendGroupMessage( @MessageBody() data: { chatRoomId: string; senderId: string; text: string; createdAt: string }, @ConnectedSocket() socket: Socket) {
+    try {
+      const messageData = {
+        chatRoomId: data.chatRoomId,
+        senderId: data.senderId,
+        text: data.text,
+      };
+      const response = await this.chatService.createMessage(messageData);
 
-    const messageData = {
-      chatRoomId: data.chatRoomId,
-      senderId: data.senderId,
-      text: data.text,
-    };
-    this.logger.log(`📝 Saving message: ${JSON.stringify(messageData)}`);
-    const response = await this.chatService.createMessage(messageData);
+      if (!response || !response._id) {
+        throw new Error('Failed to create group message - no response ID');
+      }
 
-    if (!response || !response._id) {
-      throw new Error('Failed to create group message - no response ID');
+      const newMessage = {
+        _id: response._id,
+        senderId: response.senderId,
+        chatRoomId: response.chatRoomId,
+        text: response.text,
+        createdAt: response.createdAt,
+      };
+
+      this.server.to(data.chatRoomId).emit('groupMessage', { success: true, message: newMessage });
+      return { success: true, data: newMessage };
+    } catch (error) {
+      this.logger.error(`❌ Error in handleSendGroupMessage: ${error}`, error);
+      return { success: false, message: 'Failed to send group message', error: error };
     }
-
-    const newMessage = {
-      _id: response._id,
-      senderId: response.senderId,
-      chatRoomId: response.chatRoomId,
-      text: response.text,
-      createdAt: response.createdAt,
-    };
-    this.logger.log(`✅ Message saved: ${JSON.stringify(newMessage)}`);
-
-    this.server.to(data.chatRoomId).emit('groupMessage', { success: true, message: newMessage });
-    this.logger.log(`📤 Emitted groupMessage to room ${data.chatRoomId}`);
-    return { success: true, data: newMessage };
-  } catch (error) {
-    this.logger.error(`❌ Error in handleSendGroupMessage: ${error}`, error);
-    return { success: false, message: 'Failed to send group message', error: error };
   }
 }
-}
-

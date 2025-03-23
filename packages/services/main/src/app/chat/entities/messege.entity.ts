@@ -1,34 +1,20 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToOne,
-  ManyToMany,
-  JoinTable,
-  CreateDateColumn,
-  UpdateDateColumn,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, ManyToMany, JoinTable, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { UserEntity } from 'src/app/authentication/entities/user.entity';
 import { ChatRoomEntity } from './chatroom.entity';
+import { FileType } from '@in-one/shared-models';
 
 @Entity('messages')
 export class MessageEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => UserEntity, (user) => user.sentMessages, {
-    nullable: false,
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(() => UserEntity, (user) => user.sentMessages, { nullable: false, onDelete: 'CASCADE' })
   sender: UserEntity;
 
-    @ManyToOne(() => UserEntity, (user) => user.receivedMessages, { nullable: true, onDelete: 'CASCADE' }) 
-    receiver: UserEntity; 
+  @ManyToOne(() => UserEntity, (user) => user.receivedMessages, { nullable: true, onDelete: 'CASCADE' })
+  receiver: UserEntity;
 
-  @ManyToOne(() => ChatRoomEntity, (chatRoom) => chatRoom.messages, {
-    nullable: false,
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(() => ChatRoomEntity, (chatRoom) => chatRoom.messages, { nullable: false, onDelete: 'CASCADE',})
   chatRoom: ChatRoomEntity;
 
   @Column({ type: 'text', nullable: true })
@@ -40,12 +26,8 @@ export class MessageEntity {
   @Column({ type: 'varchar', nullable: true })
   fileUrl: string;
 
-  @Column({
-    type: 'enum',
-    enum: ['image', 'video', 'audio', 'document'],
-    nullable: true,
-  })
-  fileType: 'image' | 'video' | 'audio' | 'document';
+  @Column({ type: 'enum', enum: FileType, nullable: true})
+  fileType: FileType;
 
   @ManyToMany(() => UserEntity)
   @JoinTable({ name: 'message_reads' })

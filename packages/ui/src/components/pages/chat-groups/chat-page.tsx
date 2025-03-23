@@ -12,6 +12,27 @@ const { Text, Title } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
 
+interface User {
+  unreadCount: number;
+  id: string;
+  username: string;
+  profilePicture?: string;
+  lastMessage?: string;
+  lastMessageTime?: string;
+  lastSeen?: string;
+}
+
+interface Message {
+  _id: string;
+  senderId: string;
+  receiverId?: string;
+  chatRoomId?: string | null; 
+  text: string;
+  createdAt: string;
+  status: 'pending' | 'delivered' | 'failed';
+  image?: string;
+}
+
 const ChatPage: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [chatRooms, setChatRooms] = useState<any[]>([]);
@@ -180,10 +201,22 @@ const ChatPage: React.FC = () => {
     try {
       const response = await chatService.getAllUsers();
       if (response.status && response.data?.data) {
-        const filteredUsers = response.data.data.filter((u: any) => u.id !== userId);
-        setUsers(filteredUsers);
+        const filteredUsers = response.data.data.filter((u: User) => u.id !== userId);
+        const usersWithLastMessage = await Promise.all(
+          filteredUsers.map(async (user: User) => {
+            const chatHistory = await chatService.getChatHistoryByUsers({ senderId: userId!, receiverId: user.id });
+            if (chatHistory.status && chatHistory.data?.length > 0) {
+              const lastMsg = chatHistory.data[chatHistory.data.length - 1];
+              return { ...user, lastMessage: lastMsg.text, lastMessageTime: lastMsg.createdAt };
+            }
+            return { ...user, lastMessage: '', lastMessageTime: '' };
+          })
+        );
+        setUsers(usersWithLastMessage);
       } else throw new Error('Invalid response structure');
     } catch (error) {
+      console.error('Error fetching users:', error);
+      message.error('Failed to fetch users');
     }
   };
 
@@ -203,7 +236,7 @@ const ChatPage: React.FC = () => {
     try {
       const response = await chatService.getChatHistoryByUsers({ senderId: userId, receiverId: selectedUser.id });
       if (response.status && Array.isArray(response.data)) {
-        setMessages(response.data.map((msg: any) => ({
+        const formattedMessages: Message[] = response.data.map((msg: any) => ({
           _id: msg._id,
           senderId: msg.senderId,
           receiverId: msg.receiverId,
@@ -211,11 +244,20 @@ const ChatPage: React.FC = () => {
           text: msg.text,
           createdAt: msg.createdAt,
           status: 'delivered',
-        })));
+        }));
+        setMessages(formattedMessages);
         const firstMessageWithChatRoom = response.data.find((msg: any) => msg.chatRoomId);
         if (firstMessageWithChatRoom) {
           setChatRoomId(firstMessageWithChatRoom.chatRoomId);
           socket?.emit('joinRoom', firstMessageWithChatRoom.chatRoomId);
+        }
+        if (formattedMessages.length > 0) {
+          const lastMsg = formattedMessages[formattedMessages.length - 1];
+          setUsers((prevUsers) =>
+            prevUsers.map((u) =>
+              u.id === selectedUser.id ? { ...u, lastMessage: lastMsg.text, lastMessageTime: lastMsg.createdAt } : u
+            )
+          );
         }
       } else throw new Error('Invalid response format');
     } catch (error) {
@@ -231,10 +273,9 @@ const ChatPage: React.FC = () => {
     }
     try {
       const reqModel = { chatRoomId: selectedRoomId };
-      console.log('Fetching messages for chatRoomId:', selectedRoomId);
       const response = await chatService.getMessages(reqModel);
       if (response.status && Array.isArray(response.data)) {
-        const formattedMessages = response.data.map((msg: any) => ({
+        const formattedMessages : Message[] = response.data.map((msg: any) => ({
           _id: msg._id,
           senderId: msg.senderId,
           chatRoomId: msg.chatRoomId,
@@ -246,11 +287,9 @@ const ChatPage: React.FC = () => {
         setChatRoomId(selectedRoomId);
         if (socket && socket.connected) socket.emit('joinRoom', selectedRoomId);
       } else {
-        console.error('Invalid response format:', response);
         throw new Error('Invalid response format');
       }
     } catch (error) {
-      console.error('Error fetching group messages:', error);
       message.error('Failed to load group messages');
       setMessages([]);
     }
@@ -376,22 +415,23 @@ const ChatPage: React.FC = () => {
     }
   };
 
-  const handleUserSelect = (user: any) => {
+  const handleUserSelect = (user: User) => {
     setSelectedUser(user);
+    setSelectedRoomId(null);
     setMessages([]);
     setChatRoomId(null);
+    fetchChatHistory();
   };
 
   const handleGroupSelect = (roomId: string) => {
-    console.log('Selecting group with roomId:', roomId); // Debug log
-    setSelectedRoomId(roomId); // Set the selected room ID
-    setMessages([]); // Reset messages
-    setChatRoomId(roomId); // Set the chat room ID for socket
-    setSelectedUser(null); // Clear selected user
+    setSelectedRoomId(roomId);
+    setSelectedUser(null);
+    setMessages([]);
+    setChatRoomId(roomId);
     if (socket && socket.connected) {
-      socket.emit('joinRoom', roomId); // Join the room via socket
+      socket.emit('joinRoom', roomId);
     }
-    fetchGroupMessages(); // Fetch messages immediately
+    fetchGroupMessages();
   };
 
   const handleSortChange = (value: string) => {
@@ -432,8 +472,6 @@ const ChatPage: React.FC = () => {
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value.toLowerCase();
     setSearchQuery(query);
-    const filteredUsers = users.filter((user) => user.username.toLowerCase().includes(query));
-    setUsers(filteredUsers);
   };
 
   const onEmojiClick = (emojiObject: any) => {
@@ -525,7 +563,6 @@ const ChatPage: React.FC = () => {
                         <Text type="secondary" className="message-preview">{room.lastMessage || ''}</Text>
                       </div>
                       <Text type="secondary" style={{ fontSize: 12 }}>{room.lastMessageTime ? new Date(room.lastMessageTime).toLocaleTimeString() : ''}</Text>
-                      <span className="emoji">👥</span>
                     </Space>
                   </motion.div>
                 ))
@@ -589,7 +626,6 @@ const ChatPage: React.FC = () => {
                 </div>
               </Space>
               <Space>
-                <Button icon={<SearchOutlined />} type="text" />
                 <Dropdown overlay={menu} trigger={['click']}>
                   <Button icon={<MoreOutlined />} type="text" />
                 </Dropdown>

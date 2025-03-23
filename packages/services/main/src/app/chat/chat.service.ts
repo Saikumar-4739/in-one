@@ -67,14 +67,11 @@ export class ChatService {
   }
 
   async getChatHistory(reqModel: ChatRoomIdRequestModel): Promise<MessageResponseModel[]> {
-    await this.transactionManager.startTransaction();
     try {
-      const messageRepo = this.transactionManager.getRepository(this.messageRepository);
-      const messages = await messageRepo.find({
+      const messages = await this.messageRepository.find({
         where: { chatRoom: { id: reqModel.chatRoomId } },
         relations: ['sender', 'chatRoom'],
       });
-      await this.transactionManager.commitTransaction();
       return messages.map((msg) => ({
         _id: msg.id,
         senderId: msg.sender?.id ?? null,
@@ -83,7 +80,6 @@ export class ChatService {
         createdAt: msg.createdAt,
       }));
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
       console.error('❌ Error fetching chat history:', error);
       throw new HttpException('Error fetching chat history', HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -133,33 +129,26 @@ export class ChatService {
   }
 
   async getAllUsers(): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
     try {
-      const userRepo = this.transactionManager.getRepository(this.userRepository);
-      const users = await userRepo.find({
+      const users = await this.userRepository.find({
         select: ['id', 'username', 'email', 'profilePicture']
       });
-      await this.transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'Users retrieved successfully', users);
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
       console.error('❌ Error fetching users:', error);
       return new CommonResponse(false, 500, 'Error fetching users', []);
     }
   }
 
   async getMessageById(reqModel: MessegeIdRequestModel): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
     try {
       const message = await this.messageRepository.findOne({
         where: { id: reqModel.messageId },
         relations: ['sender', 'chatRoom'],
       });
       if (!message) {
-        await this.transactionManager.rollbackTransaction();
         return new CommonResponse(false, 404, 'Message not found', null);
       }
-      await this.transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'Message retrieved successfully', {
         _id: message.id,
         senderId: message.sender.id,
@@ -168,22 +157,19 @@ export class ChatService {
         createdAt: message.createdAt,
       });
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
       console.error('❌ Error getting message:', error);
       return new CommonResponse(false, 500, 'Error retrieving message', null);
     }
   }
 
   async getChatRoomsForUser(reqModel: UserIdRequestModel): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
     try {
       const chatRooms = await this.chatRoomRepository.find({
         where: { participants: { id: reqModel.userId } },
         relations: ['participants'],
       });
-
+  
       if (!chatRooms || chatRooms.length === 0) {
-        await this.transactionManager.rollbackTransaction();
         return new CommonResponse(false, 404, 'No chat rooms found for user', []);
       }
       const chatRoomResponses = chatRooms.map((room) => ({
@@ -193,10 +179,8 @@ export class ChatService {
         isGroup: room.isGroup,
         lastMessage: room.lastMessage,
       }));
-      await this.transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'Chat rooms fetched successfully', chatRoomResponses);
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
       console.error('❌ Error fetching chat rooms:', error);
       return new CommonResponse(false, 500, 'Error fetching chat rooms', []);
     }
@@ -370,12 +354,8 @@ export class ChatService {
   }
 
   async getChatHistoryByUsers(reqModel: { senderId: string; receiverId: string }): Promise<MessageResponseModel[]> {
-    await this.transactionManager.startTransaction();
     try {
-      const messageRepo = this.transactionManager.getRepository(this.messageRepository);
-
-      // Find messages where senderId and receiverId match in either direction
-      const messages = await messageRepo.find({
+      const messages = await this.messageRepository.find({
         where: [
           { sender: { id: reqModel.senderId }, receiver: { id: reqModel.receiverId } },
           { sender: { id: reqModel.receiverId }, receiver: { id: reqModel.senderId } },
@@ -383,8 +363,7 @@ export class ChatService {
         relations: ['sender', 'receiver', 'chatRoom'],
         order: { createdAt: 'ASC' }, // Order by creation time
       });
-
-      await this.transactionManager.commitTransaction();
+  
       return messages.map((msg) => ({
         _id: msg.id,
         senderId: msg.sender?.id ?? null,
@@ -394,7 +373,6 @@ export class ChatService {
         createdAt: msg.createdAt,
       }));
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
       console.error('❌ Error fetching chat history by users:', error);
       throw new HttpException('Error fetching chat history', HttpStatus.INTERNAL_SERVER_ERROR);
     }

@@ -1,12 +1,9 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { UserEntity, UserStatus } from './entities/user.entity';
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { CommonResponse, CreateUserModel, EmailRequestModel, ResetPassowordModel, UpdateUserModel, UserIdRequestModel, UserLoginModel, UserRole, WelcomeRequestModel } from '@in-one/shared-models';
+import { CommonResponse, CreateUserModel, EmailRequestModel, ResetPassowordModel, UpdateUserModel, UserIdRequestModel, UserLoginModel, UserRole, UserStatus, WelcomeRequestModel } from '@in-one/shared-models';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
 import * as nodemailer from 'nodemailer';
-import type { Cache } from 'cache-manager';
-import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { UserRepository } from './repository/user.repository';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as CryptoJS from 'crypto-js';
@@ -18,14 +15,12 @@ export class UserService {
     private readonly userRepository: UserRepository,
     private readonly jwtService: JwtService,
     private readonly transactionManager: GenericTransactionManager,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache
   ) { }
 
   async createUser(reqModel: CreateUserModel): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
     try {
-      // Password validation
-      const passwordRegex = /^(?=(.*[a-z]){2,})(?=(.*[A-Z]){2,})(?=(.*\d){2,})(?=(.*[@$!%*?&\#_\-\+\/]){2,})[A-Za-z\d@$!%*?&\#_\-\+\/]{8,}$/;
+      const passwordRegex = /^(?=(.*[a-z]){2,})(?=(.*[A-Z]){1,})(?=(.*\d){1,})(?=(.*[@$!%*?&\#_\-\+\/]){2,})[A-Za-z\d@$!%*?&\#_\-\+\/]{8,}$/;
       if (!passwordRegex.test(reqModel.password)) {
         await this.transactionManager.rollbackTransaction();
         return new CommonResponse(
@@ -35,11 +30,9 @@ export class UserService {
           null,
         );
       }
-  
       // Hash the password with a defined salt rounds value
       const saltRounds = 10; // Adjust based on your security needs
       const hashedPassword = await bcrypt.hash(reqModel.password, saltRounds);
-  
       const userRepo = this.transactionManager.getRepository(this.userRepository);
       const user = userRepo.create({
         ...reqModel,
@@ -51,7 +44,6 @@ export class UserService {
       const savedUser = await userRepo.save(user);
       await this.transactionManager.commitTransaction();
       await this.sendWelcomeEmail(new WelcomeRequestModel(reqModel.email, reqModel.username));
-  
       // Exclude sensitive fields from the response
       const { password, ...userResponse } = savedUser;
       return new CommonResponse(true, 201, 'User created successfully', userResponse);
@@ -128,8 +120,6 @@ export class UserService {
       }
 
       const decryptedPassword = CryptoJS.AES.decrypt(reqModel.password, secretKey).toString(CryptoJS.enc.Utf8);
-
-
       const isPasswordValid = await bcrypt.compare(decryptedPassword, user.password);
       if (!isPasswordValid) {
         return new CommonResponse(false, 401, 'Invalid credentials');
@@ -213,38 +203,29 @@ export class UserService {
     }
   }
 
-  async logoutUser(userId: string): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
+  async logoutUser(reqModel: UserIdRequestModel): Promise<CommonResponse> {
     try {
-      const userRepo = this.transactionManager.getRepository(this.userRepository);
-      const user = await userRepo.findOne({ where: { id: userId } });
+      const user = await this.userRepository.findOne({ where: { id: reqModel.userId } });
       if (!user) {
-        await this.transactionManager.rollbackTransaction();
         return new CommonResponse(false, 404, 'User not found');
       }
-      await userRepo.update(userId, { status: UserStatus.OFFLINE });
-      await this.transactionManager.commitTransaction();
+      user.status = UserStatus.OFFLINE;
+      await this.userRepository.save(user);
       return new CommonResponse(true, 200, 'User logged out successfully');
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
       console.error('Logout error:', error);
       return new CommonResponse(false, 500, 'Error logging out user');
     }
   }
 
   async checkUserStatus(reqModel: UserIdRequestModel): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
     try {
-      const userRepo = this.transactionManager.getRepository(this.userRepository);
-      const user = await userRepo.findOne({ where: { id: reqModel.userId } });
+      const user = await this.userRepository.findOne({ where: { id: reqModel.userId } });
       if (!user) {
-        await this.transactionManager.rollbackTransaction();
         return new CommonResponse(false, 404, 'User not found');
       }
-      await this.transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'User status fetched successfully', { status: user.status });
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
       return new CommonResponse(false, 500, 'Error fetching user status');
     }
   }

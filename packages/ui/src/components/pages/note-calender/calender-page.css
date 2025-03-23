@@ -1,0 +1,147 @@
+/* CalendarPage.css */
+.calendar-page {
+  width: 100%;
+  height: 100vh; /* Full viewport height */
+  background-color: #ffffff;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  box-sizing: border-box; /* Include padding in width/height calculations */
+  padding-top: 60px;
+  overflow: auto;
+  scrollbar-width: none;
+}
+
+.calendar-container {
+  max-width: 1200px;
+  height: calc(100% - 40px); /* Account for padding */
+  margin: 0 auto;
+  background-color: #ffffff;
+  border-radius: 8px;
+  animation: fadeIn 0.5s ease-in-out;
+  overflow-y: auto; /* Scroll only if content overflows */
+  scrollbar-width: none;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.header-title {
+  margin: 0;
+}
+
+.teams-calendar {
+  padding: 20px !important;
+  border: none !important;
+  background-color: #ffffff !important;
+  height: calc(100% - 80px); /* Adjust for header height */
+  overflow: hidden; /* Prevent calendar overflow */
+  scrollbar-width: none;
+}
+
+.teams-calendar .ant-picker-calendar-header {
+  background-color: #ffffff
+}
+
+.date-cell {
+  position: relative;
+  min-height: 60px;
+  transition: transform 0.2s ease;
+  max-height: 100px; /* Limit cell height to prevent overflow */
+  overflow-y: auto; /* Scroll if too many events */
+  scrollbar-width: none;
+}
+
+.date-cell:hover {
+  transform: scale(1.02);
+}
+
+.holiday-badge {
+  animation: bounceIn 0.5s ease;
+}
+
+.event-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.event-item {
+  background-color: #f0f6ff;
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin-bottom: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.event-item:hover {
+  background-color: #e6f0ff;
+  transform: translateX(4px);
+}
+
+.event-modal {
+  border-radius: 8px;
+  overflow: hidden;
+  max-height: 80vh; /* Limit modal height */
+  scrollbar-width: none;
+}
+
+.event-modal .ant-modal-header {
+  color: #080808;
+  padding: 12px 24px;
+}
+
+.event-modal .ant-modal-title {
+  color: #0e0d0d;
+  font-weight: 600;
+}
+
+.event-form .ant-form-item-label > label {
+  color: #252525;
+  font-weight: 500;
+}
+
+.event-form .ant-btn-primary {
+  background-color: #0078d4;
+  border-color: #0078d4;
+  transition: background-color 0.3s ease;
+}
+
+.event-form .ant-btn-primary:hover {
+  background-color: #005ea2;
+  border-color: #005ea2;
+}
+
+.event-form .ant-btn-danger {
+  transition: background-color 0.3s ease;
+}
+
+.event-form .ant-btn-danger:hover {
+  background-color: #cf1322;
+  border-color: #cf1322;
+}
+
+.login-prompt {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #ffffff;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes bounceIn {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(1); }
+}

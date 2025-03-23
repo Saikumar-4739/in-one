@@ -1,0 +1,108 @@
+.video-page {
+  background: #fff;
+  min-height: 100vh;
+  padding-top: 80px; /* YouTube-like top padding */
+  padding-bottom: 40px;
+}
+
+.container {
+  max-width: 1280px; /* Wider like YouTube */
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 10;
+  padding: 16px 0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Wider cards like YouTube */
+  gap: 16px;
+}
+
+.video-container {
+  position: relative;
+  cursor: pointer;
+}
+
+.video-player,
+.image-player {
+  width: 100%;
+  height: 180px; /* YouTube thumbnail height */
+  object-fit: cover;
+}
+
+.play-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 40px;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.video-container:hover .play-icon {
+  opacity: 0.8;
+}
+
+.upload-progress {
+  margin: 20px 0;
+}
+
+.login-message {
+  text-align: center;
+  padding: 50px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  margin: 20px;
+}
+
+.like-action {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.views-text {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  color: #606060; /* YouTube's secondary text color */
+}
+
+.ant-card {
+  border: 1px solid #e8e8e8;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ant-card-meta-title {
+  font-size: 16px;
+  color: #030303; /* YouTube's title color */
+}
+
+.ant-card-meta-description {
+  color: #606060;
+}
+
+.ant-btn-default {
+  border-color: #dadada;
+  color: #606060;
+}
+
+.ant-btn-default:hover {
+  border-color: #000;
+  color: #000;
+}

@@ -1,206 +1,133 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { NotesService } from './notes.service';
-import { ApiBody } from '@nestjs/swagger';
-import { CommonResponse, CreateCalendarEventModel, CreateCalendarModel, CreateNoteModel, UpdateNoteModel } from '@in-one/shared-models';
+import { CommonResponse, CreateNoteModel, MeetingEventModel, UpdateNoteModel } from '@in-one/shared-models';
 import { CalendarService } from './calender.service';
 
-@Controller('notes')
+@Controller('notes-calender')
 export class NotesCalenderController {
-    constructor(
-        private readonly notesService: NotesService,
-        private readonly calendarService: CalendarService
-    ) { }
+  constructor(
+    private readonly notesService: NotesService,
+    private readonly calendarService: CalendarService
+  ) { }
 
-    @Post('create')
-    @ApiBody({ schema: { properties: { title: { type: 'string' }, content: { type: 'string' }, userId: { type: 'string' } } } })
-    async create(@Body() createNoteDto: CreateNoteModel): Promise<CommonResponse> {
-        try {
-            const response = await this.notesService.create(createNoteDto);
-            return response;
-        } catch (error) {
-            console.error('❌ Error creating note:', error);
-            return new CommonResponse(false, 500, 'Error creating note', error);
-        }
+  @Post('createNote')
+  async createNote(@Body() createNoteDto: CreateNoteModel): Promise<CommonResponse> {
+    try {
+      const response = await this.notesService.createNote(createNoteDto);
+      return response;
+    } catch (error) {
+      return new CommonResponse(false, 500, 'Error creating note', error);
     }
+  }
 
-    @Post('update')
-    @ApiBody({ schema: { properties: { id: { type: 'string' }, title: { type: 'string' }, content: { type: 'string' }, userId: { type: 'string' } } } })
-    async update(@Body() body: { id: string } & UpdateNoteModel): Promise<CommonResponse> {
-        try {
-            const { id, ...updateData } = body;
-            const response = await this.notesService.update(id, updateData);
-            return response;
-        } catch (error) {
-            console.error('❌ Error updating note:', error);
-            return new CommonResponse(false, 500, 'Error updating note', error);
-        }
+  @Post('updateNote')
+  async updateNote(@Body() body: { id: string; userId: string } & UpdateNoteModel): Promise<CommonResponse> {
+    try {
+      const { id, userId, ...updateData } = body;
+      const response = await this.notesService.updateNote(id, updateData, userId);
+      return response;
+    } catch (error) {
+      return new CommonResponse(false, 500, 'Error updating note', error);
     }
+  }
 
-    @Post('delete')
-    @ApiBody({ schema: { properties: { id: { type: 'string' } } } })
-    async remove(@Body() body: { id: string }): Promise<CommonResponse> {
-        try {
-            const response = await this.notesService.remove(body.id);
-            return response;
-        } catch (error) {
-            console.error('❌ Error deleting note:', error);
-            return new CommonResponse(false, 500, 'Error deleting note', error);
-        }
+  @Post('getUserNotes')
+  async getUserNotes(@Body() body: { userId: string; includeArchived?: boolean }): Promise<CommonResponse> {
+    try {
+      const response = await this.notesService.getUserNotes(body.userId, body.includeArchived);
+      return response;
+    } catch (error) {
+      return new CommonResponse(false, 500, 'Error retrieving notes', error);
     }
+  }
 
-    @Post('findAll')
-    @ApiBody({ schema: { properties: { userId: { type: 'string' } } } })
-    async findAll(@Body('userId') userId: string): Promise<CommonResponse> {
-        try {
-            const response = await this.notesService.findAll(userId);
-            return response;
-        } catch (error) {
-            console.error('❌ Error retrieving notes:', error);
-            return new CommonResponse(false, 500, 'Error retrieving notes', error);
-        }
+  @Post('togglePin')
+  async togglePin(@Body() body: { id: string; userId: string }): Promise<CommonResponse> {
+    try {
+      const response = await this.notesService.togglePin(body.id, body.userId);
+      return response;
+    } catch (error) {
+      return new CommonResponse(false, 500, 'Error toggling pin', error);
     }
+  }
 
-    @Post('findOne')
-    @ApiBody({ schema: { properties: { id: { type: 'string' } } } })
-    async findOne(@Body('id') id: string): Promise<CommonResponse> {
-        try {
-            const response = await this.notesService.findOne(id);
-            return response;
-        } catch (error) {
-            console.error('❌ Error retrieving note:', error);
-            return new CommonResponse(false, 500, 'Error retrieving note', error);
-        }
+  @Post('toggleArchive')
+  async toggleArchive(@Body() body: { id: string; userId: string }): Promise<CommonResponse> {
+    try {
+      const response = await this.notesService.toggleArchive(body.id, body.userId);
+      return response;
+    } catch (error) {
+      return new CommonResponse(false, 500, 'Error toggling archive', error);
     }
+  }
 
-    @Post('togglePin')
-    @ApiBody({ schema: { properties: { id: { type: 'string' } } } })
-    async togglePin(@Body('id') id: string): Promise<CommonResponse> {
-        try {
-            const response = await this.notesService.togglePin(id);
-            return response;
-        } catch (error) {
-            console.error('❌ Error toggling pin:', error);
-            return new CommonResponse(false, 500, 'Error toggling pin', error);
-        }
+  @Post('searchNote')
+  async searchNote(@Body() body: { query: string; userId: string }): Promise<CommonResponse> {
+    try {
+      const response = await this.notesService.searchNote(body.userId, body.query);
+      return response;
+    } catch (error) {
+      return new CommonResponse(false, 500, 'Error searching notes', error);
     }
+  }
 
-    @Post('toggleArchive')
-    @ApiBody({ schema: { properties: { id: { type: 'string' } } } })
-    async toggleArchive(@Body('id') id: string): Promise<CommonResponse> {
-        try {
-            const response = await this.notesService.toggleArchive(id);
-            return response;
-        } catch (error) {
-            console.error('❌ Error toggling archive:', error);
-            return new CommonResponse(false, 500, 'Error toggling archive', error);
-        }
+  @Post('countUserNotes')
+  async countUserNotes(@Body() body: { userId: string }): Promise<CommonResponse> {
+    try {
+      const response = await this.notesService.countUserNotes(body.userId);
+      return response;
+    } catch (error) {
+      return new CommonResponse(false, 500, 'Error counting notes', error);
     }
+  }
 
-    @Post('search')
-    @ApiBody({ schema: { properties: { query: { type: 'string' }, userId: { type: 'string' } } } })
-    async search(@Body() body: { query: string; userId: string }): Promise<CommonResponse> {
-        try {
-            const response = await this.notesService.search(body.query, body.userId);
-            return response;
-        } catch (error) {
-            console.error('❌ Error searching notes:', error);
-            return new CommonResponse(false, 500, 'Error searching notes', error);
-        }
+  @Post('createEvent')
+  async createEvent(@Body() body: { userId: string; event: MeetingEventModel }): Promise<CommonResponse> {
+    try {
+      const response = await this.calendarService.createEvent(body.userId, body.event);
+      return response;
+    } catch (error) {
+      return new CommonResponse(false, 500, 'Error creating event', error);
     }
+  }
 
-    @Post('countUserNotes')
-    @ApiBody({ schema: { properties: { userId: { type: 'string' } } } })
-    async countUserNotes(@Body('userId') userId: string): Promise<CommonResponse> {
-        try {
-            const response = await this.notesService.countUserNotes(userId);
-            return response;
-        } catch (error) {
-            console.error('❌ Error counting notes:', error);
-            return new CommonResponse(false, 500, 'Error counting notes', error);
-        }
+  @Post('getUserEvents')
+  async getUserEvents(@Body() body: { userId: string }): Promise<CommonResponse> {
+    try {
+      const response = await this.calendarService.getUserEvents(body.userId);
+      return response;
+    } catch (error) {
+      return new CommonResponse(false, 500, 'Error retrieving user events', error);
     }
+  }
 
-    @Post('create')
-    @ApiBody({ schema: { properties: { userId: { type: 'string' } } } })
-    async createCalnder(@Body() body: { calendar: CreateCalendarModel, event: CreateCalendarEventModel }): Promise<CommonResponse> {
-      try {
-        const response = await this.calendarService.create(body.calendar, body.event);
-        return response;
-      } catch (error) {
-        console.error('❌ Error creating calendar and event:', error);
-        return new CommonResponse(false, 500, 'Error creating calendar and event', error);
-      }
+  @Post('getEventById')
+  async getEventById(@Body() body: { id: string }): Promise<CommonResponse> {
+    try {
+      const response = await this.calendarService.getEventById(body.id);
+      return response;
+    } catch (error) {
+      return new CommonResponse(false, 500, 'Error retrieving event', error);
     }
-  
-    @Post('getAll')
-    @ApiBody({ schema: { properties: { userId: { type: 'string' } } } })
-    async getAllCalendars(@Body() body: { userId: string }): Promise<CommonResponse> {
-      try {
-        const response = await this.calendarService.getAllCalendars(body.userId);
-        return response;
-      } catch (error) {
-        console.error('❌ Error retrieving calendars:', error);
-        return new CommonResponse(false, 500, 'Error retrieving calendars', error);
-      }
+  }
+
+  @Post('deleteEvent')
+  async deleteEvent(@Body() body: { id: string }): Promise<CommonResponse> {
+    try {
+      const response = await this.calendarService.deleteEvent(body.id);
+      return response;
+    } catch (error) {
+      return new CommonResponse(false, 500, 'Error deleting event', error);
     }
-  
-    @Post('getById')
-    @ApiBody({ schema: { properties: { id: { type: 'string' } } } })
-    async getCalendarById(@Body() body: { id: string }): Promise<CommonResponse> {
-      try {
-        const response = await this.calendarService.getCalendarById(body.id);
-        return response;
-      } catch (error) {
-        console.error('❌ Error retrieving calendar:', error);
-        return new CommonResponse(false, 500, 'Error retrieving calendar', error);
-      }
+  }
+
+  @Post('updateEvent')
+  async updateEvent(@Body() body: { id: string; event: Partial<MeetingEventModel> }): Promise<CommonResponse> {
+    try {
+      const response = await this.calendarService.updateEvent(body.id, body.event);
+      return response;
+    } catch (error) {
+      return new CommonResponse(false, 500, 'Error updating event', error);
     }
-  
-    @Post('delete')
-    @ApiBody({ schema: { properties: { id: { type: 'string' } } } })
-    async delete(@Body() body: { id: string }): Promise<CommonResponse> {
-      try {
-        const response = await this.calendarService.delete(body.id);
-        return response;
-      } catch (error) {
-        console.error('❌ Error deleting calendar and events:', error);
-        return new CommonResponse(false, 500, 'Error deleting calendar and events', error);
-      }
-    }
-  
-    @Post('addEvent')
-    @ApiBody({ schema: { properties: { calendarId: { type: 'string' }, event: { type: 'object' } } } })
-    async addEvent(@Body() body: { calendarId: string, event: CreateCalendarEventModel }): Promise<CommonResponse> {
-      try {
-        const response = await this.calendarService.addEvent(body.calendarId, body.event);
-        return response;
-      } catch (error) {
-        console.error('❌ Error adding event:', error);
-        return new CommonResponse(false, 500, 'Error adding event', error);
-      }
-    }
-  
-    @Post('updateEvent')
-    @ApiBody({ schema: { properties: { id: { type: 'string' }, event: { type: 'object' } } } })
-    async updateEvent(@Body() body: { id: string, event: any }): Promise<CommonResponse> {
-      try {
-        const response = await this.calendarService.updateEvent(body.id, body.event);
-        return response;
-      } catch (error) {
-        console.error('❌ Error updating event:', error);
-        return new CommonResponse(false, 500, 'Error updating event', error);
-      }
-    }
-  
-    @Post('deleteEvent')
-    @ApiBody({ schema: { properties: { id: { type: 'string' } } } })
-    async deleteEvent(@Body() body: { id: string }): Promise<CommonResponse> {
-      try {
-        const response = await this.calendarService.deleteEvent(body.id);
-        return response;
-      } catch (error) {
-        console.error('❌ Error deleting event:', error);
-        return new CommonResponse(false, 500, 'Error deleting event', error);
-      }
-    }
+  }
 }

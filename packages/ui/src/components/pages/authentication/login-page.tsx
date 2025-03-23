@@ -2,10 +2,10 @@ import React, { useState, useEffect } from "react";
 import { Form, Input, Button, Checkbox, Typography, message, Upload, Modal } from "antd";
 import { UserOutlined, LockOutlined, MailOutlined, UploadOutlined } from "@ant-design/icons";
 import { UserLoginModel, CommonResponse, EmailRequestModel, CreateUserModel } from "@in-one/shared-models";
-import "./login-page.css";
 import { useNavigate } from "react-router-dom";
 import { UserHelpService } from "@in-one/shared-services";
 import CryptoJS from 'crypto-js';
+import "./login-page.css";
 
 const { Title, Text } = Typography;
 
@@ -42,36 +42,26 @@ const LoginPage: React.FC = () => {
     }
   
     setLoading(true);
-  
     // Encrypt the password before sending
-    const secretKey = 'your-secret-key'; // This should be stored securely (e.g., in an environment variable)
+    const secretKey = '4e8c6d1f3b5e0a9d2c7f4e8b1a3c5d9f6e2a7b0c4d8e1f3a5b9d6c2e7f2a9b3c'; 
     const encryptedPassword = CryptoJS.AES.encrypt(password, secretKey).toString();
     const loginData = new UserLoginModel(email, encryptedPassword);
   
     try {
       const response = await userService.loginUser(loginData);
-  
       if (response.status && response.data?.accessToken) {
         message.success("Login successful!");
-  
-        // Store user details in localStorage
         localStorage.setItem("token", response.data.accessToken);
         localStorage.setItem("username", response.data.user?.username || "");
         localStorage.setItem("email", response.data.user?.email || "");
         localStorage.setItem("userId", response.data.user?.id || "");
         localStorage.setItem("profilePicture", response.data.user?.profilePicture || "");
-  
-        // Handle "Remember Me" feature
         if (remember) {
           localStorage.setItem("rememberEmail", email);
         } else {
           localStorage.removeItem("rememberEmail");
         }
-  
-        // Trigger authentication state update
         window.dispatchEvent(new Event("storage"));
-  
-        // Navigate to home page
         navigate("/home", { replace: true });
       } else {
         message.error(response.internalMessage || "Invalid credentials.");
@@ -84,24 +74,18 @@ const LoginPage: React.FC = () => {
     }
   };
 
-
   const handleSignup = async () => {
     if (!email || !password || !username) {
       message.error("Please fill in all fields.");
       return;
     }
-  
     // Password validation
-    const passwordRegex = /^(?=(.*[a-z]){2,})(?=(.*[A-Z]){2,})(?=(.*\d){2,})(?=(.*[@$!%*?&\#_\-\+\/]){2,})[A-Za-z\d@$!%*?&\#_\-\+\/]{8,}$/;
+    const passwordRegex = /^(?=(.*[a-z]){2,})(?=(.*[A-Z]){1,})(?=(.*\d){1,})(?=(.*[@$!%*?&\#_\-\+\/]){1,})[A-Za-z\d@$!%*?&\#_\-\+\/]{8,}$/;
     if (!passwordRegex.test(password)) {
-      message.error(
-        "Password must be at least 8 characters long, with at least 2 uppercase letters, 2 lowercase letters, 2 numbers, and 2 special characters (@, $, !, %, *, ?, &, #, _, -, +, /)"
-      );
+      message.error( "Invalid Password Format");
       return;
     }
-  
     setLoading(true);
-  
     try {
       const signupData = new CreateUserModel(username, email, password, profilePicture);
       const response = await userService.createUser(signupData);
@@ -143,7 +127,6 @@ const LoginPage: React.FC = () => {
       message.error("An error occurred. Please try again.");
     }
   };
-
 
   return (
     <div className="login-container">
@@ -206,16 +189,6 @@ const LoginPage: React.FC = () => {
             <>Don't have an account? <a onClick={() => setIsSignup(true)}>Sign up</a></>
           )}
         </Text>
-
-        {/* <Text className="forgotPassoword-text">
-          Click here to reset 😢.{" "}
-          <a
-            className="forgotPassoword-text"
-            onClick={() => setForgotPasswordModal(true)}
-          >
-            Forgot Password?
-          </a>
-        </Text> */}
       </div>
 
       <Modal

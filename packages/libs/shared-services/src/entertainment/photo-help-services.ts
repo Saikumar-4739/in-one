@@ -10,13 +10,22 @@ export class PhotoHelpService extends CommonAxiosService {
         return `/photos/${childUrl}`;
     }
 
-    async uploadPhoto(reqModel: CreatePhotoModel, file: File, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
+    async uploadPhoto(reqModel: CreatePhotoModel, file: Blob | File, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
         const formData = new FormData();
         formData.append('file', file);
-        Object.keys(reqModel).forEach(key => {
-            formData.append(key, (reqModel as any)[key]);
-        });        
-        return await this.axiosPostCall(this.getURLwithMainEndPoint('uploadPhoto'), formData, { ...config, headers: { 'Content-Type': 'multipart/form-data' } });
+        Object.entries(reqModel).forEach(([key, value]) => {
+            formData.append(key, value);
+        });
+        
+        return await this.axiosPostCall(
+            this.getURLwithMainEndPoint('uploadPhoto'),
+            formData,
+            {
+                ...config,
+                // Let FormData set the Content-Type with proper boundary
+                headers: { ...config?.headers }
+            }
+        );
     }
 
     async getAllPhotos(config?: AxiosRequestConfig): Promise<GlobalResponseObject> {

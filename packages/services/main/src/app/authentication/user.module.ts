@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
-import { CacheModule } from '@nestjs/cache-manager'; // ✅ Import from @nestjs/cache-manager
+import { CacheModule } from '@nestjs/cache-manager'; 
 import { UserService } from './user.service';
 import { UserController } from './user.controller';
-import { TypeOrmModule } from '@nestjs/typeorm'; // ✅ Use TypeORM instead of Mongoose
+import { TypeOrmModule } from '@nestjs/typeorm'; 
 import { UserEntity } from './entities/user.entity';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';

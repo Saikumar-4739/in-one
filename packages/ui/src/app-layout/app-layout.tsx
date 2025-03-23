@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ProjectOutlined, LineChartOutlined, PictureOutlined, CalendarOutlined, MessageOutlined, FileOutlined, BulbOutlined, PoweroffOutlined, AppstoreAddOutlined, VideoCameraOutlined, UserOutlined } from "@ant-design/icons";
 import "./app-layout.css";
 import { UserHelpService } from "@in-one/shared-services";
+import { UserIdRequestModel } from "@in-one/shared-models";
 
 interface User {
     id: string;
@@ -31,7 +32,8 @@ const AppLayout: React.FC = () => {
         try {
             const userId = localStorage.getItem("userId");
             if (!userId) throw new Error("User ID not found");
-            await userService.logoutUser(userId);
+            const req = new UserIdRequestModel(userId)
+            await userService.logoutUser(req);
             localStorage.clear();
             window.dispatchEvent(new Event("storage"));
             navigate("/login", { replace: true });

@@ -8,7 +8,7 @@ export class NoteEntity {
 
   @ManyToOne(() => UserEntity, (user) => user.notes)
   @JoinColumn({ name: 'user_id' })
-  user: UserEntity; 
+  userId: UserEntity; 
 
   @Column({ type: 'varchar', length: 255, default: '' })  // ✅ Define length explicitly
   title: string;
