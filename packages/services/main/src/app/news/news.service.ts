@@ -24,57 +24,174 @@ export class NewsService {
     try {
       const newsRepo = this.transactionManager.getRepository(this.newsRepository);
       const userRepo = this.transactionManager.getRepository(this.userRepository);
-
+  
+      console.log(createNewsDto, "...........................................");
+  
+      // ✅ Validate required fields
+      if (!createNewsDto.title || createNewsDto.title.trim() === '') {
+        throw new Error('Title is required');
+      }
+  
+      // ✅ Ensure author exists
       const author = await userRepo.findOne({ where: { id: createNewsDto.authorId } });
       if (!author) throw new Error('Author not found');
-
-      // Process images if they exist
+  
+      // ✅ Process images if they exist
       let processedImages: string[] | undefined;
-      if (createNewsDto.images && createNewsDto.images.length > 0) {
+      if (createNewsDto.images?.length) {
         processedImages = await Promise.all(
           createNewsDto.images.map(async (base64, index) => {
             const matches = base64.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
             if (!matches) throw new Error('Invalid base64 image format');
-            const ext = matches[1]; // e.g., 'jpeg', 'png'
-            const data = matches[2]; // base64 data
-            const buffer = Buffer.from(data, 'base64');
+            const ext = matches[1];
+            const buffer = new Uint8Array(Buffer.from(matches[2], 'base64'));
             const fileName = `news_${Date.now()}_${index}.${ext}`;
-            const filePath = join(__dirname, 'uploads', fileName); // Adjust path as needed
-            await fs.writeFile(filePath, new Uint8Array(buffer)); // Convert Buffer to Uint8Array
-            return `/uploads/${fileName}`; // Return URL or path
+            const filePath = join(__dirname, 'uploads', fileName);
+            await fs.writeFile(filePath, buffer);
+            return `/uploads/${fileName}`;
           })
         );
       }
-
-      // Process thumbnail if it exists
+  
+      // ✅ Process thumbnail if it exists
       let processedThumbnail: string | undefined;
       if (createNewsDto.thumbnail) {
         const matches = createNewsDto.thumbnail.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
         if (!matches) throw new Error('Invalid base64 thumbnail format');
         const ext = matches[1];
-        const data = matches[2];
-        const buffer = Buffer.from(data, 'base64');
+        const buffer = new Uint8Array(Buffer.from(matches[2], 'base64'));
         const fileName = `thumbnail_${Date.now()}.${ext}`;
         const filePath = join(__dirname, 'uploads', fileName);
-        await fs.writeFile(filePath, new Uint8Array(buffer)); // Convert Buffer to Uint8Array
+        await fs.writeFile(filePath, buffer);
         processedThumbnail = `/uploads/${fileName}`;
       }
-
-      // Create news entity with processed image paths
+  
+      // ✅ Create news entity correctly
       const newNews = newsRepo.create({
-        ...createNewsDto,
-        author,
-        images: processedImages,
-        thumbnail: processedThumbnail,
+        title: createNewsDto.title.trim(), // ✅ Ensure no empty strings
+        content: createNewsDto.content ?? '', // ✅ Provide default if undefined
+        summary: createNewsDto.summary ?? '',
+        category: createNewsDto.category ?? 'Uncategorized',
+        tags: createNewsDto.tags ?? [],
+        images: processedImages ?? [],
+        thumbnail: processedThumbnail ?? '',
+        status: createNewsDto.status ?? 'draft',
+        visibility: createNewsDto.visibility ?? 'public',
+        isFeatured: createNewsDto.isFeatured ?? false,
+        isBreaking: createNewsDto.isBreaking ?? false,
+        publishedAt: createNewsDto.publishedAt ?? new Date(),
+        author: author,
       });
+  
       const savedNews = await newsRepo.save(newNews);
-
       await this.transactionManager.commitTransaction();
+  
       return new CommonResponse(true, 201, 'News created successfully', savedNews);
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
       console.error('❌ Error creating news:', error);
       return new CommonResponse(false, 500, 'Error creating news', error);
+    }
+  }
+
+  async createMultipleNews(createNewsDtos: CreateNewsModel[]): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
+    try {
+      const newsRepo = this.transactionManager.getRepository(this.newsRepository);
+      const userRepo = this.transactionManager.getRepository(this.userRepository);
+  
+      const results = [];
+      const errors = [];
+  
+      for (const dto of createNewsDtos) {
+        try {
+          if (!dto.title || dto.title.trim() === '') {
+            throw new Error('Title is required');
+          }
+  
+          const author = await userRepo.findOne({ where: { id: dto.authorId } });
+          if (!author) throw new Error(`Author not found for ID: ${dto.authorId}`);
+  
+          let processedImages: string[] | undefined;
+          if (dto.images?.length) {
+            processedImages = await Promise.all(
+              dto.images.map(async (image, index) => {
+                // Check if the image is a base64 string
+                const base64Match = image.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
+                if (base64Match) {
+                  const ext = base64Match[1];
+                  const buffer = new Uint8Array(Buffer.from(base64Match[2], 'base64'));
+                  const fileName = `news_${Date.now()}_${index}.${ext}`;
+                  const filePath = join(__dirname, 'uploads', fileName);
+                  await fs.writeFile(filePath, buffer);
+                  return `/uploads/${fileName}`;
+                }
+                // If not base64, assume it's a URL and use it as-is
+                return image;
+              }),
+            );
+          }
+  
+          let processedThumbnail: string | undefined;
+          if (dto.thumbnail) {
+            // Check if the thumbnail is a base64 string
+            const base64Match = dto.thumbnail.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
+            if (base64Match) {
+              const ext = base64Match[1];
+              const buffer = new Uint8Array(Buffer.from(base64Match[2], 'base64'));
+              const fileName = `thumbnail_${Date.now()}.${ext}`;
+              const filePath = join(__dirname, 'uploads', fileName);
+              await fs.writeFile(filePath, buffer);
+              processedThumbnail = `/uploads/${fileName}`;
+            } else {
+              // If not base64, assume it's a URL and use it as-is
+              processedThumbnail = dto.thumbnail;
+            }
+          }
+  
+          const newNews = newsRepo.create({
+            title: dto.title.trim(),
+            content: dto.content ?? '',
+            summary: dto.summary ?? '',
+            category: dto.category ?? 'Uncategorized',
+            tags: dto.tags ?? [],
+            images: processedImages ?? [],
+            thumbnail: processedThumbnail ?? '',
+            status: dto.status ?? 'draft',
+            visibility: dto.visibility ?? 'public',
+            isFeatured: dto.isFeatured ?? false,
+            isBreaking: dto.isBreaking ?? false,
+            publishedAt: dto.publishedAt ?? new Date(),
+            author: author,
+          });
+  
+          const savedNews = await newsRepo.save(newNews);
+          results.push(savedNews);
+        } catch (error) {
+          console.error(`Error processing news item "${dto.title}":`, error);
+          errors.push({
+            item: dto,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+  
+      await this.transactionManager.commitTransaction();
+  
+      if (errors.length > 0) {
+        return new CommonResponse(
+          false,
+          207,
+          'Some news items failed to create',
+          { successful: results, failed: errors },
+        );
+      }
+  
+      return new CommonResponse(true, 201, 'All news items created successfully', results);
+    } catch (error) {
+      await this.transactionManager.rollbackTransaction();
+      console.error('❌ Critical error creating multiple news:', error);
+      return new CommonResponse(false, 500, 'Error creating multiple news', String(error));
     }
   }
 

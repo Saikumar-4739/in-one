@@ -1,31 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CreateNewsModel, UpdateNewsModel, CreateCommentModel } from '@in-one/shared-models';
-import { Button, Card, message, Space, Typography, Input, Modal, Form, Pagination, List, Upload } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, LikeOutlined, DislikeOutlined, CommentOutlined, UploadOutlined } from '@ant-design/icons';
+import { Button, Card, message, Space, Typography, Input, Form, List, Upload, Select, Modal } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, LikeOutlined, DislikeOutlined, CommentOutlined, UploadOutlined, CloseOutlined, ReadOutlined, LineChartOutlined } from '@ant-design/icons';
 import { NewsHelpService } from '@in-one/shared-services';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { UploadFile } from 'antd/es/upload/interface';
+import './news-page.css';
+
+const placeholderImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAARgAAAC8CAMAAAB8Zmf2AAAAA1BMVEX///+nxBvIAAAAIElEQVR4nO3BAQ0AAADCoPdPbQ43oAAAAAAAAAAAAAAAAADwGxiKAAEvqP0yAAAAAElFTkSuQmCC';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
+const { Option } = Select;
 
-// Animation variants
+// Animation variants (unchanged)
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
-  hover: { scale: 1.03, boxShadow: '0 8px 24px rgba(0,0,0,0.1)' }
+  hover: { scale: 1.03, boxShadow: '0 8px 24px rgba(0,0,0,0.1)' },
+};
+
+const sectionVariants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
 };
 
 const NewsPage: React.FC = () => {
   const [news, setNews] = useState<any[]>([]);
   const [total, setTotal] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [pageSize] = useState<number>(8);
+  const [pageSize] = useState<number>(6);
   const [userId] = useState<string | null>(() => localStorage.getItem('userId') || null);
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const [isUpdateModalVisible, setIsUpdateModalVisible] = useState(false);
   const [isCommentModalVisible, setIsCommentModalVisible] = useState(false);
-  const [isFullViewModalVisible, setIsFullViewModalVisible] = useState(false);
   const [selectedNews, setSelectedNews] = useState<any>(null);
   const [editingNewsId, setEditingNewsId] = useState<string | null>(null);
   const [commentNewsId, setCommentNewsId] = useState<string | null>(null);
@@ -33,19 +41,55 @@ const NewsPage: React.FC = () => {
   const [createForm] = Form.useForm();
   const [updateForm] = Form.useForm();
   const [commentForm] = Form.useForm();
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const newsService = new NewsHelpService();
   const [loading, setLoading] = useState<boolean>(false);
+  const newsContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchNews();
-  }, [currentPage]);
+  }, [currentPage, categoryFilter]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loading && news.length < total) {
+          setCurrentPage((prev) => prev + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const sentinel = document.createElement('div');
+    sentinel.className = 'sentinel';
+    if (newsContainerRef.current) {
+      newsContainerRef.current.appendChild(sentinel);
+      observer.observe(sentinel);
+    }
+
+    return () => {
+      if (sentinel && newsContainerRef.current) {
+        observer.unobserve(sentinel);
+        newsContainerRef.current.removeChild(sentinel);
+      }
+    };
+  }, [loading, news.length, total]);
 
   const fetchNews = async () => {
     setLoading(true);
     try {
       const response = await newsService.getAllNews(currentPage, pageSize);
       if (response.status) {
-        setNews(response.data.news || []);
+        let filteredNews = response.data.news || [];
+        if (categoryFilter) {
+          filteredNews = filteredNews.filter((item: any) => item.category === categoryFilter);
+        }
+        // Deduplicate news items based on id
+        setNews((prev) => {
+          const newNews = currentPage === 1 ? filteredNews : [...prev, ...filteredNews];
+          const uniqueNews = Array.from(new Map(newNews.map((item: { id: any; }) => [item.id, item])).values());
+          return uniqueNews;
+        });
         setTotal(response.data.total || 0);
       } else {
         message.error(response.internalMessage || 'Failed to fetch news');
@@ -57,6 +101,7 @@ const NewsPage: React.FC = () => {
     }
   };
 
+  // Rest of the functions remain unchanged (handleCreateNews, handleUpdateNews, etc.)
   const handleCreateNews = async (values: any) => {
     if (!userId) {
       message.error('Please log in to create news');
@@ -92,6 +137,8 @@ const NewsPage: React.FC = () => {
         setIsCreateModalVisible(false);
         createForm.resetFields();
         setFileList([]);
+        setCurrentPage(1);
+        setNews([]);
         fetchNews();
         message.success('News created successfully');
       } else {
@@ -122,6 +169,8 @@ const NewsPage: React.FC = () => {
         setIsUpdateModalVisible(false);
         setEditingNewsId(null);
         updateForm.resetFields();
+        setCurrentPage(1);
+        setNews([]);
         fetchNews();
         message.success('News updated successfully');
       } else {
@@ -139,8 +188,10 @@ const NewsPage: React.FC = () => {
     try {
       const response = await newsService.deleteNews(id);
       if (response.status) {
+        setCurrentPage(1);
+        setNews([]);
         fetchNews();
-        setIsFullViewModalVisible(false);
+        setSelectedNews(null);
         message.success('News deleted successfully');
       } else {
         message.error(response.internalMessage || 'Failed to delete news');
@@ -162,6 +213,8 @@ const NewsPage: React.FC = () => {
     try {
       const response = await newsService.toggleLikeNews(id);
       if (response.status) {
+        setCurrentPage(1);
+        setNews([]);
         fetchNews();
         message.success(`News ${isLiked ? 'unliked' : 'liked'} successfully`);
       } else {
@@ -191,6 +244,8 @@ const NewsPage: React.FC = () => {
       if (response.status) {
         setIsCommentModalVisible(false);
         commentForm.resetFields();
+        setCurrentPage(1);
+        setNews([]);
         fetchNews();
         message.success('Comment added successfully');
       } else {
@@ -208,6 +263,8 @@ const NewsPage: React.FC = () => {
     try {
       const response = await newsService.deleteComment(commentId);
       if (response.status) {
+        setCurrentPage(1);
+        setNews([]);
         fetchNews();
         message.success('Comment deleted successfully');
       } else {
@@ -235,8 +292,12 @@ const NewsPage: React.FC = () => {
   };
 
   const handleFullView = (newsItem: any) => {
+    console.log('Opening full view for:', newsItem);
     setSelectedNews(newsItem);
-    setIsFullViewModalVisible(true);
+  };
+
+  const closeFullView = () => {
+    setSelectedNews(null);
   };
 
   const getNewsImage = (newsItem: any) =>
@@ -262,144 +323,268 @@ const NewsPage: React.FC = () => {
     });
   };
 
+  const breakingNews = news.find((item) => item.isBreaking) || null;
+  const categories = Array.from(new Set(news.map((item) => item.category)));
+
   return (
-    <div style={{
-      width: '100%',
-      minHeight: '100vh',
-      backgroundColor: "#fff",
-      padding: '80px 20px 20px',
-    }}>
-      <div style={{
-        maxWidth: '1240px',
-        margin: '0 auto',
-        background: '#fff',
-        borderRadius: '12px',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-        padding: '24px',
-      }}>
+    <div className="news-page-container">
+      <div className="news-content-wrapper">
         <motion.div
+          className="news-header"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '32px',
-          }}
         >
-          <Title level={2} style={{ margin: 0, color: '#1a1a1a' }}>
-        News
+          <Title style={{ fontSize: '30px' }}>
+          <LineChartOutlined style={{ marginRight: '10px' }} />
+            Insight 24x7
           </Title>
           {userId && (
             <Button
               type="primary"
               icon={<PlusOutlined />}
               onClick={() => setIsCreateModalVisible(true)}
-              style={{
-                background: 'linear-gradient(45deg, #1890ff, #40c4ff)',
-                border: 'none',
-              }}
+              className="create-news-btn"
             >
-              Create News
+              Create Insight
             </Button>
           )}
         </motion.div>
 
-        <AnimatePresence>
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px' }}>
-              <Text>Loading...</Text>
+        {breakingNews && (
+          <motion.div
+            className="breaking-news-wrapper"
+            variants={sectionVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            <div className="breaking-news-section">
+              Insight 24x7 Flash News: {breakingNews.title}
             </div>
-          ) : (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-              gap: '24px',
-            }}>
-              {news.map((newsItem) => (
-                <motion.div
-                  key={newsItem.id}
-                  variants={cardVariants}
-                  initial="hidden"
-                  animate="visible"
-                  whileHover="hover"
-                  transition={{ duration: 0.4 }}
-                  onClick={() => handleFullView(newsItem)}
-                >
-                  <Card
-                    hoverable
-                    cover={
-                      getNewsImage(newsItem) ? (
-                        <img
-                          alt={newsItem.title}
-                          src={getNewsImage(newsItem)}
-                          style={{
-                            width: '100%',
-                            height: '200px',
-                            objectFit: 'cover',
-                            borderRadius: '12px 12px 0 0',
-                          }}
-                        />
-                      ) : (
-                        <div style={{
-                          width: '100%',
-                          height: '200px',
-                          background: '#f0f2f5',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          borderRadius: '12px 12px 0 0',
-                        }}>
-                          No Image
-                        </div>
-                      )
-                    }
-                    style={{
-                      borderRadius: '12px',
-                      border: 'none',
-                      overflow: 'hidden',
-                    }}
-                    bodyStyle={{ padding: '16px' }}
-                  >
-                    <Text strong style={{ display: 'block', marginBottom: '8px' }}>
-                      {newsItem.title.slice(0, 60)}{newsItem.title.length > 60 ? '...' : ''}
-                    </Text>
-                    <Space>
-                      <Text><LikeOutlined /> {newsItem.likes || 0}</Text>
-                      <Text><CommentOutlined /> {newsItem.comments?.length || 0}</Text>
-                    </Space>
-                  </Card>
-                </motion.div>
+            <Select
+              className="category-dropdown-inline"
+              placeholder="Select Category"
+              onChange={(value: string) => {
+                setCategoryFilter(value);
+                setCurrentPage(1);
+                setNews([]);
+              }}
+              allowClear
+              onClear={() => {
+                setCategoryFilter(null);
+                setCurrentPage(1);
+                setNews([]);
+              }}
+            >
+              {categories.map((category) => (
+                <Option key={category} value={category}>
+                  {category}
+                </Option>
               ))}
-            </div>
-          )}
-        </AnimatePresence>
+            </Select>
+          </motion.div>
+        )}
 
-        <Pagination
-          current={currentPage}
-          pageSize={pageSize}
-          total={total}
-          onChange={(page) => setCurrentPage(page)}
-          style={{ marginTop: '32px', textAlign: 'center' }}
-          disabled={loading}
-        />
+        <div className="main-content">
+          <div className={`news-grid-container ${selectedNews ? 'with-full-view' : ''}`} ref={newsContainerRef}>
+            <motion.div variants={sectionVariants} initial="hidden" animate="visible">
+              <AnimatePresence>
+                {loading && news.length === 0 ? (
+                  <div className="loading-text">
+                    <Text>Loading...</Text>
+                  </div>
+                ) : news.length === 0 ? (
+                  <div className="no-news-text">
+                    <Text>No news available.</Text>
+                  </div>
+                ) : (
+                  <div className="latest-news-grid">
+                    {news.map((newsItem) => (
+                      <motion.div
+                        key={newsItem.id} // Ensure newsItem.id is unique
+                        variants={cardVariants}
+                        initial="hidden"
+                        animate="visible"
+                        whileHover="hover"
+                        transition={{ duration: 0.4 }}
+                      >
+                        <Card
+                          className="news-card"
+                          hoverable
+                          onClick={() => handleFullView(newsItem)}
+                          cover={
+                            getNewsImage(newsItem) ? (
+                              <img
+                                alt={newsItem.title}
+                                src={getNewsImage(newsItem)}
+                                className="news-card-image"
+                                onError={(e) => {
+                                  e.currentTarget.src = placeholderImage;
+                                }}
+                              />
+                            ) : (
+                              <div className="news-card-placeholder">
+                                <img src={placeholderImage} alt="No Image" />
+                              </div>
+                            )
+                          }
+                        >
+                          <Text className="news-card-title">
+                            {newsItem.title.slice(0, 60)}
+                            {newsItem.title.length > 60 ? '...' : ''}
+                          </Text>
+                          <Space className="news-card-meta">
+                            <Text>
+                              <LikeOutlined /> {newsItem.likes || 0}
+                            </Text>
+                            <Text>
+                              <CommentOutlined /> {newsItem.comments?.length || 0}
+                            </Text>
+                          </Space>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+              </AnimatePresence>
+              {loading && news.length > 0 && (
+                <div className="loading-text">
+                  <Text>Loading more...</Text>
+                </div>
+              )}
+            </motion.div>
+          </div>
 
-        {/* Create Modal */}
+          <AnimatePresence>
+            {selectedNews && (
+              <motion.div
+                className="full-view-container"
+                initial={{ opacity: 0, x: 100 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 100 }}
+                transition={{ duration: 0.3 }}
+              >
+                <div className="full-view-header">
+                  <Text strong className="full-view-title">{selectedNews.title}</Text>
+                  <Button
+                    icon={<CloseOutlined />}
+                    onClick={closeFullView}
+                    className="close-full-view-btn"
+                  />
+                </div>
+                <div className="full-view-content">
+                  {getNewsImage(selectedNews) ? (
+                    <img
+                      src={getNewsImage(selectedNews)}
+                      alt={selectedNews.title}
+                      className="full-view-image"
+                      onError={(e) => {
+                        e.currentTarget.src = placeholderImage;
+                      }}
+                    />
+                  ) : (
+                    <div className="full-view-placeholder">
+                      <img src={placeholderImage} alt="No Image" />
+                    </div>
+                  )}
+                  <Text strong>Category:</Text> <Text>{selectedNews.category || 'N/A'}</Text>
+                  <br />
+                  <Text strong>Published:</Text>{' '}
+                  <Text>{selectedNews.publishedAt ? new Date(selectedNews.publishedAt).toLocaleString() : 'N/A'}</Text>
+                  <br />
+                  <Text strong>Content:</Text> <p>{selectedNews.content || 'No content available.'}</p>
+                  {selectedNews.tags?.length > 0 && (
+                    <div>
+                      <Text strong>Tags:</Text>{' '}
+                      {selectedNews.tags.map((tag: string) => (
+                        <span key={tag} className="tag">
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <Space className="full-view-actions">
+                    <Button
+                      icon={selectedNews.isLiked ? <DislikeOutlined /> : <LikeOutlined />}
+                      onClick={() => handleToggleLike(selectedNews.id, selectedNews.isLiked)}
+                      loading={loading}
+                    >
+                      {selectedNews.likes || 0}
+                    </Button>
+                    <Button
+                      icon={<CommentOutlined />}
+                      onClick={() => handleComment(selectedNews.id)}
+                    >
+                      {selectedNews.comments?.length || 0}
+                    </Button>
+                    {selectedNews.userId === userId && (
+                      <>
+                        <Button
+                          icon={<EditOutlined />}
+                          onClick={() => handleEdit(selectedNews)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          icon={<DeleteOutlined />}
+                          danger
+                          onClick={() => handleDeleteNews(selectedNews.id)}
+                          loading={loading}
+                        >
+                          Delete
+                        </Button>
+                      </>
+                    )}
+                  </Space>
+                  {selectedNews.comments?.length > 0 ? (
+                    <List
+                      header={<Text strong>Comments</Text>}
+                      dataSource={selectedNews.comments}
+                      renderItem={(comment: any) => (
+                        <List.Item
+                          actions={
+                            comment.userId === userId
+                              ? [
+                                <Button
+                                  type="link"
+                                  onClick={() => handleDeleteComment(comment.id)}
+                                >
+                                  Delete
+                                </Button>,
+                              ]
+                              : []
+                          }
+                        >
+                          <List.Item.Meta
+                            title={comment.userName || 'Anonymous'}
+                            description={comment.content || 'No content'}
+                          />
+                        </List.Item>
+                      )}
+                    />
+                  ) : (
+                    <Text>No comments available.</Text>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
         <Modal
           title="Create News"
-          visible={isCreateModalVisible}
+          open={isCreateModalVisible}
           onCancel={() => setIsCreateModalVisible(false)}
           footer={null}
         >
           <Form form={createForm} onFinish={handleCreateNews} layout="vertical">
-            <Form.Item name="title" label="Title" rules={[{ required: true }]}>
+            <Form.Item name="title" label="Title" rules={[{ required: true, message: 'Please enter a title' }]}>
               <Input />
             </Form.Item>
-            <Form.Item name="content" label="Content" rules={[{ required: true }]}>
+            <Form.Item name="content" label="Content" rules={[{ required: true, message: 'Please enter content' }]}>
               <TextArea rows={4} />
             </Form.Item>
-            <Form.Item name="category" label="Category" rules={[{ required: true }]}>
+            <Form.Item name="category" label="Category" rules={[{ required: true, message: 'Please enter a category' }]}>
               <Input />
             </Form.Item>
             <Form.Item name="tags" label="Tags">
@@ -416,18 +601,17 @@ const NewsPage: React.FC = () => {
           </Form>
         </Modal>
 
-        {/* Update Modal */}
         <Modal
           title="Update News"
-          visible={isUpdateModalVisible}
+          open={isUpdateModalVisible}
           onCancel={() => setIsUpdateModalVisible(false)}
           footer={null}
         >
           <Form form={updateForm} onFinish={handleUpdateNews} layout="vertical">
-            <Form.Item name="title" label="Title" rules={[{ required: true }]}>
+            <Form.Item name="title" label="Title" rules={[{ required: true, message: 'Please enter a title' }]}>
               <Input />
             </Form.Item>
-            <Form.Item name="content" label="Content" rules={[{ required: true }]}>
+            <Form.Item name="content" label="Content" rules={[{ required: true, message: 'Please enter content' }]}>
               <TextArea rows={4} />
             </Form.Item>
             <Button type="primary" htmlType="submit" loading={loading} block>
@@ -436,107 +620,20 @@ const NewsPage: React.FC = () => {
           </Form>
         </Modal>
 
-        {/* Comment Modal */}
         <Modal
           title="Add Comment"
-          visible={isCommentModalVisible}
+          open={isCommentModalVisible}
           onCancel={() => setIsCommentModalVisible(false)}
           footer={null}
         >
           <Form form={commentForm} onFinish={handleAddComment} layout="vertical">
-            <Form.Item name="content" label="Comment" rules={[{ required: true }]}>
+            <Form.Item name="content" label="Comment" rules={[{ required: true, message: 'Please enter a comment' }]}>
               <TextArea rows={4} />
             </Form.Item>
             <Button type="primary" htmlType="submit" loading={loading} block>
               Add Comment
             </Button>
           </Form>
-        </Modal>
-
-        {/* Full View Modal */}
-        <Modal
-          title={selectedNews?.title}
-          visible={isFullViewModalVisible}
-          onCancel={() => setIsFullViewModalVisible(false)}
-          footer={[
-            <Space key="actions">
-              <Button
-                icon={selectedNews?.isLiked ? <DislikeOutlined /> : <LikeOutlined />}
-                onClick={() => handleToggleLike(selectedNews.id, selectedNews.isLiked)}
-                loading={loading}
-              >
-                {selectedNews?.likes || 0}
-              </Button>
-              <Button
-                icon={<CommentOutlined />}
-                onClick={() => handleComment(selectedNews?.id)}
-              >
-                {selectedNews?.comments?.length || 0}
-              </Button>
-              {selectedNews?.userId === userId && (
-                <>
-                  <Button
-                    icon={<EditOutlined />}
-                    onClick={() => handleEdit(selectedNews)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    icon={<DeleteOutlined />}
-                    danger
-                    onClick={() => handleDeleteNews(selectedNews.id)}
-                    loading={loading}
-                  >
-                    Delete
-                  </Button>
-                </>
-              )}
-            </Space>,
-          ]}
-          width="80%"
-        >
-          {selectedNews && (
-            <>
-              {getNewsImage(selectedNews) && (
-                <img
-                  src={getNewsImage(selectedNews)}
-                  alt={selectedNews.title}
-                  style={{ width: '100%', maxHeight: '400px', objectFit: 'cover', marginBottom: '16px' }}
-                />
-              )}
-              <Text strong>Category:</Text> <Text>{selectedNews.category}</Text><br />
-              <Text strong>Published:</Text> <Text>{new Date(selectedNews.publishedAt).toLocaleString()}</Text><br />
-              <Text strong>Content:</Text> <p>{selectedNews.content}</p>
-              {selectedNews.tags?.length > 0 && (
-                <div>
-                  <Text strong>Tags:</Text>{' '}
-                  {selectedNews.tags.map((tag: string) => (
-                    <span key={tag} style={{ marginRight: '8px' }}>#{tag}</span>
-                  ))}
-                </div>
-              )}
-              {selectedNews.comments?.length > 0 && (
-                <List
-                  header={<Text strong>Comments</Text>}
-                  dataSource={selectedNews.comments}
-                  renderItem={(comment: any) => (
-                    <List.Item
-                      actions={
-                        comment.userId === userId
-                          ? [<Button type="link" onClick={() => handleDeleteComment(comment.id)}>Delete</Button>]
-                          : []
-                      }
-                    >
-                      <List.Item.Meta
-                        title={comment.userName || 'Anonymous'}
-                        description={comment.content}
-                      />
-                    </List.Item>
-                  )}
-                />
-              )}
-            </>
-          )}
         </Modal>
       </div>
     </div>

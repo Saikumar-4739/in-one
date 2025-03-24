@@ -50,7 +50,7 @@ const AppLayout: React.FC = () => {
         { key: "6", icon: <BulbOutlined />, label: "AI Bot", path: "/ai-bot" },
         { key: "7", icon: <VideoCameraOutlined />, label: "Videos", path: "/videos" },
         { key: "8", icon: <PictureOutlined />, label: "Photos", path: "/photos" },
-        { key: "9", icon: <LineChartOutlined />, label: "News", path: "/latest-news" },
+        { key: "9", icon: <LineChartOutlined />, label: "Insight 24x7", path: "/latest-news" },
         { key: "10", icon: <AppstoreAddOutlined />, label: "Plugins", path: "/plugins" },
     ];
 

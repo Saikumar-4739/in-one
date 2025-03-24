@@ -15,6 +15,11 @@ export class NewsController {
     }
   }
 
+  @Post('bulkNews')
+  async createMultipleNews(@Body() createNewsDtos: CreateNewsModel[]) {
+    return this.newsService.createMultipleNews(createNewsDtos);
+  }
+
   @Post('updateNews')
   async updateNews(@Body() body: { id: string } & UpdateNewsModel): Promise<CommonResponse> {
     try {

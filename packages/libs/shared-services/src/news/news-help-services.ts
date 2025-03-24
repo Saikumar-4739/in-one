@@ -39,4 +39,8 @@ export class NewsHelpService extends CommonAxiosService {
   async deleteComment(id: string, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
     return await this.axiosPostCall(this.getURLwithMainEndPoint('deleteComment'), { id }, config);
   }
+  
+  async createMultipleNews(reqModel: CreateNewsModel[], config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
+    return await this.axiosPostCall(this.getURLwithMainEndPoint('bulNews'), reqModel, config);
+  }
 }

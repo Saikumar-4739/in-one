@@ -19,7 +19,7 @@ export class NewsEntity {
   @Column({ type: 'varchar', length: 100, nullable: true })
   category: string;
 
-  @Column({ type: 'json',nullable: false })
+  @Column({ type: 'json',nullable: true })
   tags: string[];
 
 
