@@ -205,23 +205,17 @@ export class UserService {
 
   async logoutUser(reqModel: UserIdRequestModel): Promise<CommonResponse> {
     try {
-      const userId = reqModel.userId;
-      console.log('Attempting logout for user ID:', userId);
-      if (!userId) {
+      if (!reqModel.userId) {
         return new CommonResponse(false, 400, 'Invalid user ID');
       }
       const userRepo = this.userRepository;
-      const user = await userRepo.findOne({ where: { id: userId } });
+      const user = await userRepo.findOne({ where: { id: reqModel.userId } });
       if (!user) {
-        console.log('User not found for ID:', userId);
         return new CommonResponse(false, 404, 'User not found');
       }
-      console.log('Current user status:', user.status);
       user.status = UserStatus.OFFLINE;
       await userRepo.save(user);
-      console.log('User status updated to OFFLINE');
-      const updatedUser = await userRepo.findOne({ where: { id: userId } });
-      console.log('Verified user status:', updatedUser?.status);
+      await userRepo.findOne({ where: { id: reqModel.userId } });
       return new CommonResponse(true, 200, 'User logged out successfully');
     } catch (error) {
       console.error('Logout error:', error);
