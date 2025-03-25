@@ -1,6 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CreatePhotoModel, UpdatePhotoModel, PhotoIdRequestModel, LikeRequestModel } from '@in-one/shared-models';
-import { Button, Card, Upload, message, Space, Typography, Modal, Form, Input, Select } from 'antd';
+import {
+  CreatePhotoModel,
+  UpdatePhotoModel,
+  PhotoIdRequestModel,
+  LikeRequestModel,
+} from '@in-one/shared-models';
+import {
+  Button,
+  Card,
+  Upload,
+  message,
+  Space,
+  Typography,
+  Modal,
+  Form,
+  Input,
+  Select,
+} from 'antd';
 import {
   UploadOutlined,
   EditOutlined,
@@ -14,12 +30,15 @@ import {
 import { PhotoHelpService } from '@in-one/shared-services';
 import { motion, AnimatePresence } from 'framer-motion';
 import './photos-page.css';
+import Stories from './stories';
 
 const { Title } = Typography;
 
 const PhotosPage: React.FC = () => {
   const [photos, setPhotos] = useState<any[]>([]);
-  const [userId] = useState<string | null>(() => localStorage.getItem('userId') || null);
+  const [userId] = useState<string | null>(
+    () => localStorage.getItem('userId') || null
+  );
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isPreviewVisible, setIsPreviewVisible] = useState(false);
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
@@ -30,11 +49,15 @@ const PhotosPage: React.FC = () => {
   const [form] = Form.useForm();
   const contentRef = useRef<HTMLDivElement | null>(null);
   const lastOffset = useRef<number>(0);
-  const photoService = new PhotoHelpService()
+  const photoService = new PhotoHelpService();
 
   const cardVariants = {
     hidden: { opacity: 0, y: 50 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.4, ease: 'easeOut' },
+    },
     exit: { opacity: 0, y: -20, transition: { duration: 0.3 } },
   };
 
@@ -50,11 +73,19 @@ const PhotosPage: React.FC = () => {
   }, [userId]);
 
   const fetchPhotos = async (append = false) => {
-    if (!userId || !hasMore || loading || (append && offset === lastOffset.current)) return;
+    if (
+      !userId ||
+      !hasMore ||
+      loading ||
+      (append && offset === lastOffset.current)
+    )
+      return;
     setLoading(true);
     try {
       const limit = 9;
-      const response = await photoService.getAllPhotos({ params: { offset, limit } });
+      const response = await photoService.getAllPhotos({
+        params: { offset, limit },
+      });
       if (response.status === true) {
         const transformedPhotos = response.data.map((photo: any) => ({
           photoId: photo.id,
@@ -70,7 +101,8 @@ const PhotosPage: React.FC = () => {
         setPhotos((prev) => {
           if (append) {
             const newPhotos = transformedPhotos.filter(
-              (newPhoto: { photoId: any; }) => !prev.some((existing) => existing.photoId === newPhoto.photoId)
+              (newPhoto: { photoId: any }) =>
+                !prev.some((existing) => existing.photoId === newPhoto.photoId)
             );
             return [...prev, ...newPhotos];
           }
@@ -93,10 +125,10 @@ const PhotosPage: React.FC = () => {
   useEffect(() => {
     const handleScroll = () => {
       if (!contentRef.current || loading || !hasMore) return;
+
       const { scrollTop, scrollHeight, clientHeight } = contentRef.current;
-      console.log('Scroll check:', { scrollTop, scrollHeight, clientHeight }); // Debug scroll position
-      if (scrollTop + clientHeight >= scrollHeight - 50) {
-        console.log('Fetching more photos at offset:', offset);
+
+      if (scrollTop + clientHeight >= scrollHeight - 100) {
         fetchPhotos(true);
       }
     };
@@ -143,7 +175,10 @@ const PhotosPage: React.FC = () => {
     }
   };
 
-  const handleUpdate = async (values: { caption?: string; visibility?: 'public' | 'private' }) => {
+  const handleUpdate = async (values: {
+    caption?: string;
+    visibility?: 'public' | 'private';
+  }) => {
     if (!userId || !editingPhotoId) return;
     const updateModel: UpdatePhotoModel = {
       photoId: editingPhotoId,
@@ -208,11 +243,16 @@ const PhotosPage: React.FC = () => {
         }
         message.success(`Photo ${isLiked ? 'unliked' : 'liked'} successfully`);
       } else {
-        message.error(response.internalMessage || `Failed to ${isLiked ? 'unlike' : 'like'} photo`);
+        message.error(
+          response.internalMessage ||
+            `Failed to ${isLiked ? 'unlike' : 'like'} photo`
+        );
       }
     } catch (error) {
       console.error(`Error ${isLiked ? 'unliking' : 'liking'} photo:`, error);
-      message.error(`An error occurred while ${isLiked ? 'unliking' : 'liking'} the photo`);
+      message.error(
+        `An error occurred while ${isLiked ? 'unliking' : 'liking'} the photo`
+      );
     }
   };
 
@@ -232,7 +272,11 @@ const PhotosPage: React.FC = () => {
 
   if (!userId) {
     return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="login-prompt">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="login-prompt"
+      >
         <Title level={3}>Please log in to view your photos</Title>
       </motion.div>
     );
@@ -249,15 +293,25 @@ const PhotosPage: React.FC = () => {
         <Title style={{ fontSize: '30px' }}>
           <PictureOutlined style={{ marginRight: '10px' }} />
           InstaView
-          </Title>
-        <Upload beforeUpload={handleUpload} showUploadList={false} disabled={loading}>
+        </Title>
+        <Upload
+          beforeUpload={handleUpload}
+          showUploadList={false}
+          disabled={loading}
+        >
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-            <Button type="primary" icon={loading ? <LoadingOutlined /> : <UploadOutlined />} disabled={loading} className="upload-btn">
+            <Button
+              type="primary"
+              icon={loading ? <LoadingOutlined /> : <UploadOutlined />}
+              disabled={loading}
+              className="upload-btn"
+            >
               Upload Photo
             </Button>
           </motion.div>
         </Upload>
       </motion.div>
+      <Stories />
 
       <div className="content-wrapper" ref={contentRef}>
         {loading && !photos.length ? (
@@ -285,13 +339,27 @@ const PhotosPage: React.FC = () => {
                     hoverable
                     onClick={() => handlePreview(photo)}
                   >
-                    <img src={photo.url} alt={photo.caption || 'Photo'} className="photo-img" />
+                    <img
+                      src={photo.url}
+                      alt={photo.caption || 'Photo'}
+                      className="photo-img"
+                    />
                     <div className="photo-details">
                       <Space className="photo-actions">
-                        <motion.div variants={buttonVariants} whileHover="hover" whileTap="tap">
+                        <motion.div
+                          variants={buttonVariants}
+                          whileHover="hover"
+                          whileTap="tap"
+                        >
                           <Button
                             type="text"
-                            icon={photo.isLiked ? <DislikeOutlined /> : <LikeOutlined />}
+                            icon={
+                              photo.isLiked ? (
+                                <DislikeOutlined />
+                              ) : (
+                                <LikeOutlined />
+                              )
+                            }
                             onClick={(e) => {
                               e.stopPropagation();
                               handleLike(photo.photoId, photo.isLiked);
@@ -299,7 +367,11 @@ const PhotosPage: React.FC = () => {
                             className={photo.isLiked ? 'liked' : ''}
                           />
                         </motion.div>
-                        <motion.div variants={buttonVariants} whileHover="hover" whileTap="tap">
+                        <motion.div
+                          variants={buttonVariants}
+                          whileHover="hover"
+                          whileTap="tap"
+                        >
                           <Button
                             type="text"
                             icon={<EditOutlined />}
@@ -309,7 +381,11 @@ const PhotosPage: React.FC = () => {
                             }}
                           />
                         </motion.div>
-                        <motion.div variants={buttonVariants} whileHover="hover" whileTap="tap">
+                        <motion.div
+                          variants={buttonVariants}
+                          whileHover="hover"
+                          whileTap="tap"
+                        >
                           <Button
                             type="text"
                             icon={<DeleteOutlined />}
@@ -326,7 +402,9 @@ const PhotosPage: React.FC = () => {
                         <p className="caption">
                           <strong>{photo.caption || ''}</strong>
                         </p>
-                        <p className="visibility">{photo.visibility === 'public' ? 'Public' : 'Private'}</p>
+                        <p className="visibility">
+                          {photo.visibility === 'public' ? 'Public' : 'Private'}
+                        </p>
                       </div>
                     </div>
                   </Card>
@@ -353,7 +431,11 @@ const PhotosPage: React.FC = () => {
           <Form.Item name="caption" label="Caption">
             <Input placeholder="Add a caption" />
           </Form.Item>
-          <Form.Item name="visibility" label="Visibility" rules={[{ required: true, message: 'Please select visibility' }]}>
+          <Form.Item
+            name="visibility"
+            label="Visibility"
+            rules={[{ required: true, message: 'Please select visibility' }]}
+          >
             <Select placeholder="Select visibility">
               <Select.Option value="public">Public</Select.Option>
               <Select.Option value="private">Private</Select.Option>
@@ -377,13 +459,25 @@ const PhotosPage: React.FC = () => {
       >
         {selectedPhoto && (
           <div className="preview-container">
-            <img src={selectedPhoto.url} alt={selectedPhoto.caption || 'Photo'} className="preview-image" />
+            <img
+              src={selectedPhoto.url}
+              alt={selectedPhoto.caption || 'Photo'}
+              className="preview-image"
+            />
             <div className="preview-details">
               <p className="preview-likes">
                 <Button
                   type="text"
-                  icon={selectedPhoto.isLiked ? <DislikeOutlined /> : <LikeOutlined />}
-                  onClick={() => handleLike(selectedPhoto.photoId, selectedPhoto.isLiked)}
+                  icon={
+                    selectedPhoto.isLiked ? (
+                      <DislikeOutlined />
+                    ) : (
+                      <LikeOutlined />
+                    )
+                  }
+                  onClick={() =>
+                    handleLike(selectedPhoto.photoId, selectedPhoto.isLiked)
+                  }
                   className={selectedPhoto.isLiked ? 'liked' : ''}
                 >
                   {selectedPhoto.likes || 0} Likes
@@ -392,7 +486,9 @@ const PhotosPage: React.FC = () => {
               <p className="preview-caption">
                 <strong>{selectedPhoto.caption || ''}</strong>
               </p>
-              <p className="preview-visibility">{selectedPhoto.visibility === 'public' ? 'Public' : 'Private'}</p>
+              <p className="preview-visibility">
+                {selectedPhoto.visibility === 'public' ? 'Public' : 'Private'}
+              </p>
             </div>
           </div>
         )}
