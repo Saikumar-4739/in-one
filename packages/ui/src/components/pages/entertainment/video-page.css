@@ -3,7 +3,7 @@
 .video-detail-page {
   padding: 30px; /* Increased padding for spacing */
   background-color: #fff; /* White background */
-  min-height: 100vh;
+  height: 100%;
   padding-top: 100px; /* More space for header */
   box-sizing: border-box;
 }
@@ -73,6 +73,7 @@
   gap: 25px; /* Increased gap for spacing */
   padding: 0;
   margin-top: 40px;
+  padding-bottom: 10%;
 }
 
 /* Card Styling */
@@ -403,4 +404,246 @@
   .ant-card-actions {
     padding: 8px 0;
   }
+}
+.author-section {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+}
+
+.author-details {
+  display: flex;
+  flex-direction: column;
+}
+
+
+.j-video-description {
+  font-size: 1rem;
+  color: #444; /* Modern dark gray */
+  padding: 12px 16px;
+  border-radius: 8px;
+  transition: all 0.3s ease-in-out;
+  line-height: 1.5;
+  font-weight: 500;
+  text-align: left;
+  display: inline-block;
+}
+
+/* Hover effect for a subtle lift */
+.j-video-description:hover {
+  background: rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .j-video-description {
+    font-size: 0.9rem;
+    padding: 10px 14px;
+  }
+}
+/* video-page.css */
+
+.video-page {
+  height: 100vh;
+  overflow-y: auto;
+  background-color: #fff;
+}
+
+/* Modern scrollbar styling for page */
+.video-page::-webkit-scrollbar {
+  width: 8px;
+}
+
+.video-page::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.video-page::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.video-page::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Firefox scrollbar styling */
+.video-page {
+  scrollbar-width: thin;
+  scrollbar-color: #888 #f1f1f1;
+}
+
+.j-header {
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.container {
+  max-height: calc(88vh - 100px);
+  overflow-y: auto;
+  padding: 0 20px;
+}
+
+/* Modern scrollbar styling for container */
+.container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.container::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.container::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  padding: 20px;
+  padding-bottom: 10%;
+}
+
+.video-container {
+  position: relative;
+  cursor: pointer;
+}
+
+.video-player,
+.image-player {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.play-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 40px;
+  color: #fff;
+  opacity: 0.8;
+  transition: opacity 0.3s;
+}
+/* video-page.css */
+
+.video-page {
+  height: 100%;
+  overflow-y: auto;
+  background-color: #fff;
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.video-page::-webkit-scrollbar {
+  display: none;
+}
+
+.j-header {
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.container {
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  padding: 0 20px;
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.container::-webkit-scrollbar {
+  display: none;
+}
+
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  padding: 20px;
+  padding-bottom: 10%;
+}
+
+.video-container {
+  position: relative;
+  cursor: pointer;
+}
+
+.video-player,
+.image-player {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.play-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 40px;
+  color: #fff;
+  opacity: 0.8;
+  transition: opacity 0.3s;
+}
+
+.video-container:hover .play-icon {
+  opacity: 1;
+}
+
+.upload-progress {
+  margin: 20px 0;
+}
+
+.views-text {
+  display: block;
+  margin-top: 8px;
+}
+
+.edit-modal-content {
+  display: flex;
+  gap: 20px;
+}
+
+.modal-video-player {
+  width: 50%;
+  max-height: 300px;
+}
+
+.edit-form {
+  flex: 1;
+}
+
+.like-action {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.login-message {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
 }

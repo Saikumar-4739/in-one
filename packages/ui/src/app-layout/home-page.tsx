@@ -129,13 +129,13 @@ const HomePage: React.FC = () => {
           >
             <Link to="/chat">
               <Button
+                className='get-started-btn'
                 type="primary"
                 size="large"
                 style={{
                   padding: '0 clamp(15px, 4vw, 30px)', // Responsive padding
                   backgroundColor: '#ffd700',
                   borderColor: '#ffd700',
-                  color: '#000',
                   fontSize: 'clamp(12px, 2vw, 16px)',
                 }}
               >

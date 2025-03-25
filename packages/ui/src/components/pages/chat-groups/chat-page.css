@@ -199,7 +199,10 @@
   margin: 8px 0;
 }
 
-.group-list .ant-typography-strong,
+.get-started-btn{
+  color: aliceblue !important;
+
+  .group-list .ant-typography-strong,
 .user-list .ant-typography-strong {
   display: block;
   margin-bottom: 12px;

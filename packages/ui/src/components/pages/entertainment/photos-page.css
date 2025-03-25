@@ -19,6 +19,75 @@
     width: 100%;
     flex-shrink: 0; /* Prevent header from shrinking */
   }
+  .j-header {
+    width: 85%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid #dbdbdb;
+    flex-shrink: 0;
+    background: #fff;
+    transition: all 0.3s ease-in-out;
+    position: relative;
+    border-radius: 10px; /* Optional rounded corners */
+    margin: 0 auto; /* Centers the header */
+    overflow: hidden; /* Ensures the shine effect stays within bounds */
+  }
+  
+  /* Add a continuous shining effect */
+  .j-header::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 200%;
+    height: 100%;
+    background: linear-gradient(
+      120deg,
+      rgba(255, 255, 255, 0) 30%,
+      rgba(255, 255, 255, 0.4) 50%,
+      rgba(255, 255, 255, 0) 70%
+    );
+    animation: shine 2.5s infinite linear;
+  }
+  
+  /* Define the shine animation */
+  @keyframes shine {
+    from {
+      left: -100%;
+    }
+    to {
+      left: 100%;
+    }
+  }
+  
+  /* Add shadow & scale effect on hover */
+  .j-header:hover {
+    box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.15);
+    transform: scale(1.02);
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 1024px) {
+    .j-header {
+      width: 90%;
+      padding: 15px;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .j-header {
+      flex-direction: column;
+      gap: 10px;
+      text-align: center;
+      width: 95%;
+    }
+  
+    .j-header:hover {
+      transform: scale(1.01); /* Slight hover effect for smaller screens */
+    }
+  }
   
   .title {
     margin: 0;
