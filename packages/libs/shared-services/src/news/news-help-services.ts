@@ -41,6 +41,18 @@ export class NewsHelpService extends CommonAxiosService {
   }
   
   async createMultipleNews(reqModel: CreateNewsModel[], config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
-    return await this.axiosPostCall(this.getURLwithMainEndPoint('bulNews'), reqModel, config);
+    return await this.axiosPostCall(this.getURLwithMainEndPoint('bulkNews'), reqModel, config); // Fixed typo: 'bulNews' -> 'bulkNews'
+  }
+
+  async toggleDislikeNews(id: string, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
+    return await this.axiosPostCall(this.getURLwithMainEndPoint('dislikeNews'), { id }, config);
+  }
+
+  async shareNews(id: string, platform: string, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
+    return await this.axiosPostCall(this.getURLwithMainEndPoint('shareNews'), { id, platform }, config);
+  }
+
+  async markNewsAsImportant(id: string, isImportant: boolean, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
+    return await this.axiosPostCall(this.getURLwithMainEndPoint('markImportant'), { id, isImportant }, config);
   }
 }

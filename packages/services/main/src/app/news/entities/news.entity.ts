@@ -19,9 +19,8 @@ export class NewsEntity {
   @Column({ type: 'varchar', length: 100, nullable: true })
   category: string;
 
-  @Column({ type: 'json',nullable: true })
+  @Column({ type: 'json', nullable: true })
   tags: string[];
-
 
   @Column({ type: 'json', nullable: true })
   images: string[];
@@ -49,6 +48,15 @@ export class NewsEntity {
 
   @Column({ type: 'int', default: 0 })
   likes: number;
+
+  @Column({ type: 'int', default: 0 }) 
+  dislikes: number;
+
+  @Column({ type: 'int', default: 0 }) 
+  shares: number;
+
+  @Column({ type: 'boolean', default: false }) 
+  isImportant: boolean;
 
   @OneToMany(() => NewsCommentEntity, (comment) => comment.news, { cascade: true })
   comments: NewsCommentEntity[];

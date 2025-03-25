@@ -83,4 +83,31 @@ export class NewsController {
       return ExceptionHandler.handleError(error, 'Error deleting comment');
     }
   }
+
+  @Post('dislikeNews')
+  async dislikeNews(@Body() body: { id: string }): Promise<CommonResponse> {
+    try {
+      return await this.newsService.toggleDislikeNews(body.id);
+    } catch (error) {
+      return ExceptionHandler.handleError(error, 'Error disliking news');
+    }
+  }
+
+  @Post('shareNews')
+  async shareNews(@Body() body: { id: string; platform: string }): Promise<CommonResponse> {
+    try {
+      return await this.newsService.shareNews(body.id, body.platform);
+    } catch (error) {
+      return ExceptionHandler.handleError(error, 'Error sharing news');
+    }
+  }
+
+  @Post('markImportant')
+  async markNewsAsImportant(@Body() body: { id: string; isImportant: boolean }): Promise<CommonResponse> {
+    try {
+      return await this.newsService.markNewsAsImportant(body.id, body.isImportant);
+    } catch (error) {
+      return ExceptionHandler.handleError(error, 'Error marking news as important');
+    }
+  }
 }

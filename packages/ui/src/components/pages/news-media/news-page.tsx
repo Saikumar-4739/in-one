@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CreateNewsModel, UpdateNewsModel, CreateCommentModel } from '@in-one/shared-models';
-import { Button, Card, message, Space, Typography, Input, Form, List, Upload, Select, Modal } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, LikeOutlined, DislikeOutlined, CommentOutlined, UploadOutlined, CloseOutlined, ReadOutlined, LineChartOutlined } from '@ant-design/icons';
+import { Button, Card, message, Space, Typography, Input, Form, List, Upload, Select, Modal, Tag } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, LikeOutlined, DislikeOutlined, CommentOutlined, UploadOutlined, CloseOutlined, ShareAltOutlined, StarOutlined, EyeOutlined } from '@ant-design/icons';
 import { NewsHelpService } from '@in-one/shared-services';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { UploadFile } from 'antd/es/upload/interface';
@@ -9,11 +9,10 @@ import './news-page.css';
 
 const placeholderImage = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAARgAAAC8CAMAAAB8Zmf2AAAAA1BMVEX///+nxBvIAAAAIElEQVR4nO3BAQ0AAADCoPdPbQ43oAAAAAAAAAAAAAAAAADwGxiKAAEvqP0yAAAAAElFTkSuQmCC';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
 
-// Animation variants (unchanged)
 const cardVariants = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 },
@@ -84,7 +83,6 @@ const NewsPage: React.FC = () => {
         if (categoryFilter) {
           filteredNews = filteredNews.filter((item: any) => item.category === categoryFilter);
         }
-        // Deduplicate news items based on id
         setNews((prev) => {
           const newNews = currentPage === 1 ? filteredNews : [...prev, ...filteredNews];
           const uniqueNews = Array.from(new Map(newNews.map((item: { id: any; }) => [item.id, item])).values());
@@ -101,7 +99,6 @@ const NewsPage: React.FC = () => {
     }
   };
 
-  // Rest of the functions remain unchanged (handleCreateNews, handleUpdateNews, etc.)
   const handleCreateNews = async (values: any) => {
     if (!userId) {
       message.error('Please log in to create news');
@@ -126,9 +123,9 @@ const NewsPage: React.FC = () => {
         imageBase64.length > 0 ? imageBase64 : undefined,
         values.thumbnail || '',
         'draft',
-        'public',
-        false,
-        false,
+        values.visibility || 'public',
+        values.isFeatured || false,
+        values.isBreaking || false,
         new Date()
       );
 
@@ -163,6 +160,7 @@ const NewsPage: React.FC = () => {
         title: values.title,
         content: values.content,
         newsId: editingNewsId,
+        visibility: values.visibility,
       };
       const response = await newsService.updateNews(editingNewsId, updateModel);
       if (response.status) {
@@ -227,6 +225,79 @@ const NewsPage: React.FC = () => {
     }
   };
 
+  const handleToggleDislike = async (id: string, isDisliked: boolean) => {
+    if (!userId) {
+      message.error('Please log in to dislike news');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await newsService.toggleDislikeNews(id);
+      if (response.status) {
+        setCurrentPage(1);
+        setNews([]);
+        fetchNews();
+        message.success(`News ${isDisliked ? 'undisliked' : 'disliked'} successfully`);
+      } else {
+        message.error(response.internalMessage || `Failed to ${isDisliked ? 'undislike' : 'dislike'} news`);
+      }
+    } catch (error: any) {
+      message.error(error.message || `An error occurred while ${isDisliked ? 'undisliking' : 'disliking'} news`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleShareNews = async (id: string) => {
+    if (!userId) {
+      message.error('Please log in to share news');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const platform = prompt('Enter platform to share (e.g., Twitter, Facebook):') || 'General';
+      const response = await newsService.shareNews(id, platform);
+      if (response.status) {
+        setCurrentPage(1);
+        setNews([]);
+        fetchNews();
+        message.success(`News shared on ${platform} successfully`);
+      } else {
+        message.error(response.internalMessage || 'Failed to share news');
+      }
+    } catch (error: any) {
+      message.error(error.message || 'An error occurred while sharing news');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMarkImportant = async (id: string, isImportant: boolean) => {
+    if (!userId) {
+      message.error('Please log in to mark news');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await newsService.markNewsAsImportant(id, !isImportant);
+      if (response.status) {
+        setCurrentPage(1);
+        setNews([]);
+        fetchNews();
+        message.success(`News marked as ${!isImportant ? 'important' : 'not important'} successfully`);
+      } else {
+        message.error(response.internalMessage || 'Failed to mark news');
+      }
+    } catch (error: any) {
+      message.error(error.message || 'An error occurred while marking news');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAddComment = async (values: { content: string }) => {
     if (!userId || !commentNewsId) {
       message.error('User ID or News ID missing');
@@ -278,11 +349,16 @@ const NewsPage: React.FC = () => {
   };
 
   const handleEdit = (newsItem: any) => {
+    if (newsItem.author.id !== userId) {
+      message.error('You can only edit news you created');
+      return;
+    }
     setEditingNewsId(newsItem.id);
     setIsUpdateModalVisible(true);
     updateForm.setFieldsValue({
       title: newsItem.title,
       content: newsItem.content,
+      visibility: newsItem.visibility,
     });
   };
 
@@ -291,9 +367,18 @@ const NewsPage: React.FC = () => {
     setIsCommentModalVisible(true);
   };
 
-  const handleFullView = (newsItem: any) => {
-    console.log('Opening full view for:', newsItem);
-    setSelectedNews(newsItem);
+  const handleFullView = async (newsItem: any) => {
+    setLoading(true);
+    try {
+      const updatedNews = { ...newsItem, views: (newsItem.views || 0) + 1 };
+      setSelectedNews(updatedNews);
+      await newsService.updateNews(newsItem.id, { views: updatedNews.views } as any);
+      setNews((prev) => prev.map((item) => (item.id === newsItem.id ? updatedNews : item)));
+    } catch (error: any) {
+      message.error(error.message || 'An error occurred while updating view count');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const closeFullView = () => {
@@ -335,10 +420,6 @@ const NewsPage: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <Title style={{ fontSize: '30px' }}>
-          <LineChartOutlined style={{ marginRight: '10px' }} />
-            Insight 24x7
-          </Title>
           {userId && (
             <Button
               type="primary"
@@ -346,7 +427,7 @@ const NewsPage: React.FC = () => {
               onClick={() => setIsCreateModalVisible(true)}
               className="create-news-btn"
             >
-              Create Insight
+              Create News
             </Button>
           )}
         </motion.div>
@@ -359,7 +440,7 @@ const NewsPage: React.FC = () => {
             animate="visible"
           >
             <div className="breaking-news-section">
-              Insight 24x7 Flash News: {breakingNews.title}
+              Breaking: {breakingNews.title}
             </div>
             <Select
               className="category-dropdown-inline"
@@ -399,51 +480,124 @@ const NewsPage: React.FC = () => {
                   </div>
                 ) : (
                   <div className="latest-news-grid">
-                    {news.map((newsItem) => (
-                      <motion.div
-                        key={newsItem.id} // Ensure newsItem.id is unique
-                        variants={cardVariants}
-                        initial="hidden"
-                        animate="visible"
-                        whileHover="hover"
-                        transition={{ duration: 0.4 }}
-                      >
-                        <Card
-                          className="news-card"
-                          hoverable
-                          onClick={() => handleFullView(newsItem)}
-                          cover={
-                            getNewsImage(newsItem) ? (
-                              <img
-                                alt={newsItem.title}
-                                src={getNewsImage(newsItem)}
-                                className="news-card-image"
-                                onError={(e) => {
-                                  e.currentTarget.src = placeholderImage;
-                                }}
-                              />
-                            ) : (
-                              <div className="news-card-placeholder">
-                                <img src={placeholderImage} alt="No Image" />
-                              </div>
-                            )
-                          }
-                        >
-                          <Text className="news-card-title">
-                            {newsItem.title.slice(0, 60)}
-                            {newsItem.title.length > 60 ? '...' : ''}
-                          </Text>
-                          <Space className="news-card-meta">
-                            <Text>
-                              <LikeOutlined /> {newsItem.likes || 0}
-                            </Text>
-                            <Text>
-                              <CommentOutlined /> {newsItem.comments?.length || 0}
-                            </Text>
-                          </Space>
-                        </Card>
-                      </motion.div>
-                    ))}
+                    {news.length > 0 && (
+                      (() => {
+                        // Find the news item with the most views
+                        const mostViewedNews = news.reduce((prev, current) =>
+                          (prev.views || 0) > (current.views || 0) ? prev : current
+                        );
+                        const otherNews = news.filter((item) => item.id !== mostViewedNews.id);
+
+                        return (
+                          <>
+                            {/* Big Card for Most Viewed News */}
+                            <motion.div
+                              key={mostViewedNews.id}
+                              variants={cardVariants}
+                              initial="hidden"
+                              animate="visible"
+                              whileHover="hover"
+                              transition={{ duration: 0.4 }}
+                              className="big-card-wrapper"
+                            >
+                              <Card
+                                className="news-card big-card"
+                                hoverable
+                                onClick={() => handleFullView(mostViewedNews)}
+                                cover={
+                                  getNewsImage(mostViewedNews) ? (
+                                    <img
+                                      alt={mostViewedNews.title}
+                                      src={getNewsImage(mostViewedNews)}
+                                      className="news-card-image big-card-image"
+                                      onError={(e) => {
+                                        e.currentTarget.src = placeholderImage;
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="news-card-placeholder big-card-placeholder">
+                                      <img src={placeholderImage} alt="No Image" />
+                                    </div>
+                                  )
+                                }
+                              >
+                                <Text className="news-card-title big-card-title">
+                                  {mostViewedNews.title.slice(0, 80)}
+                                  {mostViewedNews.title.length > 80 ? '...' : ''}
+                                </Text>
+                                <Space className="news-card-meta big-card-meta">
+                                  <Text>
+                                    <LikeOutlined /> {mostViewedNews.likes || 0}
+                                  </Text>
+                                  <Text>
+                                    <DislikeOutlined /> {mostViewedNews.dislikes || 0}
+                                  </Text>
+                                  <Text>
+                                    <CommentOutlined /> {mostViewedNews.comments?.length || 0}
+                                  </Text>
+                                  <Text>
+                                    <EyeOutlined /> {mostViewedNews.views || 0}
+                                  </Text>
+                                </Space>
+                              </Card>
+                            </motion.div>
+
+                            {/* Normal Cards for Other News */}
+                            {otherNews.map((newsItem) => (
+                              <motion.div
+                                key={newsItem.id}
+                                variants={cardVariants}
+                                initial="hidden"
+                                animate="visible"
+                                whileHover="hover"
+                                transition={{ duration: 0.4 }}
+                              >
+                                <Card
+                                  className="news-card"
+                                  hoverable
+                                  onClick={() => handleFullView(newsItem)}
+                                  cover={
+                                    getNewsImage(newsItem) ? (
+                                      <img
+                                        alt={newsItem.title}
+                                        src={getNewsImage(newsItem)}
+                                        className="news-card-image"
+                                        onError={(e) => {
+                                          e.currentTarget.src = placeholderImage;
+                                        }}
+                                      />
+                                    ) : (
+                                      <div className="news-card-placeholder">
+                                        <img src={placeholderImage} alt="No Image" />
+                                      </div>
+                                    )
+                                  }
+                                >
+                                  <Text className="news-card-title">
+                                    {newsItem.title.slice(0, 60)}
+                                    {newsItem.title.length > 60 ? '...' : ''}
+                                  </Text>
+                                  <Space className="news-card-meta">
+                                    <Text>
+                                      <LikeOutlined /> {newsItem.likes || 0}
+                                    </Text>
+                                    <Text>
+                                      <DislikeOutlined /> {newsItem.dislikes || 0}
+                                    </Text>
+                                    <Text>
+                                      <CommentOutlined /> {newsItem.comments?.length || 0}
+                                    </Text>
+                                    <Text>
+                                      <EyeOutlined /> {newsItem.views || 0}
+                                    </Text>
+                                  </Space>
+                                </Card>
+                              </motion.div>
+                            ))}
+                          </>
+                        );
+                      })()
+                    )}
                   </div>
                 )}
               </AnimatePresence>
@@ -487,29 +641,70 @@ const NewsPage: React.FC = () => {
                       <img src={placeholderImage} alt="No Image" />
                     </div>
                   )}
-                  <Text strong>Category:</Text> <Text>{selectedNews.category || 'N/A'}</Text>
-                  <br />
-                  <Text strong>Published:</Text>{' '}
-                  <Text>{selectedNews.publishedAt ? new Date(selectedNews.publishedAt).toLocaleString() : 'N/A'}</Text>
-                  <br />
+                  <div>
+                    <Text strong style={{ display: 'inline', fontWeight: 'bold' }}>
+                      Category:
+                    </Text>
+                    <Text style={{ display: 'inline', marginLeft: '5px' }}>
+                      {selectedNews.category || 'N/A'}
+                    </Text>
+                  </div>
+                  <div>
+                    <Text strong style={{ display: 'inline', fontWeight: 'bold' }}>
+                      Published:
+                    </Text>{' '}
+                    <Text style={{ display: 'inline', marginLeft: '5px' }}>
+                      {selectedNews.publishedAt ? new Date(selectedNews.publishedAt).toLocaleString() : 'N/A'}
+                    </Text>
+                  </div>
+                  <div>
+                    <Text strong style={{ display: 'inline', fontWeight: 'bold' }}>
+                      Visibility:
+                    </Text>{' '}
+                    <Text style={{ display: 'inline', marginLeft: '5px' }}>
+                      {selectedNews.visibility}
+                    </Text>
+                  </div>
                   <Text strong>Content:</Text> <p>{selectedNews.content || 'No content available.'}</p>
                   {selectedNews.tags?.length > 0 && (
                     <div>
                       <Text strong>Tags:</Text>{' '}
                       {selectedNews.tags.map((tag: string) => (
-                        <span key={tag} className="tag">
-                          #{tag}
-                        </span>
+                        <Tag key={tag} color="purple" className="news-tag">
+                          {tag}
+                        </Tag>
                       ))}
                     </div>
                   )}
                   <Space className="full-view-actions">
                     <Button
-                      icon={selectedNews.isLiked ? <DislikeOutlined /> : <LikeOutlined />}
+                      icon={<LikeOutlined />}
                       onClick={() => handleToggleLike(selectedNews.id, selectedNews.isLiked)}
                       loading={loading}
                     >
                       {selectedNews.likes || 0}
+                    </Button>
+                    <Button
+                      icon={<DislikeOutlined />}
+                      onClick={() => handleToggleDislike(selectedNews.id, selectedNews.isDisliked)}
+                      loading={loading}
+                    >
+                      {selectedNews.dislikes || 0}
+                    </Button>
+                    <Button
+                      icon={<ShareAltOutlined />}
+                      onClick={() => handleShareNews(selectedNews.id)}
+                      loading={loading}
+                    >
+                      {selectedNews.shares || 0}
+                    </Button>
+                    <Button
+                      icon={<StarOutlined />}
+                      onClick={() => handleMarkImportant(selectedNews.id, selectedNews.isImportant)}
+                      loading={loading}
+                      type={selectedNews.isImportant ? 'primary' : 'default'}
+                    >
+                      {selectedNews.isImportant ? 'Important' : 'Mark Important'}
                     </Button>
                     <Button
                       icon={<CommentOutlined />}
@@ -517,7 +712,7 @@ const NewsPage: React.FC = () => {
                     >
                       {selectedNews.comments?.length || 0}
                     </Button>
-                    {selectedNews.userId === userId && (
+                    {selectedNews.author.id === userId && (
                       <>
                         <Button
                           icon={<EditOutlined />}
@@ -543,7 +738,7 @@ const NewsPage: React.FC = () => {
                       renderItem={(comment: any) => (
                         <List.Item
                           actions={
-                            comment.userId === userId
+                            comment.authorId === userId
                               ? [
                                 <Button
                                   type="link"
@@ -590,6 +785,12 @@ const NewsPage: React.FC = () => {
             <Form.Item name="tags" label="Tags">
               <Input placeholder="comma-separated tags" />
             </Form.Item>
+            <Form.Item name="visibility" label="Visibility" initialValue="public">
+              <Select>
+                <Option value="public">Public</Option>
+                <Option value="private">Private</Option>
+              </Select>
+            </Form.Item>
             <Form.Item name="image" label="Image">
               <Upload {...uploadProps}>
                 <Button icon={<UploadOutlined />}>Upload</Button>
@@ -613,6 +814,12 @@ const NewsPage: React.FC = () => {
             </Form.Item>
             <Form.Item name="content" label="Content" rules={[{ required: true, message: 'Please enter content' }]}>
               <TextArea rows={4} />
+            </Form.Item>
+            <Form.Item name="visibility" label="Visibility">
+              <Select>
+                <Option value="public">Public</Option>
+                <Option value="private">Private</Option>
+              </Select>
             </Form.Item>
             <Button type="primary" htmlType="submit" loading={loading} block>
               Update

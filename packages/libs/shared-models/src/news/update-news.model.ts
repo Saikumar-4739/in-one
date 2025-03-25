@@ -13,6 +13,7 @@ export class UpdateNewsModel extends NewsIdRequestModel {
     isFeatured?: boolean;
     isBreaking?: boolean;
     publishedAt?: Date;
+    views?: number;
   
     constructor(
       newsId: string,
@@ -28,6 +29,7 @@ export class UpdateNewsModel extends NewsIdRequestModel {
       isFeatured?: boolean,
       isBreaking?: boolean,
       publishedAt?: Date,
+      views?: number
     ) {
       super(newsId)
       this.title = title;
@@ -42,6 +44,7 @@ export class UpdateNewsModel extends NewsIdRequestModel {
       this.isFeatured = isFeatured;
       this.isBreaking = isBreaking;
       this.publishedAt = publishedAt;
+      this.views = views;
     }
   }
   

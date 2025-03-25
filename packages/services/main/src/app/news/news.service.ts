@@ -24,19 +24,11 @@ export class NewsService {
     try {
       const newsRepo = this.transactionManager.getRepository(this.newsRepository);
       const userRepo = this.transactionManager.getRepository(this.userRepository);
-  
-      console.log(createNewsDto, "...........................................");
-  
-      // ✅ Validate required fields
       if (!createNewsDto.title || createNewsDto.title.trim() === '') {
         throw new Error('Title is required');
       }
-  
-      // ✅ Ensure author exists
       const author = await userRepo.findOne({ where: { id: createNewsDto.authorId } });
       if (!author) throw new Error('Author not found');
-  
-      // ✅ Process images if they exist
       let processedImages: string[] | undefined;
       if (createNewsDto.images?.length) {
         processedImages = await Promise.all(
@@ -53,7 +45,6 @@ export class NewsService {
         );
       }
   
-      // ✅ Process thumbnail if it exists
       let processedThumbnail: string | undefined;
       if (createNewsDto.thumbnail) {
         const matches = createNewsDto.thumbnail.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
@@ -66,10 +57,9 @@ export class NewsService {
         processedThumbnail = `/uploads/${fileName}`;
       }
   
-      // ✅ Create news entity correctly
       const newNews = newsRepo.create({
-        title: createNewsDto.title.trim(), // ✅ Ensure no empty strings
-        content: createNewsDto.content ?? '', // ✅ Provide default if undefined
+        title: createNewsDto.title.trim(), 
+        content: createNewsDto.content ?? '', 
         summary: createNewsDto.summary ?? '',
         category: createNewsDto.category ?? 'Uncategorized',
         tags: createNewsDto.tags ?? [],
@@ -85,7 +75,6 @@ export class NewsService {
   
       const savedNews = await newsRepo.save(newNews);
       await this.transactionManager.commitTransaction();
-  
       return new CommonResponse(true, 201, 'News created successfully', savedNews);
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
@@ -99,19 +88,15 @@ export class NewsService {
     try {
       const newsRepo = this.transactionManager.getRepository(this.newsRepository);
       const userRepo = this.transactionManager.getRepository(this.userRepository);
-  
       const results = [];
       const errors = [];
-  
       for (const dto of createNewsDtos) {
         try {
           if (!dto.title || dto.title.trim() === '') {
             throw new Error('Title is required');
           }
-  
           const author = await userRepo.findOne({ where: { id: dto.authorId } });
           if (!author) throw new Error(`Author not found for ID: ${dto.authorId}`);
-  
           let processedImages: string[] | undefined;
           if (dto.images?.length) {
             processedImages = await Promise.all(
@@ -164,7 +149,6 @@ export class NewsService {
             publishedAt: dto.publishedAt ?? new Date(),
             author: author,
           });
-  
           const savedNews = await newsRepo.save(newNews);
           results.push(savedNews);
         } catch (error) {
@@ -177,16 +161,9 @@ export class NewsService {
       }
   
       await this.transactionManager.commitTransaction();
-  
       if (errors.length > 0) {
-        return new CommonResponse(
-          false,
-          207,
-          'Some news items failed to create',
-          { successful: results, failed: errors },
-        );
+        return new CommonResponse( false, 207, 'Some news items failed to create', { successful: results, failed: errors });
       }
-  
       return new CommonResponse(true, 201, 'All news items created successfully', results);
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
@@ -199,13 +176,10 @@ export class NewsService {
     await this.transactionManager.startTransaction();
     try {
       const newsRepo = this.transactionManager.getRepository(this.newsRepository);
-
       const existingNews = await newsRepo.findOne({ where: { id } });
       if (!existingNews) throw new Error('News not found');
-
       const updatedNews = newsRepo.merge(existingNews, updateNewsDto);
       const savedNews = await newsRepo.save(updatedNews);
-
       await this.transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'News updated successfully', savedNews);
     } catch (error) {
@@ -219,10 +193,8 @@ export class NewsService {
     await this.transactionManager.startTransaction();
     try {
       const newsRepo = this.transactionManager.getRepository(this.newsRepository);
-
       const news = await newsRepo.findOne({ where: { id } });
       if (!news) throw new Error('News not found');
-
       await newsRepo.remove(news);
       await this.transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'News deleted successfully', null);
@@ -239,18 +211,11 @@ export class NewsService {
       const commentRepo = this.transactionManager.getRepository(this.commentRepository);
       const newsRepo = this.transactionManager.getRepository(this.newsRepository);
       const userRepo = this.transactionManager.getRepository(this.userRepository);
-
       const news = await newsRepo.findOne({ where: { id: createCommentDto.newsId } });
       if (!news) throw new Error('News not found');
-
       const author = await userRepo.findOne({ where: { id: createCommentDto.authorId } });
       if (!author) throw new Error('Author not found');
-
-      const newComment = commentRepo.create({
-        ...createCommentDto,
-        news,
-        author,
-      });
+      const newComment = commentRepo.create({...createCommentDto, news, author,});
       const savedComment = await commentRepo.save(newComment);
       await this.transactionManager.commitTransaction();
       return new CommonResponse(true, 201, 'Comment added successfully', savedComment);
@@ -265,10 +230,8 @@ export class NewsService {
     await this.transactionManager.startTransaction();
     try {
       const commentRepo = this.transactionManager.getRepository(this.commentRepository);
-
       const comment = await commentRepo.findOne({ where: { id } });
       if (!comment) throw new Error('Comment not found');
-
       await commentRepo.remove(comment);
       await this.transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'Comment deleted successfully', null);
@@ -283,13 +246,10 @@ export class NewsService {
     await this.transactionManager.startTransaction();
     try {
       const newsRepo = this.transactionManager.getRepository(this.newsRepository);
-
       const news = await newsRepo.findOne({ where: { id } });
       if (!news) throw new Error('News not found');
-
       news.likes += 1;
       const updatedNews = await newsRepo.save(news);
-
       await this.transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'News liked successfully', updatedNews);
     } catch (error) {
@@ -301,12 +261,7 @@ export class NewsService {
   async searchNews(query: string): Promise<CommonResponse> {
     try {
       const news = await this.newsRepository.find({
-        where: [
-          { title: Like(`%${query}%`) },
-          { content: Like(`%${query}%`) },
-        ],
-      });
-
+        where: [ { title: Like(`%${query}%`) }, { content: Like(`%${query}%`) }]});
       return new CommonResponse(true, 200, 'Search results retrieved', news);
     } catch (error) {
       return new CommonResponse(false, 500, 'Error searching news', error);
@@ -315,16 +270,55 @@ export class NewsService {
 
   async getAllNews(page: number, limit: number): Promise<CommonResponse> {
     try {
-      const [news, total] = await this.newsRepository.findAndCount({
-        skip: (page - 1) * limit,
-        take: limit,
-        relations: ['author', 'comments'],
-        order: { createdAt: 'DESC' },
-      });
-
+      const [news, total] = await this.newsRepository.findAndCount({ skip: (page - 1) * limit, take: limit, relations: ['author', 'comments'], order: { createdAt: 'DESC' }});
       return new CommonResponse(true, 200, 'News retrieved successfully', { news, total });
     } catch (error) {
       return new CommonResponse(false, 500, 'Error retrieving news', error);
+    }
+  }
+
+  async toggleDislikeNews(id: string): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
+    try {
+      const newsRepo = this.transactionManager.getRepository(this.newsRepository);
+      const news = await newsRepo.findOne({ where: { id } });
+      if (!news) throw new Error('News not found');
+      news.dislikes = (news.dislikes || 0) + 1;
+      const updatedNews = await newsRepo.save(news);
+      await this.transactionManager.commitTransaction();
+      return new CommonResponse(true, 200, 'News disliked successfully', updatedNews);
+    } catch (error) {
+      await this.transactionManager.rollbackTransaction();
+      return new CommonResponse(false, 500, 'Error disliking news', error);
+    }
+  }
+
+  async shareNews(id: string, platform: string): Promise<CommonResponse> {
+    try {
+      const news = await this.newsRepository.findOne({ where: { id } });
+      if (!news) throw new Error('News not found');
+      news.shares = (news.shares || 0) + 1;
+      const shareData = { newsId: id, platform, sharedAt: new Date(), title: news.title, url: `/news/${id}`};
+      await this.newsRepository.save(news);
+      return new CommonResponse(true, 200, `News shared successfully on ${platform}`, shareData);
+    } catch (error) {
+      return new CommonResponse(false, 500, 'Error sharing news', error);
+    }
+  }
+
+  async markNewsAsImportant(id: string, isImportant: boolean): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
+    try {
+      const newsRepo = this.transactionManager.getRepository(this.newsRepository);
+      const news = await newsRepo.findOne({ where: { id } });
+      if (!news) throw new Error('News not found');
+      news.isImportant = isImportant;
+      const updatedNews = await newsRepo.save(news);
+      await this.transactionManager.commitTransaction();
+      return new CommonResponse( true, 200, `News marked as ${isImportant ? 'important' : 'not important'} successfully`, updatedNews);
+    } catch (error) {
+      await this.transactionManager.rollbackTransaction();
+      return new CommonResponse(false, 500, 'Error marking news as important', error);
     }
   }
 }
