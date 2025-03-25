@@ -36,8 +36,9 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
 
-  const port = process.env.PORT || 3005; // Align with Render's PORT
-  await app.listen(port, '0.0.0.0'); // Bind to all interfaces
+  // Use Render's PORT environment variable, fallback for local dev
+  const port = process.env.PORT || 3005;
+  await app.listen(port, '0.0.0.0'); // Bind to 0.0.0.0 as required by Render
 
   logger.log(`🚀 Server is running on port ${port}`);
   logger.log(`📜 Swagger API Docs available at /docs`);
