@@ -36,11 +36,11 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
 
-  const port = 3005;
+  const port = process.env.APP_PORT || 3005; 
   await app.listen(port);
-
+  
   logger.log(`🚀 Server is running on http://localhost:${port}`);
   logger.log(`📜 Swagger API Docs available at http://localhost:${port}/docs`);
-}
+}  
 
 bootstrap();
