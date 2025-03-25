@@ -32,6 +32,7 @@ const AppLayout: React.FC = () => {
     const logoutUser = useCallback(async () => {
         try {
             const userId = localStorage.getItem("userId");
+            console.log(userId,"............")
             if (!userId) throw new Error("User ID not found");
             const req = new UserIdRequestModel(userId)
             await userService.logoutUser(req);
