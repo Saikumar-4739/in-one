@@ -27,6 +27,7 @@ const AppLayout: React.FC = () => {
     const [imageSrc, setImageSrc] = useState<string | null>(null);
     const userService = new UserHelpService();
     const navigate = useNavigate();
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
 
     const logoutUser = useCallback(async () => {
         try {
@@ -41,15 +42,16 @@ const AppLayout: React.FC = () => {
             console.error("Logout failed:", error);
         }
     }, [navigate]);
+    
 
     const navItems = [
-        { key: "1", icon: <ProjectOutlined />, label: "Home", path: "/home" },
-        { key: "2", icon: <MessageOutlined />, label: "Chat", path: "/chat" },
-        { key: "4", icon: <FileOutlined />, label: "Notes", path: "/notes" },
-        { key: "5", icon: <CalendarOutlined />, label: "Calendar", path: "/calendar" },
+        { key: "1", icon: <ProjectOutlined />, label: "In Home", path: "/home" },
+        { key: "2", icon: <MessageOutlined />, label: "In Chat", path: "/chat" },
+        { key: "4", icon: <FileOutlined />, label: "In Notes", path: "/notes" },
+        { key: "5", icon: <CalendarOutlined />, label: "In Calendar", path: "/calendar" },
         { key: "6", icon: <BulbOutlined />, label: "AI Bot", path: "/ai-bot" },
-        { key: "7", icon: <VideoCameraOutlined />, label: "Videos", path: "/videos" },
-        { key: "8", icon: <PictureOutlined />, label: "Photos", path: "/photos" },
+        { key: "7", icon: <VideoCameraOutlined />, label: "In Stream", path: "/videos" },
+        { key: "8", icon: <PictureOutlined />, label: "InstaView", path: "/photos" },
         { key: "9", icon: <LineChartOutlined />, label: "Insight 24x7", path: "/latest-news" },
         { key: "10", icon: <AppstoreAddOutlined />, label: "Plugins", path: "/plugins" },
     ];
@@ -80,7 +82,7 @@ const AppLayout: React.FC = () => {
             >
                 <div className="header-container">
                     <div className="header-circle">IN</div>
-                    <Title level={3} className="header-title">One</Title>
+                    <Title level={2} style={{marginTop: '10px'}} className="header-title">One</Title>
                 </div>
                 <div className="header-actions" style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                     <Button
@@ -98,7 +100,7 @@ const AppLayout: React.FC = () => {
                             padding: "4px 12px",
                         }}
                     >
-                        Logout
+                       {isLoggingOut ? "Logging out..." : "Logout"}
                     </Button>
                 </div>
             </motion.div>

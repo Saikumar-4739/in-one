@@ -1,108 +1,406 @@
-.video-page {
-  background: #fff;
+/* video-page.css */
+.video-page,
+.video-detail-page {
+  padding: 30px; /* Increased padding for spacing */
+  background-color: #fff; /* White background */
   min-height: 100vh;
-  padding-top: 80px; /* YouTube-like top padding */
-  padding-bottom: 40px;
+  padding-top: 100px; /* More space for header */
+  box-sizing: border-box;
 }
 
-.container {
-  max-width: 1280px; /* Wider like YouTube */
+.container,
+.video-detail-container {
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 20px; /* Increased padding for spacing */
 }
 
+/* Header Styling */
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
-  position: sticky;
-  top: 0;
-  background: #fff;
-  z-index: 10;
-  padding: 16px 0;
-  border-bottom: 1px solid #e0e0e0;
+  padding: 15px 20px; /* More padding */
+  background-color: #fff; /* White background */
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
+.header:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.header .ant-typography {
+  color: #212121; /* Dark gray text */
+  margin: 0;
+}
+
+/* Upload Button */
+.ant-btn-default {
+  background-color: #ff0000; /* Vibrant red */
+  color: #fff;
+  border: none;
+  padding: 8px 16px; /* More padding */
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.ant-btn-default:hover {
+  background-color: #cc0000; /* Darker red */
+  transform: scale(1.05);
+}
+
+/* Upload Progress */
+.upload-progress {
+  margin-bottom: 30px; /* Increased margin */
+  width: 100%;
+  max-width: 100%;
+}
+
+.upload-progress .ant-progress-inner {
+  background-color: #e0e0e0; /* Light gray */
+}
+
+.upload-progress .ant-progress-bg {
+  background-color: #ff0000; /* Red progress bar */
+}
+
+/* Video Grid */
 .video-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Wider cards like YouTube */
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 25px; /* Increased gap for spacing */
+  padding: 0;
+  margin-top: 40px;
 }
 
+/* Card Styling */
+.ant-card {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background-color: #fff; /* White background */
+  margin: 0;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.ant-card-hoverable:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* Video/Image Container (Grid View) */
 .video-container {
   position: relative;
+  width: 100%;
+  padding-top: 56.25%; /* 16:9 Aspect Ratio */
+  overflow: hidden;
   cursor: pointer;
+  background-color: #000; /* Black for video background */
 }
 
 .video-player,
 .image-player {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
-  height: 180px; /* YouTube thumbnail height */
+  height: 100%;
   object-fit: cover;
+  border-radius: 8px 8px 0 0;
+  transition: opacity 0.3s ease;
 }
 
+.video-container:hover .video-player,
+.video-container:hover .image-player {
+  opacity: 0.85;
+}
+
+/* Play Icon */
 .play-icon {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   font-size: 40px;
-  color: #fff;
+  color: #ff0000; /* Vibrant red */
   opacity: 0;
-  transition: opacity 0.3s;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .video-container:hover .play-icon {
-  opacity: 0.8;
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.1);
 }
 
-.upload-progress {
-  margin: 20px 0;
+/* Card Meta */
+.ant-card-meta {
+  padding: 20px; /* Increased padding */
 }
 
-.login-message {
+.ant-card-meta-title {
+  font-size: 16px;
+  color: #212121; /* Dark gray text */
+  margin-bottom: 10px; /* Added margin */
+}
+
+.ant-card-meta-description {
+  color: #666; /* Medium gray */
+}
+
+.views-text {
+  display: block;
+  margin-top: 6px; /* Increased margin */
+  font-size: 12px;
+  color: #666;
+}
+
+/* Actions Styling */
+.ant-card-actions {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 10px 0; /* Increased padding */
+  background-color: #fff; /* White background */
+  border-top: 1px solid #e0e0e0;
+}
+
+.ant-card-actions > li {
+  margin: 0;
+  flex: 1;
   text-align: center;
-  padding: 50px;
-  background: #f5f5f5;
-  border-radius: 8px;
-  margin: 20px;
+  color: #212121;
+  transition: color 0.3s ease;
+}
+
+.ant-card-actions > li:hover {
+  color: #ff0000; /* Red on hover */
 }
 
 .like-action {
   display: flex;
   align-items: center;
-  gap: 5px;
+  justify-content: center;
+  gap: 6px; /* Increased gap */
+  cursor: pointer;
 }
 
-.views-text {
-  display: block;
-  margin-top: 4px;
-  font-size: 12px;
-  color: #606060; /* YouTube's secondary text color */
+.like-action .ant-typography {
+  font-size: 14px;
+  color: #212121;
 }
 
-.ant-card {
-  border: 1px solid #e8e8e8;
-  border-radius: 4px;
-  overflow: hidden;
+/* Login Message */
+.login-message {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 80vh;
+  text-align: center;
 }
 
-.ant-card-meta-title {
-  font-size: 16px;
-  color: #030303; /* YouTube's title color */
+.login-message .ant-typography {
+  color: #212121; /* Dark gray text */
 }
 
-.ant-card-meta-description {
-  color: #606060;
+/* Video Detail Page */
+.video-detail-container {
+  display: flex;
+  gap: 25px; /* Increased gap */
+  align-items: flex-start;
 }
 
-.ant-btn-default {
-  border-color: #dadada;
-  color: #606060;
+.video-player-section {
+  flex: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 15px; /* Increased gap */
 }
 
-.ant-btn-default:hover {
-  border-color: #000;
-  color: #000;
+.detail-video-player {
+  width: 100%;
+  max-height: calc(100vh - 250px); /* Adjusted for spacing */
+  object-fit: contain;
+  border-radius: 8px;
+  background-color: #000; /* Black for video */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.detail-video-player:hover {
+  transform: scale(1.02);
+}
+
+.video-info {
+  margin: 0;
+  padding: 15px 20px; /* Increased padding */
+  background-color: #fff; /* White background */
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.video-info .ant-typography {
+  margin: 0;
+  color: #212121;
+}
+
+.video-info .ant-typography-level-3 {
+  font-size: 20px;
+}
+
+.video-info .ant-typography-secondary {
+  color: #666;
+}
+
+.video-details-section {
+  flex: 1;
+  background-color: #fff; /* White background */
+  padding: 20px; /* Consistent padding */
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
+  max-height: calc(100vh - 250px);
+  margin: 0;
+  color: #212121;
+}
+
+/* Edit Modal with Video */
+.edit-modal-content {
+  display: flex;
+  gap: 25px; /* Increased gap */
+  align-items: stretch;
+  background-color: #fff; /* White background */
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.modal-video-player {
+  width: 50%;
+  max-height: calc(60vh - 120px); /* Adjusted for spacing */
+  object-fit: contain;
+  border-radius: 8px;
+  background-color: #000; /* Black for video */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.modal-video-player:hover {
+  transform: scale(1.02);
+}
+
+.edit-form {
+  flex: 1;
+  margin: 0;
+}
+
+.edit-form .ant-form-item-label > label {
+  color: #212121;
+}
+
+.edit-form .ant-input,
+.edit-form .ant-input-textarea {
+  background-color: #f5f5f5; /* Light gray input background */
+  color: #212121;
+  border-color: #e0e0e0;
+}
+
+.edit-form .ant-btn-primary {
+  background-color: #ff0000; /* Red button */
+  border-color: #ff0000;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.edit-form .ant-btn-primary:hover {
+  background-color: #cc0000;
+  transform: scale(1.05);
+}
+
+/* Modal Styling */
+.ant-modal-content {
+  border-radius: 8px;
+  background-color: #fff; /* White background */
+  color: #212121;
+}
+
+.ant-modal-header {
+  border-radius: 8px 8px 0 0;
+  padding: 16px 24px;
+  background-color: #fff;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.ant-modal-title {
+  color: #212121;
+}
+
+.ant-modal-body {
+  padding: 24px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .video-page,
+  .video-detail-page {
+    padding: 20px;
+    padding-top: 80px;
+  }
+
+  .video-grid {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+  }
+
+  .header {
+    flex-direction: column;
+    gap: 15px;
+    padding: 15px;
+    margin-bottom: 20px;
+  }
+
+  .video-detail-container {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .detail-video-player {
+    max-height: calc(50vh - 120px);
+  }
+
+  .video-details-section {
+    max-height: none;
+  }
+
+  .edit-modal-content {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .modal-video-player {
+    width: 100%;
+    max-height: calc(40vh - 60px);
+  }
+}
+
+@media (max-width: 480px) {
+  .video-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .play-icon {
+    font-size: 30px;
+  }
+
+  .detail-video-player {
+    max-height: calc(40vh - 100px);
+  }
+
+  .ant-card-meta {
+    padding: 15px;
+  }
+
+  .ant-card-actions {
+    padding: 8px 0;
+  }
 }

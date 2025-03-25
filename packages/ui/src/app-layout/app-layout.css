@@ -25,7 +25,7 @@
   backdrop-filter: blur(8px);
   z-index: 1000;
   box-shadow: 0 3px 25px rgba(0, 0, 0, 0.05);
-  height: 60px; /* Decreased height */
+  height: 70px; /* Decreased height */
   
 }
 
@@ -51,7 +51,7 @@
 
 .header-title {
   color: #000;
-  margin-top: 11px;
+  margin-top: 50px;
   font-size: 20px; /* Adjusted for smaller header */
 }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CreatePhotoModel, UpdatePhotoModel, PhotoIdRequestModel, LikeRequestModel } from '@in-one/shared-models';
 import { Button, Card, Upload, message, Space, Typography, Modal, Form, Input, Select } from 'antd';
 import {
@@ -8,9 +8,12 @@ import {
   LikeOutlined,
   DislikeOutlined,
   LoadingOutlined,
+  PhoneOutlined,
+  PictureOutlined,
 } from '@ant-design/icons';
 import { PhotoHelpService } from '@in-one/shared-services';
 import { motion, AnimatePresence } from 'framer-motion';
+import './photos-page.css';
 
 const { Title } = Typography;
 
@@ -18,29 +21,26 @@ const PhotosPage: React.FC = () => {
   const [photos, setPhotos] = useState<any[]>([]);
   const [userId] = useState<string | null>(() => localStorage.getItem('userId') || null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isPreviewVisible, setIsPreviewVisible] = useState(false);
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
+  const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
   const [form] = Form.useForm();
-  const photoService = new PhotoHelpService();
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const lastOffset = useRef<number>(0);
+  const photoService = new PhotoHelpService()
 
-  // Animation variants
   const cardVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: { duration: 0.3, ease: 'easeOut' }
-    },
-    exit: { 
-      opacity: 0,
-      scale: 0.95,
-      transition: { duration: 0.2 }
-    }
+    hidden: { opacity: 0, y: 50 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' } },
+    exit: { opacity: 0, y: -20, transition: { duration: 0.3 } },
   };
 
   const buttonVariants = {
-    hover: { scale: 1.1 },
-    tap: { scale: 0.95 }
+    hover: { scale: 1.15 },
+    tap: { scale: 0.9 },
   };
 
   useEffect(() => {
@@ -49,26 +49,36 @@ const PhotosPage: React.FC = () => {
     }
   }, [userId]);
 
-  const fetchPhotos = async () => {
-    if (!userId) return;
+  const fetchPhotos = async (append = false) => {
+    if (!userId || !hasMore || loading || (append && offset === lastOffset.current)) return;
     setLoading(true);
     try {
-      const response = await photoService.getAllPhotos(); // Pass userId to get isLiked
+      const limit = 9;
+      const response = await photoService.getAllPhotos({ params: { offset, limit } });
       if (response.status === true) {
-        // Transform the response data to match frontend expectations
         const transformedPhotos = response.data.map((photo: any) => ({
-          photoId: photo.id,         // Map 'id' to 'photoId'
-          url: photo.imageUrl,       // Map 'imageUrl' to 'url'
+          photoId: photo.id,
+          url: photo.imageUrl,
           caption: photo.caption,
           likes: photo.likes,
           visibility: photo.visibility,
-          isLiked: photo.isLiked || false, // Default to false if not provided
+          isLiked: photo.isLiked || false,
           createdAt: photo.createdAt,
           updatedAt: photo.updatedAt,
           author: photo.author,
-          comments: photo.comments,
         }));
-        setPhotos(transformedPhotos);
+        setPhotos((prev) => {
+          if (append) {
+            const newPhotos = transformedPhotos.filter(
+              (newPhoto: { photoId: any; }) => !prev.some((existing) => existing.photoId === newPhoto.photoId)
+            );
+            return [...prev, ...newPhotos];
+          }
+          return transformedPhotos;
+        });
+        lastOffset.current = offset;
+        setOffset((prev) => prev + transformedPhotos.length);
+        setHasMore(transformedPhotos.length === limit);
       } else {
         message.error('Failed to fetch photos');
       }
@@ -79,6 +89,29 @@ const PhotosPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!contentRef.current || loading || !hasMore) return;
+      const { scrollTop, scrollHeight, clientHeight } = contentRef.current;
+      console.log('Scroll check:', { scrollTop, scrollHeight, clientHeight }); // Debug scroll position
+      if (scrollTop + clientHeight >= scrollHeight - 50) {
+        console.log('Fetching more photos at offset:', offset);
+        fetchPhotos(true);
+      }
+    };
+
+    const contentElement = contentRef.current;
+    if (contentElement) {
+      contentElement.addEventListener('scroll', handleScroll);
+    }
+
+    return () => {
+      if (contentElement) {
+        contentElement.removeEventListener('scroll', handleScroll);
+      }
+    };
+  }, [loading, hasMore]);
 
   const handleUpload = async (file: File) => {
     if (!userId) {
@@ -95,6 +128,8 @@ const PhotosPage: React.FC = () => {
     try {
       const response = await photoService.uploadPhoto(createModel, file);
       if (response.status === true) {
+        setOffset(0);
+        lastOffset.current = 0;
         await fetchPhotos();
         message.success('Photo uploaded successfully');
       } else {
@@ -164,6 +199,13 @@ const PhotosPage: React.FC = () => {
         : await photoService.likePhoto(reqModel);
       if (response.status === true) {
         await fetchPhotos();
+        if (selectedPhoto?.photoId === photoId) {
+          setSelectedPhoto((prev: any) => ({
+            ...prev,
+            isLiked: !isLiked,
+            likes: isLiked ? prev.likes - 1 : prev.likes + 1,
+          }));
+        }
         message.success(`Photo ${isLiked ? 'unliked' : 'liked'} successfully`);
       } else {
         message.error(response.internalMessage || `Failed to ${isLiked ? 'unlike' : 'like'} photo`);
@@ -183,100 +225,52 @@ const PhotosPage: React.FC = () => {
     });
   };
 
+  const handlePreview = (photo: any) => {
+    setSelectedPhoto(photo);
+    setIsPreviewVisible(true);
+  };
+
   if (!userId) {
     return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-        }}
-      >
-        <Title level={3} style={{ color: '#262626' }}>Please log in to view your photos</Title>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="login-prompt">
+        <Title level={3}>Please log in to view your photos</Title>
       </motion.div>
     );
   }
 
   return (
-    <div 
-      style={{ 
-        minHeight: '100vh', 
-        background: '#fafafa', 
-        paddingTop: '80px',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif',
-      }}
-    >
-      <div style={{ maxWidth: '935px', margin: '0 auto' }}>
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '20px 0',
-            borderBottom: '1px solid #dbdbdb',
-          }}
-        >
-          <Title 
-            level={2} 
-            style={{ 
-              margin: 0, 
-              fontSize: '28px',
-              fontWeight: 400,
-              color: '#262626',
-            }}
-          >
-            Photos
+    <div className="photos-page">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="header"
+      >
+        <Title style={{ fontSize: '30px' }}>
+          <PictureOutlined style={{ marginRight: '10px' }} />
+          InstaView
           </Title>
-          <Upload
-            beforeUpload={handleUpload}
-            showUploadList={false}
-            disabled={loading}
-          >
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button
-                type="primary"
-                icon={loading ? <LoadingOutlined /> : <UploadOutlined />}
-                disabled={loading}
-                style={{
-                  background: 'linear-gradient(45deg, #405de6, #5851db, #833ab4)',
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '6px 15px',
-                  height: 'auto',
-                  fontWeight: 600,
-                }}
-              >
-                Upload Photo
-              </Button>
-            </motion.div>
-          </Upload>
-        </motion.div>
+        <Upload beforeUpload={handleUpload} showUploadList={false} disabled={loading}>
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <Button type="primary" icon={loading ? <LoadingOutlined /> : <UploadOutlined />} disabled={loading} className="upload-btn">
+              Upload Photo
+            </Button>
+          </motion.div>
+        </Upload>
+      </motion.div>
 
+      <div className="content-wrapper" ref={contentRef}>
         {loading && !photos.length ? (
-          <div style={{ textAlign: 'center', padding: '50px', color: '#8e8e8e' }}>
+          <div className="loading">
             <LoadingOutlined style={{ fontSize: 32 }} spin />
           </div>
         ) : photos.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '50px', color: '#8e8e8e' }}>
+          <div className="no-photos">
             <Title level={4}>No photos to display</Title>
           </div>
         ) : (
           <AnimatePresence>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(293px, 1fr))',
-                gap: '28px',
-                padding: '20px 0',
-              }}
-            >
+            <div className="photo-grid">
               {photos.map((photo) => (
                 <motion.div
                   key={photo.photoId}
@@ -286,42 +280,33 @@ const PhotosPage: React.FC = () => {
                   exit="exit"
                 >
                   <Card
-                    style={{
-                      borderRadius: '8px',
-                      overflow: 'hidden',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                      border: 'none',
-                      background: '#fff',
-                    }}
+                    className="photo-card"
                     bodyStyle={{ padding: 0 }}
                     hoverable
+                    onClick={() => handlePreview(photo)}
                   >
-                    <img
-                      src={photo.url}
-                      alt={photo.caption || 'Photo'}
-                      style={{
-                        width: '100%',
-                        height: '293px',
-                        objectFit: 'cover',
-                        display: 'block',
-                      }}
-                    />
-                    <div style={{ padding: '12px 15px' }}>
-                      <Space style={{ marginBottom: '8px' }}>
+                    <img src={photo.url} alt={photo.caption || 'Photo'} className="photo-img" />
+                    <div className="photo-details">
+                      <Space className="photo-actions">
                         <motion.div variants={buttonVariants} whileHover="hover" whileTap="tap">
                           <Button
                             type="text"
                             icon={photo.isLiked ? <DislikeOutlined /> : <LikeOutlined />}
-                            onClick={() => handleLike(photo.photoId, photo.isLiked)}
-                            style={{ color: photo.isLiked ? '#ed4956' : '#262626' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleLike(photo.photoId, photo.isLiked);
+                            }}
+                            className={photo.isLiked ? 'liked' : ''}
                           />
                         </motion.div>
                         <motion.div variants={buttonVariants} whileHover="hover" whileTap="tap">
                           <Button
                             type="text"
                             icon={<EditOutlined />}
-                            onClick={() => handleEdit(photo)}
-                            style={{ color: '#262626' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(photo);
+                            }}
                           />
                         </motion.div>
                         <motion.div variants={buttonVariants} whileHover="hover" whileTap="tap">
@@ -329,79 +314,89 @@ const PhotosPage: React.FC = () => {
                             type="text"
                             icon={<DeleteOutlined />}
                             danger
-                            onClick={() => handleDelete(photo.photoId)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(photo.photoId);
+                            }}
                           />
                         </motion.div>
                       </Space>
                       <div>
-                        <p style={{ margin: '0 0 4px', fontWeight: 600, color: '#262626' }}>
-                          {photo.likes || 0} likes
-                        </p>
-                        <p style={{ margin: 0, color: '#262626', fontSize: '14px' }}>
+                        <p className="likes">{photo.likes || 0} likes</p>
+                        <p className="caption">
                           <strong>{photo.caption || ''}</strong>
                         </p>
-                        <p style={{ margin: '4px 0 0', color: '#8e8e8e', fontSize: '12px' }}>
-                          {photo.visibility === 'public' ? 'Public' : 'Private'}
-                        </p>
+                        <p className="visibility">{photo.visibility === 'public' ? 'Public' : 'Private'}</p>
                       </div>
                     </div>
                   </Card>
                 </motion.div>
               ))}
             </div>
+            {loading && hasMore && (
+              <div className="loader">
+                <LoadingOutlined style={{ fontSize: 24 }} spin />
+              </div>
+            )}
           </AnimatePresence>
         )}
-
-        <Modal
-          title={<span style={{ fontWeight: 600, color: '#262626' }}>Edit Photo</span>}
-          visible={isModalVisible}
-          onCancel={() => setIsModalVisible(false)}
-          footer={null}
-          bodyStyle={{ padding: '24px' }}
-        >
-          <Form form={form} onFinish={handleUpdate} layout="vertical">
-            <Form.Item 
-              name="caption" 
-              label={<span style={{ color: '#262626' }}>Caption</span>}
-            >
-              <Input 
-                placeholder="Add a caption" 
-                style={{ borderRadius: '4px', borderColor: '#dbdbdb' }}
-              />
-            </Form.Item>
-            <Form.Item 
-              name="visibility" 
-              label={<span style={{ color: '#262626' }}>Visibility</span>}
-              rules={[{ required: true, message: 'Please select visibility' }]}
-            >
-              <Select 
-                placeholder="Select visibility"
-                style={{ borderRadius: '4px' }}
-              >
-                <Select.Option value="public">Public</Select.Option>
-                <Select.Option value="private">Private</Select.Option>
-              </Select>
-            </Form.Item>
-            <Form.Item>
-              <Button 
-                type="primary" 
-                htmlType="submit" 
-                loading={loading}
-                block
-                style={{
-                  background: '#0095f6',
-                  border: 'none',
-                  borderRadius: '8px',
-                  height: '40px',
-                  fontWeight: 600,
-                }}
-              >
-                Update
-              </Button>
-            </Form.Item>
-          </Form>
-        </Modal>
       </div>
+
+      <Modal
+        title={<span className="modal-title">Edit Photo</span>}
+        open={isModalVisible}
+        onCancel={() => setIsModalVisible(false)}
+        footer={null}
+        className="edit-modal"
+      >
+        <Form form={form} onFinish={handleUpdate} layout="vertical">
+          <Form.Item name="caption" label="Caption">
+            <Input placeholder="Add a caption" />
+          </Form.Item>
+          <Form.Item name="visibility" label="Visibility" rules={[{ required: true, message: 'Please select visibility' }]}>
+            <Select placeholder="Select visibility">
+              <Select.Option value="public">Public</Select.Option>
+              <Select.Option value="private">Private</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" htmlType="submit" loading={loading} block>
+              Update
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        open={isPreviewVisible}
+        footer={null}
+        onCancel={() => setIsPreviewVisible(false)}
+        width={600}
+        className="preview-modal"
+        bodyStyle={{ padding: 0 }}
+      >
+        {selectedPhoto && (
+          <div className="preview-container">
+            <img src={selectedPhoto.url} alt={selectedPhoto.caption || 'Photo'} className="preview-image" />
+            <div className="preview-details">
+              <p className="preview-likes">
+                <Button
+                  type="text"
+                  icon={selectedPhoto.isLiked ? <DislikeOutlined /> : <LikeOutlined />}
+                  onClick={() => handleLike(selectedPhoto.photoId, selectedPhoto.isLiked)}
+                  className={selectedPhoto.isLiked ? 'liked' : ''}
+                >
+                  {selectedPhoto.likes || 0} Likes
+                </Button>
+              </p>
+              <p className="preview-caption">
+                <strong>{selectedPhoto.caption || ''}</strong>
+              </p>
+              <p className="preview-visibility">{selectedPhoto.visibility === 'public' ? 'Public' : 'Private'}</p>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

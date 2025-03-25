@@ -6,7 +6,7 @@ import HomePage from "./home-page";
 import ChatPage from "../components/pages/chat-groups/chat-page";
 import NotesPage from "../components/pages/note-calender/notes-page";
 import CalendarPage from "../components/pages/note-calender/calender-page";
-import VideosPage from "../components/pages/entertainment/videos-page";
+import VideosPage, { VideoDetail } from "../components/pages/entertainment/videos-page";
 import PhotosPage from "../components/pages/entertainment/photos-page";
 import NewsPage from "../components/pages/news-media/news-page";
 import PluginsPage from "../components/pages/plugins/plugin-page";
@@ -51,6 +51,7 @@ const AppRoutes: React.FC = () => {
           <Route path="/latest-news" element={<NewsPage />} />
           <Route path="/plugins" element={<PluginsPage />} />
           <Route path="/home" element={<HomePage />} />
+          <Route path="/video/:id" element={<VideoDetail />} />
         </Route>
       </Route>
 
