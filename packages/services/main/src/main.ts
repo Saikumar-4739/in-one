@@ -11,7 +11,7 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
   app.enableCors({
-    origin: '*', 
+    origin: '*',
     methods: 'GET,POST,PUT,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type, Authorization',
     exposedHeaders: 'Content-Disposition',
@@ -22,7 +22,7 @@ async function bootstrap() {
 
   app.use(rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 500, 
+    max: 500,
     message: 'Too many requests, please try again later.',
   }));
 
@@ -36,11 +36,11 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
 
-  const port = process.env.APP_PORT || 3005; // Use Render's PORT
-  await app.listen(port, '0.0.0.0'); // Bind to all network interfaces
+  const port = process.env.PORT || 3005; // Align with Render's PORT
+  await app.listen(port, '0.0.0.0'); // Bind to all interfaces
 
-  logger.log(`🚀 Server is running on http://localhost:${port}`);
-  logger.log(`📜 Swagger API Docs available at http://localhost:${port}/docs`);
-}  
+  logger.log(`🚀 Server is running on port ${port}`);
+  logger.log(`📜 Swagger API Docs available at /docs`);
+}
 
 bootstrap();
