@@ -36,7 +36,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
 
-  const port = process.env.PORT || 3005; // Use Render's PORT
+  const port = process.env.APP_PORT || 3005; // Use Render's PORT
   await app.listen(port, '0.0.0.0'); // Bind to all network interfaces
 
   logger.log(`🚀 Server is running on http://localhost:${port}`);
