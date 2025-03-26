@@ -8,8 +8,9 @@ import {
   CalendarOutlined,
   FileTextOutlined,
   VideoCameraOutlined,
+  LineChartOutlined,
 } from '@ant-design/icons';
-import FeatureCard from '../components/pages/home/features-home';
+import FeatureCard from '../components/pages/home-page/features-home';
 
 const { Title, Paragraph } = Typography;
 
@@ -44,7 +45,7 @@ const HomePage: React.FC = () => {
 
   const features = [
     { icon: <FileTextOutlined />, name: 'Notes', color: '#ff6b6b' },
-    { icon: <CalendarOutlined />, name: 'Calendar', color: '#4ecdc4' },
+    { icon: <LineChartOutlined />, name: 'News', color: '#4ecdc4' },
     { icon: <MessageOutlined />, name: 'Chat', color: '#45b7d1' },
     { icon: <BulbOutlined />, name: 'AI Bot', color: '#96ceb4' },
     { icon: <VideoCameraOutlined />, name: 'Videos', color: '#8a2be2' },

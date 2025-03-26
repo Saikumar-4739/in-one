@@ -4,13 +4,11 @@ import AppLayout from "./app-layout";
 import LoginPage from "../components/pages/authentication/login-page";
 import HomePage from "./home-page";
 import ChatPage from "../components/pages/chat-groups/chat-page";
-import NotesPage from "../components/pages/note-calender/notes-page";
-import CalendarPage from "../components/pages/note-calender/calender-page";
-import VideosPage, { VideoDetail } from "../components/pages/entertainment/videos-page";
-import PhotosPage from "../components/pages/entertainment/photos-page";
+import NotesPage from "../components/pages/note-page/notes-page";
+import VideosPage, { VideoDetail } from "../components/pages/videos-page/videos-page";
 import NewsPage from "../components/pages/news-media/news-page";
-import PluginsPage from "../components/pages/plugins/plugin-page";
-import AIBotPage from "../components/pages/artificial-intelligence/ai-bot-page";
+import Chatbot from "../components/pages/ai-bot-page/ai-bot-page";
+import PhotosPage from "../components/pages/photos-page/photos-page";
 
 
 const ProtectedRoute: React.FC<{ isAuthenticated: boolean }> = ({ isAuthenticated }) => {
@@ -44,12 +42,10 @@ const AppRoutes: React.FC = () => {
         <Route element={<AppLayout />}>
           <Route path="/chat" element={<ChatPage />} />
           <Route path="/notes" element={<NotesPage />} />
-          <Route path="/calendar" element={<CalendarPage />} />
-          <Route path="/ai-bot" element={<AIBotPage />} />
+          <Route path="/ai-bot" element={<Chatbot />} />
           <Route path="/videos" element={<VideosPage />} />
           <Route path="/photos" element={<PhotosPage />} />
           <Route path="/latest-news" element={<NewsPage />} />
-          <Route path="/plugins" element={<PluginsPage />} />
           <Route path="/home" element={<HomePage />} />
           <Route path="/video/:id" element={<VideoDetail />} />
         </Route>

@@ -1,6 +1,6 @@
 .photos-page {
   height: 100vh;
-  background: #fafafa;
+  background: #ffffff;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
   display: flex;
   flex-direction: column;
@@ -14,7 +14,6 @@
   justify-content: flex-end;
   align-items: center;
   padding: 8px 5px; /* Decreased left/right padding */
-  border-bottom: 1px solid #dbdbdb;
   background: #fff;
   margin: 0 auto;
   position: fixed; /* Fixed header */
@@ -23,7 +22,6 @@
   right: 0;
   z-index: 10;
   height: 50px; /* Constant height */
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   margin-top: 5rem;
   margin-bottom: 5rem;
 }

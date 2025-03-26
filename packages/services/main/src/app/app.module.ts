@@ -5,15 +5,14 @@ import { AppService } from './app.service';
 import { UserModule } from './authentication/user.module';
 import { ChatModule } from './chat/chat.module';
 import { DatabaseModule } from 'src/database/database.module';
-import { NotesCalendarModule } from './notes-calender/notes-calender.module';
 import { NewsModule } from './news/news.module';
 import { VideoModule } from './entertainment/video/video.module';
 import { PhotoModule } from './entertainment/photo/photo.module';
-import { ReelModule } from './entertainment/reels/reels.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { JwtModule } from '@nestjs/jwt';
 import { LoggerMiddleware } from './authentication/logger.middleware';
 import { StoriesModule } from './stories/story.module';
+import { NotesModule } from './notes/notes.module';
 
 @Module({
   imports: [
@@ -36,12 +35,11 @@ import { StoriesModule } from './stories/story.module';
     DatabaseModule,
     UserModule,
     ChatModule,
-    NotesCalendarModule,
     NewsModule,
     VideoModule,
     PhotoModule,
-    ReelModule,
-    StoriesModule
+    StoriesModule,
+    NotesModule
   ],
   controllers: [AppController],
   providers: [AppService],

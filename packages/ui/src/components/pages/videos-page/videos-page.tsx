@@ -233,9 +233,6 @@ const VideosPage: React.FC = () => {
         transition={{ duration: 0.5 }}
         className="j-header"
       >
-        <Title level={2} style={{ margin: 0 }}>
-          In Stream
-        </Title>
         <Upload
           beforeUpload={() => false}
           onChange={handleFileChange}

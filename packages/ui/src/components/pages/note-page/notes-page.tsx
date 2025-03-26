@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { CreateNoteModel, UpdateNoteModel } from '@in-one/shared-models';
-import { NotesCalenderHelpService } from '@in-one/shared-services';
 import { Button, Card, Input, Form, Space, Typography, Badge, message, Select, Modal } from 'antd';
 import {
   PlusOutlined,
@@ -12,6 +11,7 @@ import {
 } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import './notes-page.css';
+import { NotesHelpService } from '@in-one/shared-services';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -26,7 +26,7 @@ const NotesPage: React.FC = () => {
   const [selectedColor, setSelectedColor] = useState<string>('#ffffff');
   const [previewNote, setPreviewNote] = useState<any | null>(null);
   const [userId] = useState<string | null>(() => localStorage.getItem('userId') || null);
-  const notesService = new NotesCalenderHelpService();
+  const notesService = new NotesHelpService();
 
   const colors = [
     { name: 'White', value: '#ffffff' },
@@ -168,7 +168,6 @@ const NotesPage: React.FC = () => {
       <div className="notes-container">
         {/* Header */}
         <div className="notes-header">
-          <Title level={2}>Notes</Title>
           <Space>
             <Input
               prefix={<SearchOutlined />}

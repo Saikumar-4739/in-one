@@ -1,8 +1,8 @@
 import { AxiosRequestConfig } from 'axios';
 import { CommonAxiosService } from '../common-axios-service';
-import { GlobalResponseObject, CreateNoteModel, UpdateNoteModel, MeetingEventModel } from '@in-one/shared-models';
+import { GlobalResponseObject, CreateNoteModel, UpdateNoteModel } from '@in-one/shared-models';
 
-export class NotesCalenderHelpService extends CommonAxiosService {
+export class NotesHelpService extends CommonAxiosService {
   
   private getURLwithMainEndPoint(childUrl: string): string {
     return `/notes-calender/${childUrl}`;
@@ -34,25 +34,5 @@ export class NotesCalenderHelpService extends CommonAxiosService {
 
   async countUserNotes(userId: string, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
     return await this.axiosPostCall(this.getURLwithMainEndPoint('countUserNotes'), { userId }, config);
-  }
-
-  async createEvent(userId: string, event: MeetingEventModel, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
-    return await this.axiosPostCall(this.getURLwithMainEndPoint('createEvent'), { userId, event }, config);
-  }
-
-  async getUserEvents(userId: string, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
-    return await this.axiosPostCall(this.getURLwithMainEndPoint('getUserEvents'), { userId }, config);
-  }
-
-  async getEventById(id: string, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
-    return await this.axiosPostCall(this.getURLwithMainEndPoint('getEventById'), { id }, config);
-  }
-
-  async deleteEvent(id: string, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
-    return await this.axiosPostCall(this.getURLwithMainEndPoint('deleteEvent'), { id }, config);
-  }
-
-  async updateEvent(id: string, event: Partial<MeetingEventModel>, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
-    return await this.axiosPostCall(this.getURLwithMainEndPoint('updateEvent'), { id, event }, config);
   }
 }

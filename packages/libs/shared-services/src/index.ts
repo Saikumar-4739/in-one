@@ -5,5 +5,5 @@ export * from './authentication'
 export * from './chat';
 export * from './entertainment';
 export * from './news';
-export * from './notes-calender';
+export * from './notes';
 export * from './stories';

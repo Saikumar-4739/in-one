@@ -1,13 +1,11 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { NotesService } from './notes.service';
-import { CommonResponse, CreateNoteModel, MeetingEventModel, UpdateNoteModel } from '@in-one/shared-models';
-import { CalendarService } from './calender.service';
+import { CommonResponse, CreateNoteModel, UpdateNoteModel } from '@in-one/shared-models';
 
 @Controller('notes-calender')
 export class NotesCalenderController {
   constructor(
     private readonly notesService: NotesService,
-    private readonly calendarService: CalendarService
   ) { }
 
   @Post('createNote')
@@ -78,56 +76,6 @@ export class NotesCalenderController {
       return response;
     } catch (error) {
       return new CommonResponse(false, 500, 'Error counting notes', error);
-    }
-  }
-
-  @Post('createEvent')
-  async createEvent(@Body() body: { userId: string; event: MeetingEventModel }): Promise<CommonResponse> {
-    try {
-      const response = await this.calendarService.createEvent(body.userId, body.event);
-      return response;
-    } catch (error) {
-      return new CommonResponse(false, 500, 'Error creating event', error);
-    }
-  }
-
-  @Post('getUserEvents')
-  async getUserEvents(@Body() body: { userId: string }): Promise<CommonResponse> {
-    try {
-      const response = await this.calendarService.getUserEvents(body.userId);
-      return response;
-    } catch (error) {
-      return new CommonResponse(false, 500, 'Error retrieving user events', error);
-    }
-  }
-
-  @Post('getEventById')
-  async getEventById(@Body() body: { id: string }): Promise<CommonResponse> {
-    try {
-      const response = await this.calendarService.getEventById(body.id);
-      return response;
-    } catch (error) {
-      return new CommonResponse(false, 500, 'Error retrieving event', error);
-    }
-  }
-
-  @Post('deleteEvent')
-  async deleteEvent(@Body() body: { id: string }): Promise<CommonResponse> {
-    try {
-      const response = await this.calendarService.deleteEvent(body.id);
-      return response;
-    } catch (error) {
-      return new CommonResponse(false, 500, 'Error deleting event', error);
-    }
-  }
-
-  @Post('updateEvent')
-  async updateEvent(@Body() body: { id: string; event: Partial<MeetingEventModel> }): Promise<CommonResponse> {
-    try {
-      const response = await this.calendarService.updateEvent(body.id, body.event);
-      return response;
-    } catch (error) {
-      return new CommonResponse(false, 500, 'Error updating event', error);
     }
   }
 }

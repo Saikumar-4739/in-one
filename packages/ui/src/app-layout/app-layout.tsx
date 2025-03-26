@@ -57,39 +57,27 @@ const AppLayout: React.FC = () => {
   }, [navigate]);
 
   const navItems = [
-    { key: '1', icon: <ProjectOutlined />, label: 'In Home', path: '/home' },
-    { key: '2', icon: <MessageOutlined />, label: 'In Chat', path: '/chat' },
-    { key: '4', icon: <FileOutlined />, label: 'In Notes', path: '/notes' },
+    { key: '1', icon: <ProjectOutlined />, label: 'Home Page', path: '/home' },
+    { key: '2', icon: <MessageOutlined />, label: 'In-Connect', path: '/chat' },
+    { key: '4', icon: <FileOutlined />, label: 'In-Memo', path: '/notes' },
+    { key: '5', icon: <BulbOutlined />, label: 'In-Teract', path: '/ai-bot' },
     {
-      key: '5',
-      icon: <CalendarOutlined />,
-      label: 'In Calendar',
-      path: '/calendar',
-    },
-    { key: '6', icon: <BulbOutlined />, label: 'AI Bot', path: '/ai-bot' },
-    {
-      key: '7',
+      key: '6',
       icon: <VideoCameraOutlined />,
       label: 'In Stream',
       path: '/videos',
     },
     {
-      key: '8',
+      key: '7',
       icon: <PictureOutlined />,
       label: 'InstaView',
       path: '/photos',
     },
     {
-      key: '9',
+      key: '8',
       icon: <LineChartOutlined />,
       label: 'Insight 24x7',
       path: '/latest-news',
-    },
-    {
-      key: '10',
-      icon: <AppstoreAddOutlined />,
-      label: 'Plugins',
-      path: '/plugins',
     },
   ];
 

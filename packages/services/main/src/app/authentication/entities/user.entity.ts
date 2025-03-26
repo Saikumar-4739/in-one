@@ -5,12 +5,10 @@ import { ChatRoomEntity } from 'src/app/chat/entities/chatroom.entity';
 import { MessageEntity } from 'src/app/chat/entities/messege.entity';
 import { LikeEntity } from 'src/app/entertainment/entities/like.entity';
 import { PhotoEntity } from 'src/app/entertainment/entities/photo.entity';
-import { ReelEntity } from 'src/app/entertainment/entities/reel.entity';
 import { VideoEntity } from 'src/app/entertainment/entities/video.entity';
 import { NewsCommentEntity } from 'src/app/news/entities/comment.entity';
 import { NewsEntity } from 'src/app/news/entities/news.entity';
-import { CalendarEntity } from 'src/app/notes-calender/entities/calender.entity';
-import { NoteEntity } from 'src/app/notes-calender/entities/notes.entity';
+import { NoteEntity } from 'src/app/notes/entities/notes.entity';
 import { StoryEntity } from 'src/app/stories/entities/story.entity';
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, ManyToMany } from 'typeorm';
 
@@ -82,9 +80,6 @@ export class UserEntity {
   @OneToMany(() => NoteEntity, (note) => note.userId)
   notes: NoteEntity[];
 
-  @OneToMany(() => CalendarEntity, (calendar) => calendar.user)
-  calendars: CalendarEntity[];
-
   @OneToMany(() => NewsCommentEntity, (comment) => comment.author, { cascade: true })
   comments: NewsCommentEntity[];
 
@@ -96,9 +91,6 @@ export class UserEntity {
 
   @OneToMany(() => PhotoEntity, (photo) => photo.author)
   photos: PhotoEntity[];
-
-  @OneToMany(() => ReelEntity, (reel) => reel.author)
-  reels: ReelEntity[];
 
   @OneToMany(() => LikeEntity, (like) => like.user)
   likes: LikeEntity[];
