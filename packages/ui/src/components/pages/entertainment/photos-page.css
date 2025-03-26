@@ -35,7 +35,7 @@
   padding: 6px 16px;
   height: auto;
   font-weight: 600;
-  color: #fff;
+  color: #fff !important;
   transition: background 0.3s ease, transform 0.2s ease;
 }
 
@@ -57,7 +57,7 @@
   z-index: 9;
   height: 80px; /* Constant height for stories */
   margin: 0 auto;
-  margin-top: 6rem;
+  margin-top: 5rem;
   margin-bottom: 30px;
 }
 
