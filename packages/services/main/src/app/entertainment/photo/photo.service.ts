@@ -11,6 +11,16 @@ import { Readable } from 'stream';
 import * as fs from 'fs';
 import * as cloudinaryInterface from '../cloudinary/cloudinary.interface';
 
+interface CreateCommentModel {
+  photoId: string;
+  userId: string;
+  content: string;
+}
+
+interface CommentIdRequestModel {
+  commentId: string;
+}
+
 @Injectable()
 export class PhotoService {
   constructor(
@@ -203,4 +213,100 @@ export class PhotoService {
       throw new Error(`Failed to unlike photo: ${error}`);
     }
   }
+
+  async createComment(reqModel: CreateCommentModel): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
+    try {
+      const photoRepo = this.transactionManager.getRepository(this.photoRepository);
+      const commentRepo = this.transactionManager.getRepository(this.commentRepository);
+
+      const photo = await photoRepo.findOne({ where: { id: reqModel.photoId } });
+      if (!photo) {
+        return new CommonResponse(false, 404, 'Photo not found');
+      }
+
+      const newComment = commentRepo.create({
+        content: reqModel.content,
+        photo: { id: reqModel.photoId },
+        author: { id: reqModel.userId },
+      });
+
+      const savedComment = await commentRepo.save(newComment);
+      await photoRepo.increment({ id: reqModel.photoId }, 'commentsCount', 1);
+
+      await this.transactionManager.commitTransaction();
+      return new CommonResponse(true, 201, 'Comment created successfully', savedComment);
+    } catch (error) {
+      await this.transactionManager.rollbackTransaction();
+      throw new Error(`Failed to create comment: ${error}`);
+    }
+  }
+
+  async getPhotoComments(photoId: string): Promise<CommonResponse> {
+    try {
+      const comments = await this.commentRepository.find({
+        where: { photo: { id: photoId } },
+        relations: ['author'],
+        order: { createdAt: 'DESC' },
+      });
+      return new CommonResponse(true, 200, 'Comments fetched successfully', comments);
+    } catch (error) {
+      throw new Error(`Failed to fetch comments: ${error}`);
+    }
+  }
+
+  async updateComment(commentId: string, content: string): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
+    try {
+      const commentRepo = this.transactionManager.getRepository(this.commentRepository);
+      const comment = await commentRepo.findOne({ where: { id: commentId } });
+      
+      if (!comment) {
+        return new CommonResponse(false, 404, 'Comment not found');
+      }
+
+      await commentRepo.update(commentId, { content });
+      const updatedComment = await commentRepo.findOneOrFail({ where: { id: commentId } });
+
+      await this.transactionManager.commitTransaction();
+      return new CommonResponse(true, 200, 'Comment updated successfully', updatedComment);
+    } catch (error) {
+      await this.transactionManager.rollbackTransaction();
+      throw new Error(`Failed to update comment: ${error}`);
+    }
+  }
+
+  async deleteComment(reqModel: CommentIdRequestModel): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
+    try {
+      const commentRepo = this.transactionManager.getRepository(this.commentRepository);
+      const photoRepo = this.transactionManager.getRepository(this.photoRepository);
+
+      const comment = await commentRepo.findOne({ 
+        where: { id: reqModel.commentId },
+        relations: ['photo'],
+      });
+      
+      if (!comment) {
+        return new CommonResponse(false, 404, 'Comment not found');
+      }
+
+      // Check if photo exists before trying to access its id
+      if (!comment.photo) {
+        await commentRepo.delete({ id: reqModel.commentId });
+        await this.transactionManager.commitTransaction();
+        return new CommonResponse(true, 200, 'Comment deleted successfully (no associated photo)');
+      }
+
+      const photoId = comment.photo.id;
+      await commentRepo.delete({ id: reqModel.commentId });
+      await photoRepo.decrement({ id: photoId }, 'commentsCount', 1);
+
+      await this.transactionManager.commitTransaction();
+      return new CommonResponse(true, 200, 'Comment deleted successfully');
+    } catch (error) {
+      await this.transactionManager.rollbackTransaction();
+      throw new Error(`Failed to delete comment: ${error}`);
+    }
+}
 }

@@ -1,43 +1,125 @@
-import React, { useState } from 'react';
-import { Avatar, Modal, Button } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import React, { useState, useEffect } from 'react';
+import { Avatar, Modal, Button, Upload, message } from 'antd';
+import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
-import './stories.css'; // Import styles
-
-const dummyStories = [
-  {
-    id: 1,
-    username: 'John',
-    imageUrl: 'https://picsum.photos/100/100?1',
-    storyUrl: 'https://picsum.photos/400/700?1',
-  },
-  {
-    id: 2,
-    username: 'Sarah',
-    imageUrl: 'https://picsum.photos/100/100?2',
-    storyUrl: 'https://picsum.photos/400/700?2',
-  },
-  {
-    id: 3,
-    username: 'Mike',
-    imageUrl: 'https://picsum.photos/100/100?3',
-    storyUrl: 'https://picsum.photos/400/700?3',
-  },
-  {
-    id: 4,
-    username: 'Emily',
-    imageUrl: 'https://picsum.photos/100/100?4',
-    storyUrl: 'https://picsum.photos/400/700?4',
-  },
-];
+import './stories.css';
+import { CreateStoryModel } from '@in-one/shared-models';
+import { UploadChangeParam } from 'antd/es/upload';
+import { StoriesHelpService } from '@in-one/shared-services';
 
 const Stories: React.FC = () => {
+  const [stories, setStories] = useState<any[]>([]);
   const [selectedStory, setSelectedStory] = useState<any | null>(null);
   const [isStoryModalVisible, setIsStoryModalVisible] = useState(false);
+  const [isAddStoryModalVisible, setIsAddStoryModalVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [fileList, setFileList] = useState<any[]>([]);
+  const [storyContent, setStoryContent] = useState('');
 
-  const openStory = (story: any) => {
+  const storiesService = new StoriesHelpService();
+  const userId = localStorage.getItem('userId'); // Retrieve userId from localStorage
+
+  useEffect(() => {
+    if (userId) {
+      fetchStories();
+    } else {
+      setFetchError('Please log in to view stories');
+    }
+  }, [userId]);
+
+  const fetchStories = async () => {
+    try {
+      setLoading(true);
+      setFetchError(null);
+      const response = await storiesService.getAllStories(1, 10);
+      console.log('API Response:', response);
+      if (response.status == true && response.data && response.data.stories) {
+        setStories(response.data.stories);
+      } else {
+        setFetchError('No stories found');
+        setStories([]);
+      }
+    } catch (error) {
+      console.error('Error fetching stories:', error);
+      setFetchError('Failed to load stories');
+      setStories([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openStory = async (story: any) => {
     setSelectedStory(story);
     setIsStoryModalVisible(true);
+    if (!userId) {
+      message.error('Please log in to view stories');
+      return;
+    }
+    try {
+      await storiesService.markStoryAsViewed(story.id, userId);
+    } catch (error) {
+      console.error('Error marking story as viewed:', error);
+      message.error('Failed to mark story as viewed');
+    }
+  };
+
+  const handleAddStoryClick = () => {
+    if (!userId) {
+      message.error('Please log in to create a story');
+      return;
+    }
+    setIsAddStoryModalVisible(true);
+  };
+
+  const handleUploadChange = (info: UploadChangeParam) => {
+    setFileList(info.fileList);
+  };
+
+  const handleCreateStory = async () => {
+    if (!userId) {
+      message.error('Please log in to create a story');
+      return;
+    }
+    if (fileList.length === 0) {
+      message.error('Please upload an image');
+      return;
+    }
+  
+    try {
+      setLoading(true);
+      const formData = new FormData();
+      formData.append('image', fileList[0].originFileObj); // Must match 'image' in FileInterceptor
+      formData.append('userId', userId);
+      formData.append('content', storyContent);
+      formData.append('visibility', 'public');
+  
+      const response = await storiesService.createStory(formData as any);
+      console.log('Create Story Response:', response);
+      if (response.status == true) {
+        message.success('Story created successfully');
+        setIsAddStoryModalVisible(false);
+        setFileList([]);
+        setStoryContent('');
+        fetchStories();
+      } else {
+        throw new Error('Story creation failed');
+      }
+    } catch (error) {
+      console.error('Error creating story:', error);
+      message.error('Failed to create story');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const convertToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (error) => reject(error);
+    });
   };
 
   return (
@@ -50,22 +132,33 @@ const Stories: React.FC = () => {
             shape="circle"
             size="large"
             icon={<PlusOutlined />}
+            onClick={handleAddStoryClick}
+            loading={loading}
+            disabled={loading || !userId}
           />
           <p>Add Story</p>
         </div>
 
-        {/* Display Dummy Stories */}
-        {dummyStories.map((story) => (
-          <motion.div
-            key={story.id}
-            whileTap={{ scale: 0.9 }}
-            className="story-item"
-            onClick={() => openStory(story)}
-          >
-            <Avatar size={64} src={story.imageUrl} />
-            <p>{story.username}</p>
-          </motion.div>
-        ))}
+        {/* Display Stories */}
+        {loading && !isAddStoryModalVisible ? (
+          <p>Loading stories...</p>
+        ) : fetchError ? (
+          <p>{fetchError}</p>
+        ) : stories.length === 0 ? (
+          <p>No stories available</p>
+        ) : (
+          stories.map((story) => (
+            <motion.div
+              key={story.id}
+              whileTap={{ scale: 0.9 }}
+              className="story-item"
+              onClick={() => openStory(story)}
+            >
+              <Avatar size={64} src={story.imageUrl} />
+              <p>{story.username}</p>
+            </motion.div>
+          ))
+        )}
       </div>
 
       {/* Story Preview Modal */}
@@ -79,13 +172,49 @@ const Stories: React.FC = () => {
         {selectedStory && (
           <div className="story-preview">
             <img
-              src={selectedStory.storyUrl}
+              src={selectedStory.imageUrl || selectedStory.storyUrl}
               alt="Story"
               className="story-image"
             />
             <p className="story-caption">@{selectedStory.username}</p>
+            {selectedStory.content && (
+              <p className="story-content">{selectedStory.content}</p>
+            )}
           </div>
         )}
+      </Modal>
+
+      {/* Add Story Modal */}
+      <Modal
+        title="Create New Story"
+        open={isAddStoryModalVisible}
+        onOk={handleCreateStory}
+        onCancel={() => {
+          setIsAddStoryModalVisible(false);
+          setFileList([]);
+          setStoryContent('');
+        }}
+        okText="Create"
+        cancelText="Cancel"
+        confirmLoading={loading}
+      >
+        <Upload
+          listType="picture"
+          fileList={fileList}
+          onChange={handleUploadChange}
+          beforeUpload={() => false}
+          maxCount={1}
+        >
+          <Button icon={<UploadOutlined />}>Upload Image</Button>
+        </Upload>
+        <textarea
+          value={storyContent}
+          onChange={(e) => setStoryContent(e.target.value)}
+          placeholder="Add a caption..."
+          className="story-textarea"
+          rows={4}
+          style={{ width: '100%', marginTop: '10px' }}
+        />
       </Modal>
     </div>
   );

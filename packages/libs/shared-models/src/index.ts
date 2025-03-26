@@ -5,3 +5,4 @@ export * from './notes-calender';
 export * from './news';
 export * from './entertainment'
 export * from './enums'
+export * from './story-models'

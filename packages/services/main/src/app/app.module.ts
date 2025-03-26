@@ -13,7 +13,7 @@ import { ReelModule } from './entertainment/reels/reels.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { JwtModule } from '@nestjs/jwt';
 import { LoggerMiddleware } from './authentication/logger.middleware';
-import { StoryModule } from './stories/story.module';
+import { StoriesModule } from './stories/story.module';
 
 @Module({
   imports: [
@@ -41,7 +41,7 @@ import { StoryModule } from './stories/story.module';
     VideoModule,
     PhotoModule,
     ReelModule,
-    StoryModule
+    StoriesModule
   ],
   controllers: [AppController],
   providers: [AppService],

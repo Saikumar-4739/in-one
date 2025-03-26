@@ -6,3 +6,4 @@ export * from './chat';
 export * from './entertainment';
 export * from './news';
 export * from './notes-calender';
+export * from './stories';

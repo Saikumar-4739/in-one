@@ -1,257 +1,283 @@
 .photos-page {
-    height: 100vh; /* Full viewport height */
-    background: #fff;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden; /* Prevent page-level scrolling */
-    padding-top: 60px;
+  height: 100vh;
+  background: #fafafa;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.j-header {
+  width: 100%;
+  max-width: 935px; /* Consistent max-width with content */
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 8px 5px; /* Decreased left/right padding */
+  border-bottom: 1px solid #dbdbdb;
+  background: #fff;
+  margin: 0 auto;
+  position: fixed; /* Fixed header */
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  height: 50px; /* Constant height */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.upload-btn {
+  background: #0095f6;
+  border: none;
+  border-radius: 12px;
+  padding: 6px 16px;
+  height: auto;
+  font-weight: 600;
+  color: #fff;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.upload-btn:hover {
+  background: #1877f2;
+  transform: scale(1.05);
+}
+
+.stories-container {
+  width: 100%;
+  max-width: 935px;
+  padding: 8px 5px; /* Decreased left/right padding */
+  background: #fff;
+  border-bottom: 1px solid #dbdbdb;
+  position: fixed; /* Fixed stories section */
+  top: 50px; /* Below header */
+  left: 0;
+  right: 0;
+  z-index: 9;
+  height: 80px; /* Constant height for stories */
+  margin: 0 auto;
+}
+
+.content-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  max-width: 935px;
+  margin: 130px auto 0; /* Offset for fixed header (50px) + stories (80px) */
+  width: 100%;
+  padding: 5px; /* Further decreased padding on all sides */
+  box-sizing: border-box;
+  scrollbar-width: none;
+}
+
+.content-wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.photo-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px; /* Vertical stacking with gap */
+}
+
+.photo-card {
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #e6e6e6;
+  background: #fff;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  width: 100%; /* Full width within container */
+}
+
+.photo-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.photo-img {
+  width: 100%;
+  height: auto; /* Height adjusts to actual image size */
+  object-fit: contain; /* Maintains aspect ratio without cropping */
+  display: block;
+  transition: opacity 0.3s ease;
+}
+
+.photo-img:hover {
+  opacity: 0.9;
+}
+
+.photo-details {
+  padding: 8px 10px;
+}
+
+.photo-actions {
+  margin-bottom: 6px;
+}
+
+.photo-actions .ant-btn {
+  color: #262626;
+  padding: 0 8px;
+  font-size: 18px;
+  transition: color 0.2s ease;
+}
+
+.photo-actions .liked {
+  color: #ed4956;
+}
+
+.caption {
+  margin: 0;
+  color: #262626;
+  font-size: 14px;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.loading,
+.no-photos {
+  text-align: center;
+  padding: 40px;
+  color: #8e8e8e;
+}
+
+.loader {
+  text-align: center;
+  padding: 15px;
+  min-height: 40px;
+}
+
+.login-prompt {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #fafafa;
+}
+
+.login-prompt h3 {
+  color: #262626;
+}
+
+.edit-modal .ant-modal-title {
+  font-weight: 600;
+  color: #262626;
+}
+
+.edit-modal .ant-btn-primary {
+  background: #0095f6;
+  border: none;
+  border-radius: 12px;
+  height: 40px;
+  font-weight: 600;
+  transition: background 0.3s ease;
+}
+
+.edit-modal .ant-btn-primary:hover {
+  background: #1877f2;
+}
+
+.preview-modal .ant-modal-content {
+  padding: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.preview-container {
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
+}
+
+.preview-image {
+  width: 100%;
+  max-height: 60vh;
+  object-fit: cover;
+}
+
+.preview-details {
+  padding: 10px;
+  background: #fff;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.preview-actions {
+  margin-bottom: 8px;
+}
+
+.preview-actions .ant-btn {
+  color: #262626;
+  padding: 0 8px;
+  font-size: 14px;
+}
+
+.preview-actions .liked {
+  color: #ed4956;
+}
+
+.preview-caption {
+  margin: 8px 0;
+  color: #262626;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.comment-list {
+  margin: 8px 0;
+  max-height: 30vh;
+  overflow-y: auto;
+}
+
+.custom-comment {
+  padding: 6px 0;
+  border-bottom: none;
+}
+
+.custom-comment .ant-list-item {
+  padding: 0;
+}
+
+.custom-comment .ant-avatar {
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+
+.comment-input {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+  border-top: 1px solid #dbdbdb;
+  padding-top: 8px;
+}
+
+.comment-input .ant-input-textarea {
+  border: none;
+  resize: none;
+  padding: 0;
+  font-size: 14px;
+}
+
+.comment-input .ant-btn {
+  color: #0095f6;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.comment-input .ant-btn[disabled] {
+  color: #b3dffc;
+}
+
+/* Animation for photo grid items */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
   }
-  
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px;
-    border-bottom: 1px solid #dbdbdb;
-    max-width: 935px;
-    margin: 0 auto;
-    width: 100%;
-    flex-shrink: 0; /* Prevent header from shrinking */
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
-  .j-header {
-    width: 85%;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px;
-    border-bottom: 1px solid #dbdbdb;
-    flex-shrink: 0;
-    background: #fff;
-    transition: all 0.3s ease-in-out;
-    position: relative;
-    border-radius: 10px; /* Optional rounded corners */
-    margin: 0 auto; /* Centers the header */
-    overflow: hidden; /* Ensures the shine effect stays within bounds */
-  }
-  
-  /* Add a continuous shining effect */
-  .j-header::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 200%;
-    height: 100%;
-    background: linear-gradient(
-      120deg,
-      rgba(255, 255, 255, 0) 30%,
-      rgba(255, 255, 255, 0.4) 50%,
-      rgba(255, 255, 255, 0) 70%
-    );
-    animation: shine 2.5s infinite linear;
-  }
-  
-  /* Define the shine animation */
-  @keyframes shine {
-    from {
-      left: -100%;
-    }
-    to {
-      left: 100%;
-    }
-  }
-  
-  /* Add shadow & scale effect on hover */
-  .j-header:hover {
-    box-shadow: 0px 6px 15px rgba(0, 0, 0, 0.15);
-    transform: scale(1.02);
-  }
-  
-  /* Responsive Design */
-  @media (max-width: 1024px) {
-    .j-header {
-      width: 90%;
-      padding: 15px;
-    }
-  }
-  
-  @media (max-width: 768px) {
-    .j-header {
-      flex-direction: column;
-      gap: 10px;
-      text-align: center;
-      width: 95%;
-    }
-  
-    .j-header:hover {
-      transform: scale(1.01); /* Slight hover effect for smaller screens */
-    }
-  }
-  
-  .title {
-    margin: 0;
-    font-size: 28px;
-    font-weight: 400;
-    color: #262626;
-  }
-  
-  .upload-btn {
-    background: linear-gradient(45deg, #405de6, #5851db, #833ab4);
-    border: none;
-    border-radius: 8px;
-    padding: 6px 15px;
-    height: auto;
-    font-weight: 600;
-  }
-  
-  .content-wrapper {
-    flex: 1; /* Take up remaining space */
-    max-height: calc(100vh - 80px); /* Subtract header height (approx) */
-    overflow-y: auto; /* Enable vertical scrolling */
-    max-width: 935px;
-    margin: 0 auto;
-    width: 100%;
-    padding: 20px; /* Padding on all sides */
-    box-sizing: border-box;
-    scrollbar-width: none;
-  }
-  
-  .photo-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 28px;
-  }
-  
-  .photo-card {
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    border: none;
-    background: #fff;
-    transition: transform 0.2s ease;
-  }
-  
-  .photo-card:hover {
-    transform: translateY(-5px);
-  }
-  
-  .photo-img {
-    width: 100%;
-    object-fit: contain;
-    display: block;
-    max-height: 400px;
-  }
-  
-  .photo-details {
-    padding: 12px 15px;
-  }
-  
-  .photo-actions {
-    margin-bottom: 8px;
-  }
-  
-  .photo-actions .ant-btn {
-    color: #262626;
-  }
-  
-  .photo-actions .liked {
-    color: #ed4956;
-  }
-  
-  .likes {
-    margin: 0 0 4px;
-    font-weight: 600;
-    color: #262626;
-  }
-  
-  .caption {
-    margin: 0;
-    color: #262626;
-    font-size: 14px;
-  }
-  
-  .visibility {
-    margin: 4px 0 0;
-    color: #8e8e8e;
-    font-size: 12px;
-  }
-  
-  .loading,
-  .no-photos {
-    text-align: center;
-    padding: 50px;
-    color: #8e8e8e;
-  }
-  
-  .loader {
-    text-align: center;
-    padding: 20px;
-    min-height: 50px;
-  }
-  
-  .login-prompt {
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  }
-  
-  .login-prompt h3 {
-    color: #262626;
-  }
-  
-  .edit-modal .ant-modal-title {
-    font-weight: 600;
-    color: #262626;
-  }
-  
-  .edit-modal .ant-btn-primary {
-    background: #0095f6;
-    border: none;
-    border-radius: 8px;
-    height: 40px;
-    font-weight: 600;
-  }
-  
-  .preview-modal .ant-modal-content {
-    padding: 0;
-  }
-  
-  .preview-container {
-    display: flex;
-    flex-direction: column;
-    max-height: 80vh;
-  }
-  
-  .preview-image {
-    width: 100%;
-    max-height: 70vh;
-    object-fit: contain;
-  }
-  
-  .preview-details {
-    padding: 15px;
-    background: #fff;
-  }
-  
-  .preview-likes .ant-btn {
-    color: #262626;
-  }
-  
-  .preview-likes .liked {
-    color: #ed4956;
-  }
-  
-  .preview-caption {
-    margin: 10px 0;
-    color: #262626;
-    font-size: 14px;
-  }
-  
-  .preview-visibility {
-    margin: 0;
-    color: #8e8e8e;
-    font-size: 12px;
-  }
+}
+
+.photo-grid .photo-card {
+  animation: fadeInUp 0.5s ease-out forwards;
+}

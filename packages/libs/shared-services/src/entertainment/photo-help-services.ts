@@ -4,8 +4,26 @@ import { GlobalResponseObject, CreatePhotoModel, UpdatePhotoModel, PhotoIdReques
 import FormData from 'form-data';
 import { File } from 'buffer';
 
-export class PhotoHelpService extends CommonAxiosService {
+interface CreateCommentModel {
+    photoId: string;
+    userId: string;
+    content: string;
+}
 
+interface CommentIdRequestModel {
+    commentId: string;
+}
+
+interface UpdateCommentModel {
+    commentId: string;
+    content: string;
+}
+
+interface PhotoCommentsRequestModel {
+    photoId: string;
+  }
+
+export class PhotoHelpService extends CommonAxiosService {
     private getURLwithMainEndPoint(childUrl: string): string {
         return `/photos/${childUrl}`;
     }
@@ -22,29 +40,80 @@ export class PhotoHelpService extends CommonAxiosService {
             formData,
             {
                 ...config,
-                // Let FormData set the Content-Type with proper boundary
                 headers: { ...config?.headers }
             }
         );
     }
 
     async getAllPhotos(config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
-        return await this.axiosPostCall(this.getURLwithMainEndPoint('getAllPhotos'), {}, config);
+        return await this.axiosPostCall(
+            this.getURLwithMainEndPoint('all'),
+            {},
+            config
+        );
     }
 
     async updatePhoto(reqModel: UpdatePhotoModel, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
-        return await this.axiosPostCall(this.getURLwithMainEndPoint('updatePhoto'), reqModel, config);
+        return await this.axiosPostCall(
+            this.getURLwithMainEndPoint('update'),
+            reqModel,
+            config
+        );
     }
 
     async deletePhoto(reqModel: PhotoIdRequestModel, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
-        return await this.axiosPostCall(this.getURLwithMainEndPoint('deletePhoto'), reqModel, config);
+        return await this.axiosPostCall(
+            this.getURLwithMainEndPoint('delete'),
+            reqModel,
+            config
+        );
     }
 
     async likePhoto(reqModel: LikeRequestModel, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
-        return await this.axiosPostCall(this.getURLwithMainEndPoint('likePhoto'), reqModel, config);
+        return await this.axiosPostCall(
+            this.getURLwithMainEndPoint('like'),
+            reqModel,
+            config
+        );
     }
 
     async unlikePhoto(reqModel: LikeRequestModel, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
-        return await this.axiosPostCall(this.getURLwithMainEndPoint('unlikePhoto'), reqModel, config);
+        return await this.axiosPostCall(
+            this.getURLwithMainEndPoint('unlike'),
+            reqModel,
+            config
+        );
+    }
+
+    async createComment(reqModel: CreateCommentModel, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
+        return await this.axiosPostCall(
+            this.getURLwithMainEndPoint('comment'),
+            reqModel,
+            config
+        );
+    }
+
+    async getPhotoComments(reqModel: PhotoCommentsRequestModel, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
+        return await this.axiosPostCall(
+            this.getURLwithMainEndPoint(`comments`),
+            reqModel, // Sending photoId in body since it's a POST request
+            config
+        );
+    }
+
+    async updateComment(reqModel: UpdateCommentModel, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
+        return await this.axiosPostCall(
+            this.getURLwithMainEndPoint('comment/update'),
+            reqModel,
+            config
+        );
+    }
+
+    async deleteComment(reqModel: CommentIdRequestModel, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
+        return await this.axiosPostCall(
+            this.getURLwithMainEndPoint('comment/delete'),
+            reqModel,
+            config
+        );
     }
 }

@@ -11,6 +11,7 @@ import { NewsCommentEntity } from 'src/app/news/entities/comment.entity';
 import { NewsEntity } from 'src/app/news/entities/news.entity';
 import { CalendarEntity } from 'src/app/notes-calender/entities/calender.entity';
 import { NoteEntity } from 'src/app/notes-calender/entities/notes.entity';
+import { StoryEntity } from 'src/app/stories/entities/story.entity';
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany, ManyToMany } from 'typeorm';
 
 @Entity('users')
@@ -101,4 +102,7 @@ export class UserEntity {
 
   @OneToMany(() => LikeEntity, (like) => like.user)
   likes: LikeEntity[];
+
+  @OneToMany(() => StoryEntity, (story) => story.user)
+  stories: StoryEntity[];
 }

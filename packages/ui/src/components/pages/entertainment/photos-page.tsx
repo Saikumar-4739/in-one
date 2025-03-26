@@ -16,6 +16,8 @@ import {
   Form,
   Input,
   Select,
+  Avatar,
+  List,
 } from 'antd';
 import {
   UploadOutlined,
@@ -24,25 +26,35 @@ import {
   LikeOutlined,
   DislikeOutlined,
   LoadingOutlined,
-  PhoneOutlined,
-  PictureOutlined,
+  CommentOutlined,
 } from '@ant-design/icons';
 import { PhotoHelpService } from '@in-one/shared-services';
 import { motion, AnimatePresence } from 'framer-motion';
 import './photos-page.css';
 import Stories from './stories';
 
-const { Title } = Typography;
+const { Text } = Typography; // Removed Title since it's not used anymore
+const { TextArea } = Input;
+
+interface CommentModel {
+  photoId: string;
+  userId: string;
+  content: string;
+}
+
+interface PhotoCommentsRequestModel {
+  photoId: string;
+}
 
 const PhotosPage: React.FC = () => {
   const [photos, setPhotos] = useState<any[]>([]);
-  const [userId] = useState<string | null>(
-    () => localStorage.getItem('userId') || null
-  );
+  const [userId] = useState<string | null>(() => localStorage.getItem('userId') || null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isPreviewVisible, setIsPreviewVisible] = useState(false);
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
+  const [comments, setComments] = useState<any[]>([]);
+  const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
@@ -52,18 +64,14 @@ const PhotosPage: React.FC = () => {
   const photoService = new PhotoHelpService();
 
   const cardVariants = {
-    hidden: { opacity: 0, y: 50 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.4, ease: 'easeOut' },
-    },
-    exit: { opacity: 0, y: -20, transition: { duration: 0.3 } },
+    hidden: { opacity: 0, y: 20 }, // Adjusted for fadeInUp animation
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
+    exit: { opacity: 0, y: -10, transition: { duration: 0.3 } },
   };
 
   const buttonVariants = {
-    hover: { scale: 1.15 },
-    tap: { scale: 0.9 },
+    hover: { scale: 1.1 }, // Slightly reduced scale for subtler effect
+    tap: { scale: 0.95 }, // Smoother tap animation
   };
 
   useEffect(() => {
@@ -73,19 +81,11 @@ const PhotosPage: React.FC = () => {
   }, [userId]);
 
   const fetchPhotos = async (append = false) => {
-    if (
-      !userId ||
-      !hasMore ||
-      loading ||
-      (append && offset === lastOffset.current)
-    )
-      return;
+    if (!userId || !hasMore || loading || (append && offset === lastOffset.current)) return;
     setLoading(true);
     try {
       const limit = 9;
-      const response = await photoService.getAllPhotos({
-        params: { offset, limit },
-      });
+      const response = await photoService.getAllPhotos({ params: { offset, limit } });
       if (response.status === true) {
         const transformedPhotos = response.data.map((photo: any) => ({
           photoId: photo.id,
@@ -101,8 +101,7 @@ const PhotosPage: React.FC = () => {
         setPhotos((prev) => {
           if (append) {
             const newPhotos = transformedPhotos.filter(
-              (newPhoto: { photoId: any }) =>
-                !prev.some((existing) => existing.photoId === newPhoto.photoId)
+              (newPhoto: { photoId: any }) => !prev.some((existing) => existing.photoId === newPhoto.photoId)
             );
             return [...prev, ...newPhotos];
           }
@@ -122,12 +121,25 @@ const PhotosPage: React.FC = () => {
     }
   };
 
+  const fetchComments = async (photoId: string) => {
+    try {
+      const reqModel: PhotoCommentsRequestModel = { photoId };
+      const response = await photoService.getPhotoComments(reqModel);
+      if (response.status === true) {
+        setComments(response.data);
+      } else {
+        message.error('Failed to fetch comments');
+      }
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+      message.error('An error occurred while fetching comments');
+    }
+  };
+
   useEffect(() => {
     const handleScroll = () => {
       if (!contentRef.current || loading || !hasMore) return;
-
       const { scrollTop, scrollHeight, clientHeight } = contentRef.current;
-
       if (scrollTop + clientHeight >= scrollHeight - 100) {
         fetchPhotos(true);
       }
@@ -148,7 +160,7 @@ const PhotosPage: React.FC = () => {
   const handleUpload = async (file: File) => {
     if (!userId) {
       message.error('Please login to upload photos');
-      return;
+      return false; // Prevent upload
     }
     setLoading(true);
     const createModel: CreatePhotoModel = {
@@ -173,12 +185,10 @@ const PhotosPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+    return false; // Prevent default upload behavior
   };
 
-  const handleUpdate = async (values: {
-    caption?: string;
-    visibility?: 'public' | 'private';
-  }) => {
+  const handleUpdate = async (values: { caption?: string; visibility?: 'public' | 'private' }) => {
     if (!userId || !editingPhotoId) return;
     const updateModel: UpdatePhotoModel = {
       photoId: editingPhotoId,
@@ -243,41 +253,48 @@ const PhotosPage: React.FC = () => {
         }
         message.success(`Photo ${isLiked ? 'unliked' : 'liked'} successfully`);
       } else {
-        message.error(
-          response.internalMessage ||
-            `Failed to ${isLiked ? 'unlike' : 'like'} photo`
-        );
+        message.error(response.internalMessage || `Failed to ${isLiked ? 'unlike' : 'like'} photo`);
       }
     } catch (error) {
       console.error(`Error ${isLiked ? 'unliking' : 'liking'} photo:`, error);
-      message.error(
-        `An error occurred while ${isLiked ? 'unliking' : 'liking'} the photo`
-      );
+      message.error(`An error occurred while ${isLiked ? 'unliking' : 'liking'} the photo`);
+    }
+  };
+
+  const handleComment = async (photoId: string) => {
+    if (!userId || !newComment.trim()) return;
+    const commentModel: CommentModel = { photoId, userId, content: newComment };
+    try {
+      const response = await photoService.createComment(commentModel);
+      if (response.status === true) {
+        setNewComment('');
+        fetchComments(photoId);
+        message.success('Comment added successfully');
+      } else {
+        message.error(response.internalMessage || 'Failed to add comment');
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      message.error('An error occurred while adding the comment');
     }
   };
 
   const handleEdit = (photo: any) => {
     setEditingPhotoId(photo.photoId);
     setIsModalVisible(true);
-    form.setFieldsValue({
-      caption: photo.caption,
-      visibility: photo.visibility,
-    });
+    form.setFieldsValue({ caption: photo.caption, visibility: photo.visibility });
   };
 
   const handlePreview = (photo: any) => {
     setSelectedPhoto(photo);
     setIsPreviewVisible(true);
+    fetchComments(photo.photoId);
   };
 
   if (!userId) {
     return (
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="login-prompt"
-      >
-        <Title level={3}>Please log in to view your photos</Title>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="login-prompt">
+        <Text strong style={{ fontSize: 18 }}>Please log in to view your photos</Text>
       </motion.div>
     );
   }
@@ -285,20 +302,12 @@ const PhotosPage: React.FC = () => {
   return (
     <div className="photos-page">
       <motion.div
-        initial={{ opacity: 0, y: -20 }}
+        initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="header"
+        transition={{ duration: 0.3 }}
+        className="j-header"
       >
-        <Title style={{ fontSize: '30px' }}>
-          <PictureOutlined style={{ marginRight: '10px' }} />
-          InstaView
-        </Title>
-        <Upload
-          beforeUpload={handleUpload}
-          showUploadList={false}
-          disabled={loading}
-        >
+        <Upload beforeUpload={handleUpload} showUploadList={false} disabled={loading}>
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button
               type="primary"
@@ -311,16 +320,16 @@ const PhotosPage: React.FC = () => {
           </motion.div>
         </Upload>
       </motion.div>
-      <Stories />
 
       <div className="content-wrapper" ref={contentRef}>
+        <Stories />
         {loading && !photos.length ? (
           <div className="loading">
             <LoadingOutlined style={{ fontSize: 32 }} spin />
           </div>
         ) : photos.length === 0 ? (
           <div className="no-photos">
-            <Title level={4}>No photos to display</Title>
+            <Text strong style={{ fontSize: 16 }}>No photos to display</Text>
           </div>
         ) : (
           <AnimatePresence>
@@ -339,39 +348,33 @@ const PhotosPage: React.FC = () => {
                     hoverable
                     onClick={() => handlePreview(photo)}
                   >
-                    <img
-                      src={photo.url}
-                      alt={photo.caption || 'Photo'}
-                      className="photo-img"
-                    />
+                    <img src={photo.url} alt={photo.caption || 'Photo'} className="photo-img" />
                     <div className="photo-details">
                       <Space className="photo-actions">
-                        <motion.div
-                          variants={buttonVariants}
-                          whileHover="hover"
-                          whileTap="tap"
-                        >
+                        <motion.div variants={buttonVariants} whileHover="hover" whileTap="tap">
                           <Button
                             type="text"
-                            icon={
-                              photo.isLiked ? (
-                                <DislikeOutlined />
-                              ) : (
-                                <LikeOutlined />
-                              )
-                            }
+                            icon={photo.isLiked ? <DislikeOutlined /> : <LikeOutlined />}
                             onClick={(e) => {
                               e.stopPropagation();
                               handleLike(photo.photoId, photo.isLiked);
                             }}
                             className={photo.isLiked ? 'liked' : ''}
+                          >
+                            {photo.likes || 0}
+                          </Button>
+                        </motion.div>
+                        <motion.div variants={buttonVariants} whileHover="hover" whileTap="tap">
+                          <Button
+                            type="text"
+                            icon={<CommentOutlined />}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePreview(photo);
+                            }}
                           />
                         </motion.div>
-                        <motion.div
-                          variants={buttonVariants}
-                          whileHover="hover"
-                          whileTap="tap"
-                        >
+                        <motion.div variants={buttonVariants} whileHover="hover" whileTap="tap">
                           <Button
                             type="text"
                             icon={<EditOutlined />}
@@ -381,11 +384,7 @@ const PhotosPage: React.FC = () => {
                             }}
                           />
                         </motion.div>
-                        <motion.div
-                          variants={buttonVariants}
-                          whileHover="hover"
-                          whileTap="tap"
-                        >
+                        <motion.div variants={buttonVariants} whileHover="hover" whileTap="tap">
                           <Button
                             type="text"
                             icon={<DeleteOutlined />}
@@ -397,15 +396,7 @@ const PhotosPage: React.FC = () => {
                           />
                         </motion.div>
                       </Space>
-                      <div>
-                        <p className="likes">{photo.likes || 0} likes</p>
-                        <p className="caption">
-                          <strong>{photo.caption || ''}</strong>
-                        </p>
-                        <p className="visibility">
-                          {photo.visibility === 'public' ? 'Public' : 'Private'}
-                        </p>
-                      </div>
+                      <Text className="caption">{photo.caption || ''}</Text>
                     </div>
                   </Card>
                 </motion.div>
@@ -431,11 +422,7 @@ const PhotosPage: React.FC = () => {
           <Form.Item name="caption" label="Caption">
             <Input placeholder="Add a caption" />
           </Form.Item>
-          <Form.Item
-            name="visibility"
-            label="Visibility"
-            rules={[{ required: true, message: 'Please select visibility' }]}
-          >
+          <Form.Item name="visibility" label="Visibility" rules={[{ required: true, message: 'Please select visibility' }]}>
             <Select placeholder="Select visibility">
               <Select.Option value="public">Public</Select.Option>
               <Select.Option value="private">Private</Select.Option>
@@ -459,36 +446,55 @@ const PhotosPage: React.FC = () => {
       >
         {selectedPhoto && (
           <div className="preview-container">
-            <img
-              src={selectedPhoto.url}
-              alt={selectedPhoto.caption || 'Photo'}
-              className="preview-image"
-            />
+            <img src={selectedPhoto.url} alt={selectedPhoto.caption || 'Photo'} className="preview-image" />
             <div className="preview-details">
-              <p className="preview-likes">
+              <Space className="preview-actions">
                 <Button
                   type="text"
-                  icon={
-                    selectedPhoto.isLiked ? (
-                      <DislikeOutlined />
-                    ) : (
-                      <LikeOutlined />
-                    )
-                  }
-                  onClick={() =>
-                    handleLike(selectedPhoto.photoId, selectedPhoto.isLiked)
-                  }
+                  icon={selectedPhoto.isLiked ? <DislikeOutlined /> : <LikeOutlined />}
+                  onClick={() => handleLike(selectedPhoto.photoId, selectedPhoto.isLiked)}
                   className={selectedPhoto.isLiked ? 'liked' : ''}
                 >
                   {selectedPhoto.likes || 0} Likes
                 </Button>
-              </p>
-              <p className="preview-caption">
-                <strong>{selectedPhoto.caption || ''}</strong>
-              </p>
-              <p className="preview-visibility">
-                {selectedPhoto.visibility === 'public' ? 'Public' : 'Private'}
-              </p>
+                <Button type="text" icon={<CommentOutlined />}>
+                  {comments.length} Comments
+                </Button>
+              </Space>
+              <Text className="preview-caption">{selectedPhoto.caption || ''}</Text>
+              <List
+                className="comment-list"
+                dataSource={comments}
+                renderItem={(item: any) => (
+                  <List.Item className="custom-comment">
+                    <Space>
+                      <Avatar>{item.author?.username?.[0] || 'U'}</Avatar>
+                      <div>
+                        <Text strong>{item.author?.username || 'User'}</Text>
+                        <Text style={{ marginLeft: 8 }}>{item.content}</Text>
+                        <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
+                          {new Date(item.createdAt).toLocaleString()}
+                        </Text>
+                      </div>
+                    </Space>
+                  </List.Item>
+                )}
+              />
+              <div className="comment-input">
+                <TextArea
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Add a comment..."
+                  autoSize={{ minRows: 1, maxRows: 3 }}
+                />
+                <Button
+                  type="link"
+                  onClick={() => handleComment(selectedPhoto.photoId)}
+                  disabled={!newComment.trim()}
+                >
+                  Post
+                </Button>
+              </div>
             </div>
           </div>
         )}
