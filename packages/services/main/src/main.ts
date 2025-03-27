@@ -1,50 +1,96 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app/app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { Logger } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as express from 'express';
 import { join } from 'path';
 import rateLimit from 'express-rate-limit';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
-
-  // ✅ Improved CORS Handling
-  app.enableCors({
-    origin: '*', 
-    methods: 'GET,POST,PUT,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type, Authorization',
-    exposedHeaders: 'Content-Disposition',
-    credentials: true,
-  });
-
-  // ✅ Properly Serve Static Images
-  app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
-
-  // ✅ Optional Rate Limiting (increase the max limit)
-  app.use(rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, 
-    message: 'Too many requests, please try again later.',
-  }));
-
-  // ✅ Swagger Documentation
-  const config = new DocumentBuilder()
-    .setTitle('In One API')
-    .setDescription('API Documentation for In One App')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document);
-
-  const port: number = parseInt(process.env.PORT || '3005', 10);
-  await app.listen(port, '0.0.0.0');
   
-  logger.log(`🚀 Server is running on http://localhost:${port}`);
-  logger.log(`📜 Swagger API Docs available at http://localhost:${port}/docs`);
+  try {
+    // Create NestJS application
+    const app = await NestFactory.create(AppModule, {
+      logger: ['error', 'warn', 'log'],
+      abortOnError: false,
+    });
+
+    // Get configuration service
+    const configService = app.get(ConfigService);
+    const port = process.env.PORT || configService.get<number>('port', 3005);
+    const responseTimeout = configService.get<number>('RESPONSE_TIMEOUT', 30) * 1000;
+
+    // CORS Configuration
+    app.enableCors({
+      origin: configService.get<string>('CORS_ORIGIN', '*'),
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+      exposedHeaders: ['Content-Disposition'],
+      credentials: true,
+      maxAge: 3600,
+    });
+
+    // Global Validation Pipe
+    app.useGlobalPipes(
+      new ValidationPipe({
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      }),
+    );
+
+    // Static Files Serving
+    const uploadsPath = join(__dirname, '..', 'uploads');
+    app.use('/uploads', express.static(uploadsPath, {
+      maxAge: '1d',
+      etag: true,
+    }));
+
+    // Rate Limiting Configuration
+    app.use(rateLimit({
+      windowMs: configService.get<number>('RATE_LIMIT_WINDOW', 15 * 60 * 1000),
+      max: configService.get<number>('RATE_LIMIT_MAX', 100),
+      message: {
+        status: 429,
+        message: 'Too many requests from this IP, please try again later.',
+      },
+      headers: true,
+    }));
+
+    // Swagger Configuration
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('In One API')
+      .setDescription('API Documentation for In One App')
+      .setVersion('1.0')
+      .addBearerAuth(
+        { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+        'access-token',
+      )
+      .build();
+
+    const document = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup('docs', app, document, {
+      swaggerOptions: {
+        persistAuthorization: true,
+      },
+    });
+
+    // Start the server
+    const server = await app.listen(port);
+    server.setTimeout(responseTimeout);
+
+    logger.log(`🚀 Server running on: http://localhost:${port}`);
+    logger.log(`📖 API Documentation available at: http://localhost:${port}/docs`);
+
+  } catch (error) {
+    logger.error('Failed to bootstrap the application:', error);
+    process.exit(1);
+  }
 }
 
-bootstrap();
+bootstrap().catch((error) => {
+  Logger.error('Application bootstrap failed:', error);
+  process.exit(1);
+});
