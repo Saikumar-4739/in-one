@@ -6,6 +6,8 @@ import './stories.css';
 import { CreateStoryModel } from '@in-one/shared-models';
 import { UploadChangeParam } from 'antd/es/upload';
 import { StoriesHelpService } from '@in-one/shared-services';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
+
 
 const Stories: React.FC = () => {
   const [stories, setStories] = useState<any[]>([]);
@@ -141,11 +143,17 @@ const Stories: React.FC = () => {
 
         {/* Display Stories */}
         {loading && !isAddStoryModalVisible ? (
-          <p>Loading stories...</p>
+          <div className="loading-lottie-co">
+          <DotLottieReact className="loading-lottie"
+          src="https://lottie.host/40a4dda9-19ed-44ca-a714-21abb0a8df4b/c5FKGuDCTv.lottie"
+          loop
+          autoplay
+        />
+        </div>
         ) : fetchError ? (
-          <p>{fetchError}</p>
+          <p className='j-stories-error-msg'>{fetchError}</p>
         ) : stories.length === 0 ? (
-          <p>No stories available</p>
+          <p className='j-stories-error-msg'>No stories available</p>
         ) : (
           stories.map((story) => (
             <motion.div

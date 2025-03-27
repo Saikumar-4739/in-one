@@ -22,3 +22,24 @@
     max-height: 500px;
     object-fit: cover;
   }
+  .j-stories-error-msg{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* height: 100%; */
+    font-size: 1.5rem;
+    font-weight: bold;
+  }
+  .loading-lottie{
+    height: 20%;
+    width: 20%;
+
+
+  }
+  .loading-lottie-co{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 50%;
+    width: 80%;
+  }
