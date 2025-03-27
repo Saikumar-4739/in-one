@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Route, Routes, Navigate, Outlet } from "react-router-dom";
 import AppLayout from "./app-layout";
 import LoginPage from "../components/pages/authentication/login-page";
-import HomePage from "./home-page";
+import HomePage from "../components/pages/home-page/home-page";
 import ChatPage from "../components/pages/chat-groups/chat-page";
 import NotesPage from "../components/pages/note-page/notes-page";
 import VideosPage, { VideoDetail } from "../components/pages/videos-page/videos-page";
@@ -45,7 +45,7 @@ const AppRoutes: React.FC = () => {
           <Route path="/ai-bot" element={<Chatbot />} />
           <Route path="/videos" element={<VideosPage />} />
           <Route path="/photos" element={<PhotosPage />} />
-          <Route path="/latest-news" element={<NewsPage />} />
+          <Route path="/news" element={<NewsPage />} />
           <Route path="/home" element={<HomePage />} />
           <Route path="/video/:id" element={<VideoDetail />} />
         </Route>

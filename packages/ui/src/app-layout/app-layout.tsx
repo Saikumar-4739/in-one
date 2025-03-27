@@ -77,7 +77,7 @@ const AppLayout: React.FC = () => {
       key: '8',
       icon: <LineChartOutlined />,
       label: 'Insight 24x7',
-      path: '/latest-news',
+      path: '/news',
     },
   ];
 

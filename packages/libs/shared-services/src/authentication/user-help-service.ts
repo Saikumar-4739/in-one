@@ -35,6 +35,9 @@ export class UserHelpService extends CommonAxiosService {
     async checkUserStatus(reqModel: UserIdRequestModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
         return await this.axiosPostCall(this.getURLwithMainEndPoint('status'),reqModel, config); 
     }
+    async getUserActivityStatus(reqModel: UserIdRequestModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
+        return await this.axiosPostCall(this.getURLwithMainEndPoint('getUserActivityStatus'),reqModel, config); 
+    }
 
     async forgotPassword(reqModel: EmailRequestModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
         return await this.axiosPostCall(this.getURLwithMainEndPoint('forgotPassword'), reqModel, config); 

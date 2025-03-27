@@ -78,6 +78,16 @@ export class UserController {
     }
   }
 
+  @Post('getUserActivityStatus')
+  @ApiBody({ type: UserIdRequestModel })
+  async getUserActivityStatus(@Body('userId') reqModel: UserIdRequestModel): Promise<CommonResponse> {
+    try {
+      return await this.userService.getUserActivityStatus(reqModel);
+    } catch (error) {
+      return ExceptionHandler.handleError(error, 'Error fetching user status');
+    }
+  }
+
   @Post('forgotPassword')
   @ApiBody({ type: EmailRequestModel })
   async forgotPassword(@Body('email') reqModel: EmailRequestModel): Promise<CommonResponse> {

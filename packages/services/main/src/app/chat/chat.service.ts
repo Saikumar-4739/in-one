@@ -28,13 +28,11 @@ export class ChatService {
   
       const sender = await this.userRepository.findOne({ where: { id: reqModel.senderId } });
       if (!sender) {
-        console.error(`❌ Sender not found: ${reqModel.senderId}`);
         throw new HttpException('Sender not found', HttpStatus.NOT_FOUND);
       }
   
       const chatRoom = await chatRoomRepo.findOne({ where: { id: reqModel.chatRoomId } });
       if (!chatRoom) {
-        console.error(`❌ Chat room not found: ${reqModel.chatRoomId}`);
         throw new HttpException('Chat room not found', HttpStatus.NOT_FOUND);
       }
   
@@ -44,11 +42,8 @@ export class ChatService {
         text: reqModel.text,
         createdAt: new Date(),
       });
-      console.log(`📝 Message entity created: ${JSON.stringify(newMessage)}`);
   
-      const savedMessage = await messageRepo.save(newMessage);
-      console.log(`💾 Message saved to DB: ${JSON.stringify(savedMessage)}`);
-  
+      const savedMessage = await messageRepo.save(newMessage);  
       await chatRoomRepo.update(reqModel.chatRoomId, { lastMessage: reqModel.text });
       await this.transactionManager.commitTransaction();
   
@@ -61,7 +56,6 @@ export class ChatService {
       };
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
-      console.error(`❌ Error in createMessage: ${error}`, error);
       throw new HttpException(`Error creating message: ${error}`, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -80,7 +74,6 @@ export class ChatService {
         createdAt: msg.createdAt,
       }));
     } catch (error) {
-      console.error('❌ Error fetching chat history:', error);
       throw new HttpException('Error fetching chat history', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -106,7 +99,6 @@ export class ChatService {
       };
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
-      console.error('❌ Error editing message:', error);
       throw new HttpException('Error editing message', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
@@ -123,7 +115,6 @@ export class ChatService {
       return new CommonResponse(true, 200, 'Message deleted successfully');
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
-      console.error('❌ Error deleting message:', error);
       return new CommonResponse(false, 500, 'Error deleting message');
     }
   }
@@ -135,7 +126,6 @@ export class ChatService {
       });
       return new CommonResponse(true, 200, 'Users retrieved successfully', users);
     } catch (error) {
-      console.error('❌ Error fetching users:', error);
       return new CommonResponse(false, 500, 'Error fetching users', []);
     }
   }
@@ -157,7 +147,6 @@ export class ChatService {
         createdAt: message.createdAt,
       });
     } catch (error) {
-      console.error('❌ Error getting message:', error);
       return new CommonResponse(false, 500, 'Error retrieving message', null);
     }
   }
@@ -181,7 +170,6 @@ export class ChatService {
       }));
       return new CommonResponse(true, 200, 'Chat rooms fetched successfully', chatRoomResponses);
     } catch (error) {
-      console.error('❌ Error fetching chat rooms:', error);
       return new CommonResponse(false, 500, 'Error fetching chat rooms', []);
     }
   }
@@ -211,7 +199,6 @@ export class ChatService {
       });
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
-      console.error('❌ Error creating chat room:', error);
       return new CommonResponse(false, 500, 'Error creating chat room', null);
     }
   }
@@ -226,16 +213,16 @@ export class ChatService {
         },
         relations: ['participants'],
       });
-
+  
       if (!chatRoom) {
         chatRoom = this.chatRoomRepository.create({
           participants: await this.userRepository.findByIds([reqModel.senderId, reqModel.receiverId]),
           isGroup: false,
           lastMessage: reqModel.text,
         });
-        await this.chatRoomRepository.save(chatRoom);
+        chatRoom = await this.chatRoomRepository.save(chatRoom); // Ensure saved
       }
-
+  
       const newMessage = this.messageRepository.create({
         sender: { id: reqModel.senderId } as UserEntity,
         receiver: { id: reqModel.receiverId } as UserEntity,
@@ -243,22 +230,21 @@ export class ChatService {
         text: reqModel.text,
         createdAt: new Date(),
       });
-
+  
       const savedMessage = await this.messageRepository.save(newMessage);
       await this.chatRoomRepository.update(chatRoom.id, { lastMessage: reqModel.text });
       await this.transactionManager.commitTransaction();
-
+  
       return new CommonResponse(true, 200, 'Message sent successfully', {
         _id: savedMessage.id,
         senderId: savedMessage.sender.id,
         receiverId: savedMessage.receiver?.id,
-        chatRoomId: savedMessage.chatRoom.id, // Ensure this is returned
+        chatRoomId: savedMessage.chatRoom.id,
         text: savedMessage.text,
         createdAt: savedMessage.createdAt,
       });
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
-      console.error('❌ Error sending private message:', error);
       return new CommonResponse(false, 500, 'Error sending private message', null);
     }
   }
@@ -296,7 +282,6 @@ export class ChatService {
       return new CommonResponse(true, 200, 'Audio message sent successfully', savedAudioMessage);
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
-      console.error('❌ Error sending audio message:', error);
       return new CommonResponse(false, 500, 'Error sending audio message', null);
     }
   }
@@ -323,7 +308,6 @@ export class ChatService {
       return new CommonResponse(true, 200, 'Call started successfully', savedCall);
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
-      console.error('❌ Error starting call:', error);
       return new CommonResponse(false, 500, 'Error starting call', null);
     }
   }
@@ -348,7 +332,6 @@ export class ChatService {
       return new CommonResponse(true, 200, 'Call ended successfully', null);
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
-      console.error('❌ Error ending call:', error);
       return new CommonResponse(false, 500, 'Error ending call', error);
     }
   }
@@ -361,9 +344,8 @@ export class ChatService {
           { sender: { id: reqModel.receiverId }, receiver: { id: reqModel.senderId } },
         ],
         relations: ['sender', 'receiver', 'chatRoom'],
-        order: { createdAt: 'ASC' }, // Order by creation time
+        order: { createdAt: 'ASC' },
       });
-  
       return messages.map((msg) => ({
         _id: msg.id,
         senderId: msg.sender?.id ?? null,
@@ -373,7 +355,6 @@ export class ChatService {
         createdAt: msg.createdAt,
       }));
     } catch (error) {
-      console.error('❌ Error fetching chat history by users:', error);
       throw new HttpException('Error fetching chat history', HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }

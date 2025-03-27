@@ -47,6 +47,9 @@ export class UserEntity {
   @Column({ type: 'enum', enum: UserStatus, default: UserStatus.OFFLINE, nullable: true })
   status?: UserStatus;
 
+  @Column({ type: 'datetime', nullable: true })
+  lastSeen?: Date; // New column for tracking last activity
+
   @Column({ type: 'simple-array', nullable: true })
   contacts?: string[];
 

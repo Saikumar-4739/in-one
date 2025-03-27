@@ -13,7 +13,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private logger = new Logger(ChatGateway.name);
 
   constructor(private readonly chatService: ChatService) {
-    this.logger.log('✅ WebSocket Gateway Initialized on port 3005');
+    this.logger.log('✅ WebSocket Gateway Initialized on port 3006');
   }
 
   async handleConnection(socket: Socket) {
@@ -24,16 +24,16 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
     this.activeUsers.set(userId, socket.id);
-    this.logger.log(`User ${userId} connected with socket ${socket.id}`);
-    this.server.emit('onlineUsers', Array.from(this.activeUsers.keys()));
+    // this.logger.log(`User ${userId} connected with socket ${socket.id}`);
+    // this.server.emit('onlineUsers', Array.from(this.activeUsers.keys()));
   }
 
   async handleDisconnect(socket: Socket) {
     const userId = [...this.activeUsers.entries()].find(([, id]) => id === socket.id)?.[0];
     if (userId) {
       this.activeUsers.delete(userId);
-      this.logger.log(`User ${userId} disconnected`);
-      this.server.emit('onlineUsers', Array.from(this.activeUsers.keys()));
+      // this.logger.log(`User ${userId} disconnected`);
+      // this.server.emit('onlineUsers', Array.from(this.activeUsers.keys()));
     }
   }
 

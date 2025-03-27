@@ -10,22 +10,26 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const logger = new Logger('Bootstrap');
 
+  // ✅ Improved CORS Handling
   app.enableCors({
-    origin: '*',
+    origin: '*', 
     methods: 'GET,POST,PUT,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type, Authorization',
     exposedHeaders: 'Content-Disposition',
     credentials: true,
   });
 
+  // ✅ Properly Serve Static Images
   app.use('/uploads', express.static(join(__dirname, '..', 'uploads')));
 
+  // ✅ Optional Rate Limiting (increase the max limit)
   app.use(rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 500,
+    max: 100, 
     message: 'Too many requests, please try again later.',
   }));
 
+  // ✅ Swagger Documentation
   const config = new DocumentBuilder()
     .setTitle('In One API')
     .setDescription('API Documentation for In One App')
@@ -36,11 +40,11 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
 
-  const port = process.env.PORT || 3005;
-  await app.listen(port, '0.0.0.0'); 
-  
-  logger.log(`🚀 Server is running on port ${port}`);
-  logger.log(`📜 Swagger API Docs available at /docs`);
+  const port = 3005;
+  await app.listen(port);
+
+  logger.log(`🚀 Server is running on http://localhost:${port}`);
+  logger.log(`📜 Swagger API Docs available at http://localhost:${port}/docs`);
 }
 
 bootstrap();

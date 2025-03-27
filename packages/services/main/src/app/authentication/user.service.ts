@@ -108,29 +108,31 @@ export class UserService {
   async loginUser(reqModel: UserLoginModel): Promise<CommonResponse> {
     try {
       const user = await this.userRepository.findOne({ where: { email: reqModel.email } });
-
       if (!user) {
         return new CommonResponse(false, 401, 'Invalid credentials');
       }
-
-      // Decrypt the password
+  
       const secretKey = process.env.ENCRYPTION_KEY;
       if (!secretKey) {
         throw new Error("Missing ENCRYPTION_KEY in environment variables");
       }
-
+  
       const decryptedPassword = CryptoJS.AES.decrypt(reqModel.password, secretKey).toString(CryptoJS.enc.Utf8);
       const isPasswordValid = await bcrypt.compare(decryptedPassword, user.password);
       if (!isPasswordValid) {
         return new CommonResponse(false, 401, 'Invalid credentials');
       }
-
+  
       const payload = { username: user.username, sub: user.id };
       const accessToken = this.jwtService.sign(payload, { expiresIn: '7d' });
       const refreshToken = this.jwtService.sign(payload, { expiresIn: '15d' });
-
-      await this.userRepository.update(user.id, { status: UserStatus.ONLINE });
-
+  
+      // Update status and lastSeen
+      await this.userRepository.update(user.id, { 
+        status: UserStatus.ONLINE,
+        lastSeen: new Date()
+      });
+  
       return new CommonResponse(true, 200, 'User logged in successfully', {
         accessToken,
         refreshToken,
@@ -213,9 +215,13 @@ export class UserService {
       if (!user) {
         return new CommonResponse(false, 404, 'User not found');
       }
-      user.status = UserStatus.OFFLINE;
-      await userRepo.save(user);
-      await userRepo.findOne({ where: { id: reqModel.userId } });
+      
+      // Update status and lastSeen
+      await userRepo.update(user.id, {
+        status: UserStatus.OFFLINE,
+        lastSeen: new Date()
+      });
+  
       return new CommonResponse(true, 200, 'User logged out successfully');
     } catch (error) {
       console.error('Logout error:', error);
@@ -229,9 +235,40 @@ export class UserService {
       if (!user) {
         return new CommonResponse(false, 404, 'User not found');
       }
-      return new CommonResponse(true, 200, 'User status fetched successfully', { status: user.status });
+      return new CommonResponse(true, 200, 'User status fetched successfully', { status: user.status, lastSeen: user.updatedAt });
     } catch (error) {
       return new CommonResponse(false, 500, 'Error fetching user status');
+    }
+  }
+
+  async getUserActivityStatus(reqModel: UserIdRequestModel): Promise<CommonResponse> {
+    try {
+      const user = await this.userRepository.findOne({ 
+        where: { id: reqModel.userId },
+        select: ['id', 'status', 'lastSeen', 'createdAt', 'updatedAt']
+      });
+  
+      if (!user) {
+        return new CommonResponse(false, 404, 'User not found');
+      }
+  
+      const responseData = {
+        status: user.status || UserStatus.OFFLINE,
+        isOnline: user.status === UserStatus.ONLINE,
+        lastSeen: user.lastSeen || user.updatedAt, // Use lastSeen if available, fallback to updatedAt
+        firstLogin: user.createdAt,
+        lastActivity: user.updatedAt
+      };
+  
+      return new CommonResponse(
+        true,
+        200,
+        'User activity status fetched successfully',
+        responseData
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      return new CommonResponse(false, 500, `Error fetching user activity status: ${errorMessage}`);
     }
   }
 
