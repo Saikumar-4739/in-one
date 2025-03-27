@@ -40,7 +40,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('joinRoom')
   async handleJoinRoom(@MessageBody() chatRoomId: string, @ConnectedSocket() socket: Socket) {
     socket.join(chatRoomId);
-    this.logger.log(`Socket ${socket.id} joined room ${chatRoomId}`);
+    // this.logger.log(`Socket ${socket.id} joined room ${chatRoomId}`);
     this.server.to(chatRoomId).emit('userJoined', { userId: socket.id });
     return { success: true, message: `Joined room ${chatRoomId}` };
   }
