@@ -90,6 +90,7 @@
     "@ant-design/icons": "^5.6.1",
     "@expo/metro-config": "~0.19.4",
     "@expo/metro-runtime": "~4.0.0",
+    "@lottiefiles/dotlottie-react": "^0.13.2",
     "@nestjs-modules/mailer": "^2.0.2",
     "@nestjs/cache-manager": "^3.0.0",
     "@nestjs/common": "^10.0.2",

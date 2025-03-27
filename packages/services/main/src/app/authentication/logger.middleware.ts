@@ -1,6 +1,7 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import * as winston from 'winston';
+import * as path from 'path';
 
 @Injectable()
 export class LoggerMiddleware implements NestMiddleware {
@@ -13,15 +14,17 @@ export class LoggerMiddleware implements NestMiddleware {
       })
     ),
     transports: [
-      new winston.transports.Console(),
-      new winston.transports.File({ filename: 'http.log' }) 
+      new winston.transports.Console(), // This ensures logs show in terminal
+      new winston.transports.File({ 
+        filename: path.join(__dirname, '..', 'logs', 'http.log') // Creates logs folder one level up
+      })
     ],
   });
 
   use(req: Request, res: Response, next: NextFunction) {
     const { password, ...safeBody } = req.body;
     const logMessage = `Request to ${req.method} ${req.url} with body: ${JSON.stringify(safeBody)}`;
-    // this.logger.info(logMessage);
+    this.logger.info(logMessage); // Uncommented to enable logging
     next();
   }
 }

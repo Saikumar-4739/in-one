@@ -48,7 +48,7 @@ export class UserEntity {
   status?: UserStatus;
 
   @Column({ type: 'datetime', nullable: true })
-  lastSeen?: Date; // New column for tracking last activity
+  lastSeen?: Date;
 
   @Column({ type: 'simple-array', nullable: true })
   contacts?: string[];
