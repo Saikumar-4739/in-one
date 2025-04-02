@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CreateChatRoomModel, PrivateMessegeModel, UserIdRequestModel } from '@in-one/shared-models';
 import { Button, Input, Typography, Avatar, message, Space, Dropdown, Menu, Select, Checkbox } from 'antd';
-import { SendOutlined, UserOutlined, MoreOutlined, SearchOutlined, PhoneOutlined, PlusOutlined, SmileOutlined, PaperClipOutlined } from '@ant-design/icons';
+import { SendOutlined, UserOutlined, MoreOutlined, SearchOutlined, PhoneOutlined, PlusOutlined, SmileOutlined, PaperClipOutlined, AudioOutlined, VideoCameraOutlined, CloseOutlined } from '@ant-design/icons';
 import { ChatHelpService, UserHelpService } from '@in-one/shared-services';
 import { io, Socket } from 'socket.io-client';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -34,6 +34,19 @@ interface Message {
   image?: string;
 }
 
+type RTCSessionDescriptionInit = {
+  type?: 'offer' | 'answer' | 'rollback';
+  sdp?: string;
+};
+
+type RTCIceCandidateInit = {
+  candidate?: string;
+  sdpMid?: string | null;
+  sdpMLineIndex?: number | null;
+  usernameFragment?: string | null;
+};
+
+
 const ChatPage: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [chatRooms, setChatRooms] = useState<any[]>([]);
@@ -61,6 +74,14 @@ const ChatPage: React.FC = () => {
   const lastCheckedUserId = useRef<string | null>(null); // New ref to track last checked user
   const userService = new UserHelpService()
 
+  const [isCalling, setIsCalling] = useState<boolean>(false);
+  const [callType, setCallType] = useState<'audio' | 'video' | null>(null);
+  const [peerConnection, setPeerConnection] = useState<RTCPeerConnection | null>(null);
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+
   // Initial setup effect (unchanged)
   useEffect(() => {
     if (userId && !hasFetchedUsers) {
@@ -71,6 +92,7 @@ const ChatPage: React.FC = () => {
     }
     return () => {
       socket?.disconnect();
+      endCallCleanup();
     };
   }, [userId]);
 
@@ -101,9 +123,9 @@ const ChatPage: React.FC = () => {
     if (messagesContainerRef.current) {
       messagesContainerRef.current.style.height = 'auto';
       const height = messagesContainerRef.current.scrollHeight;
-      messagesContainerRef.current.style.height = `${Math.min(height, window.innerHeight - 200)}px`;
+      messagesContainerRef.current.style.height = `${Math.min(height, window.innerHeight - (isCalling ? 400 : 200))}px`;
     }
-  }, [messages]);
+  }, [messages, isCalling]);
 
   // Socket initialization (unchanged)
   const initSocket = (userId: string) => {
@@ -150,6 +172,7 @@ const ChatPage: React.FC = () => {
       }
     });
 
+
     newSocket.on('groupMessage', (data) => {
       if (!data.success || !data.message) return;
       const { senderId, chatRoomId, text, createdAt, _id } = data.message;
@@ -174,11 +197,190 @@ const ChatPage: React.FC = () => {
     });
 
     newSocket.on('onlineUsers', setOnlineUsers);
+
+    newSocket.on('callInitiated', async (data) => {
+      if (data.receiverId === userId) {
+        setIsCalling(true);
+        setCallType(data.callType);
+        await handleIncomingCall(data);
+      }
+    });
+
+    newSocket.on('callAnswered', async (data) => {
+      if (data.callerId === userId) {
+        await handleCallAnswer(data);
+      }
+    });
+
+    newSocket.on('iceCandidate', async (data) => {
+      if (peerConnection && (data.callerId === userId || data.receiverId === userId)) {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+      }
+    });
+
+    newSocket.on('callEnded', () => {
+      endCallCleanup();
+    });
+
     newSocket.on('connect_error', () => message.error('Socket connection failed'));
     newSocket.on('error', () => { });
     newSocket.on('disconnect', () => { });
 
     setSocket(newSocket);
+  };
+
+  const setupPeerConnection = () => {
+    const pc = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+    });
+
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        socket?.emit('iceCandidate', {
+          callId: chatRoomId,
+          candidate: event.candidate,
+          userId,
+        });
+      }
+    };
+
+    pc.ontrack = (event) => {
+      setRemoteStream(event.streams[0]);
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = event.streams[0];
+      }
+    };
+
+    setPeerConnection(pc);
+    return pc;
+  };
+
+  const startCall = async (type: 'audio' | 'video') => {
+    if (!selectedUser || !userId) return;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: type === 'video',
+        audio: true,
+      });
+      setLocalStream(stream);
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+      }
+
+      const pc = setupPeerConnection();
+      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      // Explicitly type callData to match ChatHelpService.initiateCall expectations
+      const callData: {
+        callerId: string;
+        userToCall: string;
+        signalData: RTCSessionDescriptionInit;
+      } = {
+        callerId: userId,
+        userToCall: selectedUser.id as string, // Ensure string type
+        signalData: {
+          type: offer.type as 'offer', // Narrow type to 'offer'
+          sdp: offer.sdp,
+        },
+      };
+
+      const response = await chatService.initiateCall(callData);
+      if (response.status) {
+        setIsCalling(true);
+        setCallType(type);
+        socket?.emit('callInitiated', {
+          ...callData,
+          callId: response.data.callId,
+          callType: type,
+        });
+      }
+    } catch (error) {
+      message.error('Failed to start call');
+      console.error(error);
+    }
+  };
+
+  const handleIncomingCall = async (data: any) => {
+    if (!userId) {
+      message.error('User not logged in');
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: data.callType === 'video',
+        audio: true,
+      });
+      setLocalStream(stream);
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+      }
+
+      const pc = setupPeerConnection();
+      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+
+      await pc.setRemoteDescription(new RTCSessionDescription(data.signalData));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+
+      const answerData: {
+        callId: string;
+        signalData: RTCSessionDescriptionInit;
+        answererId: string;
+      } = {
+        callId: String(data.callId),
+        signalData: {
+          type: answer.type as 'answer',
+          sdp: answer.sdp,
+        },
+        answererId: userId,
+      };
+
+      const response = await chatService.answerCall(answerData);
+      if (response.status) {
+        socket?.emit('callAnswered', {
+          ...answerData,
+          callerId: data.callerId,
+        });
+      }
+    } catch (error) {
+      message.error('Failed to answer call');
+      console.error(error);
+    }
+  };
+
+  const handleCallAnswer = async (data: any) => {
+    if (peerConnection) {
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signalData));
+    }
+  };
+
+  // End call
+  const endCall = async () => {
+    if (chatRoomId && userId) {
+      await chatService.endCall({ callId: chatRoomId, userId });
+      socket?.emit('callEnded', { callId: chatRoomId });
+    }
+    endCallCleanup();
+  };
+
+  // Cleanup call resources
+  const endCallCleanup = () => {
+    if (peerConnection) {
+      peerConnection.close();
+      setPeerConnection(null);
+    }
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop());
+      setLocalStream(null);
+    }
+    setRemoteStream(null);
+    setIsCalling(false);
+    setCallType(null);
   };
 
   // Fetch users (unchanged)
@@ -636,7 +838,43 @@ const ChatPage: React.FC = () => {
                   </Text>
                 </div>
               </Space>
+              {selectedUser && !selectedRoomId && (
+                <Space style={{ marginLeft: 'auto' }}>
+                  <Button
+                    icon={<AudioOutlined />}
+                    onClick={() => startCall('audio')}
+                    disabled={isCalling}
+                    type="text"
+                  />
+                  <Button
+                    icon={<VideoCameraOutlined />}
+                    onClick={() => startCall('video')}
+                    disabled={isCalling}
+                    type="text"
+                  />
+                  {isCalling && (
+                    <Button
+                      icon={<CloseOutlined />}
+                      onClick={endCall}
+                      type="text"
+                      danger
+                    />
+                  )}
+                </Space>
+              )}
             </motion.div>
+            {isCalling && (
+              <div className="call-container">
+                <div className="video-wrapper">
+                  <video ref={localVideoRef} autoPlay muted playsInline className="local-video" />
+                  <Text className="video-label">You</Text>
+                </div>
+                <div className="video-wrapper">
+                  <video ref={remoteVideoRef} autoPlay playsInline className="remote-video" />
+                  <Text className="video-label">{selectedUser?.username}</Text>
+                </div>
+              </div>
+            )}
             <div className="messages-container" ref={messagesContainerRef}>
               {messages.length > 0 ? (
                 Object.entries(groupedMessages).map(([date, msgs]) => (

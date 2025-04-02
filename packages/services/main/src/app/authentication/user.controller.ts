@@ -1,7 +1,8 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { UserService } from './user.service';
-import { CommonResponse, CreateUserModel, EmailRequestModel, ExceptionHandler, ResetPassowordModel, UpdateUserModel, UserIdRequestModel, UserLoginModel } from '@in-one/shared-models';
+import { CommonResponse, CreateUserModel, EmailRequestModel, ExceptionHandler, ResetPassowordModel, UpdateUserModel, UserIdRequestModel } from '@in-one/shared-models';
 import { ApiBody, ApiTags } from '@nestjs/swagger';
+import { UserLoginModel } from './dto\'s/user.login.dto';
 
 @ApiTags('Users') 
 @Controller('users')

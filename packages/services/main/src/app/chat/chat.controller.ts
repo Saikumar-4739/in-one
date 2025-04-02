@@ -1,8 +1,22 @@
 import { Controller, Post, Body, HttpException, HttpStatus } from '@nestjs/common';
 import { ChatService } from './chat.service';
-import { AudioMessegeModel, CallModel, ChatRoomIdRequestModel, CommonResponse, CreateChatRoomModel, CreateMessageModel, EditMessageModel, EndCallModel, MessageResponseModel, MessegeIdRequestModel, PrivateMessegeModel, UserIdRequestModel } from '@in-one/shared-models'; // ✅ Import CommonResponse
+import { AudioMessegeModel, CallModel, CommonResponse, CreateChatRoomModel, CreateMessageModel, EditMessageModel, EndCallModel, MessageResponseModel, MessegeIdRequestModel, PrivateMessegeModel, UserIdRequestModel } from '@in-one/shared-models'; // ✅ Import CommonResponse
 import { ExceptionHandler } from '@in-one/shared-models';
 import { ApiBody } from '@nestjs/swagger';
+import { ChatRoomIdRequestModel } from './dto\'s/chat.room.id';
+
+
+type RTCSessionDescriptionInit = {
+  type?: 'offer' | 'answer' | 'rollback';
+  sdp?: string;
+};
+
+type RTCIceCandidateInit = {
+  candidate?: string;
+  sdpMid?: string | null;
+  sdpMLineIndex?: number | null;
+  usernameFragment?: string | null;
+};
 
 @Controller('chat')
 export class ChatController {
@@ -97,41 +111,6 @@ export class ChatController {
     }
   }
 
-  @Post('startAudioCall')
-  async startCall(@Body() reqModel: CallModel): Promise<CommonResponse> {
-    try {
-      return await this.chatService.startCall(reqModel);
-    } catch (error) {
-      throw new HttpException({ success: false, message: 'Error starting call', error }, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  @Post('endAudioCall')
-  async endCall(@Body() reqModel: EndCallModel): Promise<CommonResponse> {
-    try {
-      const call = await this.chatService.endCall(reqModel);
-      if (!call) {
-        throw new HttpException({ success: false, message: 'Call not found' }, HttpStatus.NOT_FOUND);
-      }
-      return call;
-    } catch (error) {
-      throw new HttpException({ success: false, message: 'Error ending call', error }, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
-  @Post('sendAudioMessage')
-  async sendAudioMessage(@Body() reqModel: AudioMessegeModel): Promise<CommonResponse> {
-    try {
-      const call = await this.chatService.sendAudioMessage(reqModel);
-      if (!call) {
-        throw new HttpException({ success: false, message: 'Call not found' }, HttpStatus.NOT_FOUND);
-      }
-      return call;
-    } catch (error) {
-      throw new HttpException({ success: false, message: 'Error ending call', error }, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
-
   @Post('getChatHistoryByUsers')
   @ApiBody({ type: Object, schema: { properties: { senderId: { type: 'string' }, receiverId: { type: 'string' } } } })
   async getChatHistoryByUsers(@Body() reqModel: { senderId: string; receiverId: string }): Promise<CommonResponse> {
@@ -140,6 +119,46 @@ export class ChatController {
       return new CommonResponse(true, 200, 'Chat history retrieved', messages);
     } catch (error) {
       return ExceptionHandler.handleError(error, 'Failed to retrieve chat history');
+    }
+  }
+
+  @Post('initiateCall')
+  async initiateCall(@Body() body: { callerId: string; userToCall: string; signalData: RTCSessionDescriptionInit }): Promise<CommonResponse> {
+    try {
+      const result = await this.chatService.initiateCall(body.callerId, body.userToCall, body.signalData);
+      return result;
+    } catch (error) {
+      return ExceptionHandler.handleError(error, 'Failed to initiate call');
+    }
+  }
+
+  @Post('answerCall')
+  async answerCall(@Body() body: { callId: string; signalData: RTCSessionDescriptionInit; answererId: string }): Promise<CommonResponse> {
+    try {
+      const result = await this.chatService.answerCall(body.callId, body.signalData, body.answererId);
+      return result;
+    } catch (error) {
+      return ExceptionHandler.handleError(error, 'Failed to answer call');
+    }
+  }
+
+  @Post('iceCandidate')
+  async handleIceCandidate(@Body() body: { callId: string; candidate: RTCIceCandidateInit; userId: string }): Promise<CommonResponse> {
+    try {
+      const result = await this.chatService.handleIceCandidate(body.callId, body.candidate, body.userId);
+      return result;
+    } catch (error) {
+      return ExceptionHandler.handleError(error, 'Failed to handle ICE candidate');
+    }
+  }
+
+  @Post('endCall')
+  async endCall(@Body() body: { callId: string; userId: string }): Promise<CommonResponse> {
+    try {
+      const result = await this.chatService.endCall(body.callId, body.userId);
+      return result;
+    } catch (error) {
+      return ExceptionHandler.handleError(error, 'Failed to end call');
     }
   }
 

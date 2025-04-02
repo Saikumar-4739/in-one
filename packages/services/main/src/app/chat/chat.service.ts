@@ -2,12 +2,26 @@ import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { UserEntity } from '../authentication/entities/user.entity';
-import { AudioMessegeModel, CallModel, ChatRoomIdRequestModel, CommonResponse, CreateChatRoomModel, CreateMessageModel, EditMessageModel, EndCallModel, MessageResponseModel, MessegeIdRequestModel, PrivateMessegeModel, UserIdRequestModel } from '@in-one/shared-models';
+import { AudioMessegeModel, CallModel, CommonResponse, CreateChatRoomModel, CreateMessageModel, EditMessageModel, EndCallModel, MessageResponseModel, MessegeIdRequestModel, PrivateMessegeModel, UserIdRequestModel } from '@in-one/shared-models';
 import { ChatRoomRepository } from './repository/chatroom.repository';
 import { MessegeRepository } from './repository/messege.repository';
 import { CallRepository } from './repository/call.repository';
 import { AudioRepository } from './repository/audio.repository';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
+import { ChatRoomIdRequestModel } from './dto\'s/chat.room.id';
+import { CallEntity } from './entities/call.entity';
+
+type RTCSessionDescriptionInit = {
+  type?: 'offer' | 'answer' | 'rollback';
+  sdp?: string;
+};
+
+type RTCIceCandidateInit = {
+  candidate?: string;
+  sdpMid?: string | null;
+  sdpMLineIndex?: number | null;
+  usernameFragment?: string | null;
+};
 
 @Injectable()
 export class ChatService {
@@ -25,28 +39,28 @@ export class ChatService {
     try {
       const messageRepo = this.transactionManager.getRepository(this.messageRepository);
       const chatRoomRepo = this.transactionManager.getRepository(this.chatRoomRepository);
-  
+
       const sender = await this.userRepository.findOne({ where: { id: reqModel.senderId } });
       if (!sender) {
         throw new HttpException('Sender not found', HttpStatus.NOT_FOUND);
       }
-  
+
       const chatRoom = await chatRoomRepo.findOne({ where: { id: reqModel.chatRoomId } });
       if (!chatRoom) {
         throw new HttpException('Chat room not found', HttpStatus.NOT_FOUND);
       }
-  
+
       const newMessage = messageRepo.create({
         sender,
         chatRoom,
         text: reqModel.text,
         createdAt: new Date(),
       });
-  
-      const savedMessage = await messageRepo.save(newMessage);  
+
+      const savedMessage = await messageRepo.save(newMessage);
       await chatRoomRepo.update(reqModel.chatRoomId, { lastMessage: reqModel.text });
       await this.transactionManager.commitTransaction();
-  
+
       return {
         _id: savedMessage.id,
         senderId: savedMessage.sender.id,
@@ -157,7 +171,7 @@ export class ChatService {
         where: { participants: { id: reqModel.userId } },
         relations: ['participants'],
       });
-  
+
       if (!chatRooms || chatRooms.length === 0) {
         return new CommonResponse(false, 404, 'No chat rooms found for user', []);
       }
@@ -213,7 +227,7 @@ export class ChatService {
         },
         relations: ['participants'],
       });
-  
+
       if (!chatRoom) {
         chatRoom = this.chatRoomRepository.create({
           participants: await this.userRepository.findByIds([reqModel.senderId, reqModel.receiverId]),
@@ -222,7 +236,7 @@ export class ChatService {
         });
         chatRoom = await this.chatRoomRepository.save(chatRoom); // Ensure saved
       }
-  
+
       const newMessage = this.messageRepository.create({
         sender: { id: reqModel.senderId } as UserEntity,
         receiver: { id: reqModel.receiverId } as UserEntity,
@@ -230,11 +244,11 @@ export class ChatService {
         text: reqModel.text,
         createdAt: new Date(),
       });
-  
+
       const savedMessage = await this.messageRepository.save(newMessage);
       await this.chatRoomRepository.update(chatRoom.id, { lastMessage: reqModel.text });
       await this.transactionManager.commitTransaction();
-  
+
       return new CommonResponse(true, 200, 'Message sent successfully', {
         _id: savedMessage.id,
         senderId: savedMessage.sender.id,
@@ -246,93 +260,6 @@ export class ChatService {
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
       return new CommonResponse(false, 500, 'Error sending private message', null);
-    }
-  }
-
-  async sendAudioMessage(reqModel: AudioMessegeModel): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
-    try {
-      const chatRoom = await this.chatRoomRepository.findOne({ where: { id: reqModel.chatRoomId } });
-      if (!chatRoom) {
-        throw new Error('Chat room not found');
-      }
-
-      const sender = await this.userRepository.findOne({ where: { id: reqModel.senderId } });
-      if (!sender) {
-        throw new Error('Sender not found');
-      }
-
-      const receiver = await this.userRepository.findOne({ where: { id: reqModel.receiverId } });
-      if (!receiver) {
-        throw new Error('Receiver not found');
-      }
-
-      const newAudioMessage = this.audioMessageRepository.create({
-        sender: sender,
-        receiver: receiver,
-        chatRoom: chatRoom,
-        audioUrl: reqModel.audioUrl,
-        duration: reqModel.duration,
-      });
-
-      const savedAudioMessage = await this.audioMessageRepository.save(newAudioMessage);
-      await this.chatRoomRepository.update(reqModel.chatRoomId, { lastMessage: 'Audio Message' });
-      await this.transactionManager.commitTransaction();
-
-      return new CommonResponse(true, 200, 'Audio message sent successfully', savedAudioMessage);
-    } catch (error) {
-      await this.transactionManager.rollbackTransaction();
-      return new CommonResponse(false, 500, 'Error sending audio message', null);
-    }
-  }
-
-  async startCall(reqModel: CallModel): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
-    try {
-      const caller = await this.userRepository.findOne({ where: { id: reqModel.callerId } });
-      const receiver = await this.userRepository.findOne({ where: { id: reqModel.receiverId } });
-
-      if (!caller || !receiver) {
-        throw new HttpException('Caller or receiver not found', HttpStatus.NOT_FOUND);
-      }
-
-      const newCall = this.callRepository.create({
-        caller: caller,
-        receiver: receiver,
-        callType: reqModel.callType,
-        status: 'ongoing',
-      });
-
-      const savedCall = await this.callRepository.save(newCall);
-      await this.transactionManager.commitTransaction();
-      return new CommonResponse(true, 200, 'Call started successfully', savedCall);
-    } catch (error) {
-      await this.transactionManager.rollbackTransaction();
-      return new CommonResponse(false, 500, 'Error starting call', null);
-    }
-  }
-
-  async endCall(reqModel: EndCallModel): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
-    try {
-      const { callId, status } = reqModel; // Extracting callId and status properly
-
-      const validStatuses: ReadonlyArray<string> = ['missed', 'completed', 'declined'];
-      if (!validStatuses.includes(status)) {
-        throw new HttpException('Invalid status', HttpStatus.BAD_REQUEST);
-      }
-
-      const updatedCall = await this.callRepository.update(callId, { status });
-
-      if (!updatedCall || updatedCall.affected === 0) {
-        throw new HttpException('Call not found', HttpStatus.NOT_FOUND);
-      }
-
-      await this.transactionManager.commitTransaction();
-      return new CommonResponse(true, 200, 'Call ended successfully', null);
-    } catch (error) {
-      await this.transactionManager.rollbackTransaction();
-      return new CommonResponse(false, 500, 'Error ending call', error);
     }
   }
 
@@ -356,6 +283,154 @@ export class ChatService {
       }));
     } catch (error) {
       throw new HttpException('Error fetching chat history', HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
+  async initiateCall(callerId: string, userToCall: string, signalData: RTCSessionDescriptionInit): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
+    try {
+      const caller = await this.userRepository.findOne({ where: { id: callerId } });
+      const receiver = await this.userRepository.findOne({ where: { id: userToCall } });
+
+      if (!caller || !receiver) {
+        throw new HttpException('Caller or receiver not found', HttpStatus.NOT_FOUND);
+      }
+
+      const callType = signalData.type === 'offer' ? 'video' : 'audio';
+
+      const newCall = new CallEntity();
+      newCall.caller = caller;
+      newCall.receiver = receiver;
+      newCall.callType = 'video';
+      newCall.status = 'ongoing';
+
+      const savedCall = await this.callRepository.save(newCall);
+      await this.transactionManager.commitTransaction();
+
+      return new CommonResponse(true, 200, 'Call initiated successfully', {
+        callId: savedCall.id,
+        callerId: savedCall.caller.id,
+        receiverId: savedCall.receiver.id,
+        callType: savedCall.callType,
+        signalData: signalData,
+        status: savedCall.status,
+      });
+    } catch (error) {
+      await this.transactionManager.rollbackTransaction();
+      return new CommonResponse(false, 500, 'Error initiating call', null);
+    }
+  }
+
+
+  async answerCall(callId: string, signalData: RTCSessionDescriptionInit, answererId: string): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
+    try {
+      const call = await this.callRepository.findOne({
+        where: { id: callId },
+        relations: ['caller', 'receiver']
+      });
+
+      if (!call) {
+        throw new HttpException('Call not found', HttpStatus.NOT_FOUND);
+      }
+
+      if (call.receiver.id !== answererId) {
+        throw new HttpException('Unauthorized to answer this call', HttpStatus.UNAUTHORIZED);
+      }
+
+      const updatedCall = await this.callRepository.update(callId, {
+        status: 'ongoing', // Changed from 'accepted' to 'ongoing'
+        answerTime: new Date(),
+        signalData: JSON.stringify(signalData),
+      });
+
+      if (!updatedCall.affected) {
+        throw new HttpException('Failed to update call', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+
+      await this.transactionManager.commitTransaction();
+
+      return new CommonResponse(true, 200, 'Call answered successfully', {
+        callId,
+        signalData,
+        status: 'ongoing',
+        answerTime: new Date(),
+      });
+    } catch (error) {
+      await this.transactionManager.rollbackTransaction();
+      return new CommonResponse(false, 500, 'Error answering call', null);
+    }
+  }
+
+
+  async handleIceCandidate(callId: string, candidate: RTCIceCandidateInit, userId: string): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
+    try {
+      const call = await this.callRepository.findOne({
+        where: { id: callId },
+        relations: ['caller', 'receiver']
+      });
+
+      if (!call) {
+        throw new HttpException('Call not found', HttpStatus.NOT_FOUND);
+      }
+
+      if (call.caller.id !== userId && call.receiver.id !== userId) {
+        throw new HttpException('Unauthorized to modify this call', HttpStatus.UNAUTHORIZED);
+      }
+
+      // Store ICE candidates - you might want to create a separate table for this in production
+      const existingCandidates = call.iceCandidates ? JSON.parse(call.iceCandidates) : [];
+      existingCandidates.push(candidate);
+
+      await this.callRepository.update(callId, {
+        iceCandidates: JSON.stringify(existingCandidates)
+      });
+
+      await this.transactionManager.commitTransaction();
+
+      return new CommonResponse(true, 200, 'ICE Ascending ICE candidates stored successfully', null);
+    } catch (error) {
+      await this.transactionManager.rollbackTransaction();
+      return new CommonResponse(false, 500, 'Error storing ICE candidates', null);
+    }
+  }
+
+  async endCall(callId: string, userId: string): Promise<CommonResponse> {
+    await this.transactionManager.startTransaction();
+    try {
+      const call = await this.callRepository.findOne({
+        where: { id: callId },
+        relations: ['caller', 'receiver']
+      });
+
+      if (!call) {
+        throw new HttpException('Call not found', HttpStatus.NOT_FOUND);
+      }
+
+      if (call.caller.id !== userId && call.receiver.id !== userId) {
+        throw new HttpException('Unauthorized to end this call', HttpStatus.UNAUTHORIZED);
+      }
+
+      const updatedCall = await this.callRepository.update(callId, {
+        status: 'completed',
+        endTime: new Date()
+      });
+
+      if (!updatedCall.affected) {
+        throw new HttpException('Failed to end call', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
+
+      await this.transactionManager.commitTransaction();
+
+      return new CommonResponse(true, 200, 'Call ended successfully', {
+        callId,
+        status: 'completed',
+        endTime: new Date()
+      });
+    } catch (error) {
+      await this.transactionManager.rollbackTransaction();
+      return new CommonResponse(false, 500, 'Error ending call', null);
     }
   }
 }

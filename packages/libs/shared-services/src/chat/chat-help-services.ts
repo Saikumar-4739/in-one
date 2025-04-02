@@ -1,6 +1,18 @@
 import { AxiosRequestConfig } from 'axios';
 import { CommonAxiosService } from '../common-axios-service';
-import { CommonResponse, CreateChatRoomModel, CreateMessageModel, EditMessageModel, ChatRoomIdRequestModel, MessegeIdRequestModel, UserIdRequestModel, PrivateMessegeModel, CallModel, EndCallModel, AudioMessegeModel } from '@in-one/shared-models';
+import { CommonResponse, CreateChatRoomModel, CreateMessageModel, EditMessageModel, ChatRoomIdRequestModel, MessegeIdRequestModel, UserIdRequestModel, PrivateMessegeModel} from '@in-one/shared-models';
+
+type RTCSessionDescriptionInit = {
+    type?: 'offer' | 'answer' | 'rollback';
+    sdp?: string;
+  };
+  
+  type RTCIceCandidateInit = {
+    candidate?: string;
+    sdpMid?: string | null;
+    sdpMLineIndex?: number | null;
+    usernameFragment?: string | null;
+  };
 
 export class ChatHelpService extends CommonAxiosService {
     private getURLwithMainEndPoint(childUrl: string): string {
@@ -36,22 +48,26 @@ export class ChatHelpService extends CommonAxiosService {
     }
 
     async sendPrivateMessage(reqModel: PrivateMessegeModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
-        return await this.axiosPostCall(this.getURLwithMainEndPoint('privateMessege'), reqModel, config);
-    }
-
-    async startCall(reqModel: CallModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
-        return await this.axiosPostCall(this.getURLwithMainEndPoint('startAudioCall'), reqModel, config);
-    }
-
-    async endCall(reqModel: EndCallModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
-        return await this.axiosPostCall(this.getURLwithMainEndPoint('endAudioCall'), reqModel, config);
-    }
-
-    async sendAudioMessage(reqModel: AudioMessegeModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
-        return await this.axiosPostCall(this.getURLwithMainEndPoint('AudioMessegeModel'), reqModel, config);
+        return await this.axiosPostCall(this.getURLwithMainEndPoint('privateMesse G'), reqModel, config);
     }
 
     async getChatHistoryByUsers(reqModel: { senderId: string; receiverId: string }, config?: AxiosRequestConfig): Promise<CommonResponse> {
         return await this.axiosPostCall(this.getURLwithMainEndPoint('getChatHistoryByUsers'), reqModel, config);
+    }
+
+    async initiateCall(reqModel: { callerId: string; userToCall: string; signalData: RTCSessionDescriptionInit }, config?: AxiosRequestConfig): Promise<CommonResponse> {
+        return await this.axiosPostCall(this.getURLwithMainEndPoint('initiateCall'), reqModel, config);
+    }
+
+    async answerCall(reqModel: { callId: string; signalData: RTCSessionDescriptionInit; answererId: string }, config?: AxiosRequestConfig): Promise<CommonResponse> {
+        return await this.axiosPostCall(this.getURLwithMainEndPoint('answerCall'), reqModel, config);
+    }
+
+    async handleIceCandidate(reqModel: { callId: string; candidate: RTCIceCandidateInit; userId: string }, config?: AxiosRequestConfig): Promise<CommonResponse> {
+        return await this.axiosPostCall(this.getURLwithMainEndPoint('iceCandidate'), reqModel, config);
+    }
+
+    async endCall(reqModel: { callId: string; userId: string }, config?: AxiosRequestConfig): Promise<CommonResponse> {
+        return await this.axiosPostCall(this.getURLwithMainEndPoint('endCall'), reqModel, config);
     }
 }

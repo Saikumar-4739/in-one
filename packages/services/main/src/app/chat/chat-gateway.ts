@@ -4,6 +4,18 @@ import { ChatService } from './chat.service';
 import { Logger } from '@nestjs/common';
 import { PrivateMessegeModel } from '@in-one/shared-models';
 
+type RTCSessionDescriptionInit = {
+  type?: 'offer' | 'answer' | 'rollback';
+  sdp?: string;
+};
+
+type RTCIceCandidateInit = {
+  candidate?: string;
+  sdpMid?: string | null;
+  sdpMLineIndex?: number | null;
+  usernameFragment?: string | null;
+};
+
 @WebSocketGateway(3006, { cors: { origin: '*', methods: ['GET', 'POST'] } }) // Explicitly set to port 3005
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
@@ -100,5 +112,60 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('getOnlineUsers')
   handleGetOnlineUsers() {
     return { success: true, data: Array.from(this.activeUsers.keys()) };
+  }
+
+  @SubscribeMessage('callUser')
+  handleCallUser(
+    @MessageBody() data: { userToCall: string; signalData: RTCSessionDescriptionInit; from: string },
+    @ConnectedSocket() socket: Socket
+  ) {
+    const targetSocketId = this.activeUsers.get(data.userToCall);
+    if (targetSocketId) {
+      this.server.to(targetSocketId).emit('callUser', {
+        signal: data.signalData,
+        from: data.from
+      });
+    }
+    return { success: true };
+  }
+
+  @SubscribeMessage('answerCall')
+  handleAnswerCall(
+    @MessageBody() data: { signal: RTCSessionDescriptionInit; to: string },
+    @ConnectedSocket() socket: Socket
+  ) {
+    const targetSocketId = this.activeUsers.get(data.to);
+    if (targetSocketId) {
+      this.server.to(targetSocketId).emit('callAccepted', {
+        signal: data.signal
+      });
+    }
+    return { success: true };
+  }
+
+  @SubscribeMessage('iceCandidate')
+  handleIceCandidate(
+    @MessageBody() data: { candidate: RTCIceCandidateInit; to: string },
+    @ConnectedSocket() socket: Socket
+  ) {
+    const targetSocketId = this.activeUsers.get(data.to);
+    if (targetSocketId) {
+      this.server.to(targetSocketId).emit('iceCandidate', {
+        candidate: data.candidate
+      });
+    }
+    return { success: true };
+  }
+
+  @SubscribeMessage('endCall')
+  handleEndCall(
+    @MessageBody() data: { to: string },
+    @ConnectedSocket() socket: Socket
+  ) {
+    const targetSocketId = this.activeUsers.get(data.to);
+    if (targetSocketId) {
+      this.server.to(targetSocketId).emit('callEnded');
+    }
+    return { success: true };
   }
 }

@@ -21,6 +21,18 @@ export class CallEntity {
     @Column({ type: 'enum', enum: ['missed', 'completed', 'declined', 'ongoing'], default: 'missed' })
     status: 'missed' | 'completed' | 'declined' | 'ongoing';
 
+    @Column({ type: 'text', nullable: true }) 
+    signalData: string;
+
+    @Column({ type: 'timestamp', nullable: true })
+    answerTime: Date;
+
+    @Column({ type: 'timestamp', nullable: true })
+    endTime: Date;
+
+    @Column({ type: 'text', nullable: true })
+    iceCandidates: string;
+
     @CreateDateColumn()
     createdAt: Date; 
 

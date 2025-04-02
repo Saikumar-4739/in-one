@@ -24,7 +24,7 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "strictPropertyInitialization": false,
-    "types": ["node"],
+    "types": ["node", "webrtc"],
     "baseUrl": "./", // Base directory for resolving non-relative paths
     "paths": {
       "@in-one/shared-services": ["../../libs/shared-services/src/index.ts"],

@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { CommonResponse, CreateUserModel, EmailRequestModel, ResetPassowordModel, UpdateUserModel, UserIdRequestModel, UserLoginModel, UserRole, UserStatus, WelcomeRequestModel } from '@in-one/shared-models';
+import { CommonResponse, CreateUserModel, EmailRequestModel, ResetPassowordModel, UpdateUserModel, UserIdRequestModel, UserRole, UserStatus, WelcomeRequestModel } from '@in-one/shared-models';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
 import * as nodemailer from 'nodemailer';
 import { UserRepository } from './repository/user.repository';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as CryptoJS from 'crypto-js';
+import { UserLoginModel } from './dto\'s/user.login.dto';
 
 @Injectable()
 export class UserService {
