@@ -9,7 +9,7 @@ import rateLimit from 'express-rate-limit';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  
+
   try {
     // Create NestJS application
     const app = await NestFactory.create(AppModule, {
@@ -75,11 +75,14 @@ async function bootstrap() {
       },
     });
 
-    // Start the server
-    const port = process.env.PORT || 3005;
+    // Use Render-provided PORT or fallback to 3000 for local development
+    const port = parseInt(process.env.PORT || configService.get<string>('PORT', '3000'), 10);
 
-    logger.log(`🚀 Server running on: http://localhost:${port}`);
-    logger.log(`📖 API Documentation available at: http://localhost:${port}/docs`);
+    // Start the server
+    await app.listen(port);
+
+    logger.log(`🚀 Server running on port: ${port}`);
+    logger.log(`📖 API Documentation available at: /docs`);
 
   } catch (error) {
     logger.error('Failed to bootstrap the application:', error);

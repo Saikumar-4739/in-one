@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: your-app-name
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        sync: false  # Render auto-assigns this
+      - key: CORS_ORIGIN
+        value: https://your-app.onrender.com  # Adjust as needed
+      - key: RATE_LIMIT_WINDOW
+        value: 900000  # 15 minutes in milliseconds
+      - key: RATE_LIMIT_MAX
+        value: 100
