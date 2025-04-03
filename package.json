@@ -2,10 +2,7 @@
   "name": "@in-one/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {
-    "start": "node dist/main.js",
-    "start:prod": "node dist/main.js"
-  },
+  "scripts": {},
   "private": true,
   "devDependencies": {
     "@babel/core": "^7.14.5",
@@ -14,7 +11,7 @@
     "@eslint/js": "^9.8.0",
     "@expo/cli": "~0.21.8",
     "@nestjs/schematics": "^10.0.1",
-    "@nestjs/testing": "^10.4.3",
+    "@nestjs/testing": "^10.0.2",
     "@nx/eslint": "19.8.4",
     "@nx/eslint-plugin": "19.8.4",
     "@nx/expo": "^20.4.6",
