@@ -27,7 +27,7 @@ interface Message {
   _id: string;
   senderId: string;
   receiverId?: string;
-  chatRoomId?: string | null;
+  chatRoomId: string;
   text: string;
   createdAt: string;
   status: 'pending' | 'delivered' | 'failed';
@@ -58,6 +58,7 @@ const ChatPage: React.FC = () => {
   const lastCheckedUserId = useRef<string | null>(null);
   const chatService = new ChatHelpService();
   const userService = new UserHelpService();
+  const [pendingMessages, setPendingMessages] = useState<any[]>([]);
 
   const [isCalling, setIsCalling] = useState<boolean>(false);
   const [incomingCall, setIncomingCall] = useState<{ callerId: string; callType: 'audio' | 'video'; signalData: any; callId: string } | null>(null);
@@ -87,6 +88,18 @@ const ChatPage: React.FC = () => {
       setSelectedUser(null);
     }
   }, [selectedRoomId, userId]);
+
+  useEffect(() => {
+    if (selectedUser && userId) {
+      const relevantPending = pendingMessages.filter(
+        (msg) => (msg.senderId === selectedUser.id && msg.receiverId === userId) || (msg.senderId === userId && msg.receiverId === selectedUser.id)
+      );
+      if (relevantPending.length > 0) {
+        setMessages((prev) => [...prev, ...relevantPending]);
+        setPendingMessages((prev) => prev.filter((msg) => !relevantPending.includes(msg)));
+      }
+    }
+  }, [selectedUser]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -121,94 +134,60 @@ const ChatPage: React.FC = () => {
       else if (chatRoomId) newSocket.emit('joinRoom', chatRoomId);
     });
 
-    newSocket.on('privateMessage', (data) => {
-      if (!data.success || !data.message) return;
-      const { senderId, receiverId, chatRoomId: receivedChatRoomId, text, createdAt, _id } = data.message;
-      const newMessage: Message = {
-        _id,
-        senderId,
-        receiverId,
-        chatRoomId: receivedChatRoomId,
-        text,
-        createdAt,
-        status: 'delivered',
-      };
-
-      // Only add the message if it matches the current conversation
+    newSocket.on('privateMessage', (savedMessage: Message) => {
       if (
-        (senderId === userId && receiverId === selectedUser?.id) ||
-        (senderId === selectedUser?.id && receiverId === userId)
+        (savedMessage.senderId === userId && savedMessage.receiverId === selectedUser?.id) ||
+        (savedMessage.senderId === selectedUser?.id && savedMessage.receiverId === userId)
       ) {
         setMessages((prev) => {
-          const tempMsgIndex = prev.findIndex((msg) => msg._id.startsWith('temp-') && msg.text === text && msg.senderId === senderId);
-          if (tempMsgIndex !== -1) {
-            // Replace the temporary message
-            const updatedMessages = [...prev];
-            updatedMessages[tempMsgIndex] = newMessage;
-            return updatedMessages;
+          const exists = prev.some((msg) => msg._id === savedMessage._id);
+          if (!exists) {
+            const updatedMessage: Message = {
+              ...savedMessage,
+              status: 'delivered',
+            };
+            return [...prev, updatedMessage];
           }
-          // Add new message if not a replacement
-          return [...prev.filter((msg) => msg._id !== _id), newMessage];
+          return prev;
         });
-      }
-
-      // Update users list with last message
-      setUsers((prev) =>
-        prev
-          .map((u) =>
-            u.id === (senderId === userId ? receiverId : senderId)
-              ? { ...u, lastMessage: text, lastMessageTime: createdAt }
-              : u
-          )
-          .sort((a, b) => new Date(b.lastMessageTime || 0).getTime() - new Date(a.lastMessageTime || 0).getTime())
-      );
-
-      if (!chatRoomId && receivedChatRoomId) {
-        setChatRoomId(receivedChatRoomId);
-        newSocket.emit('joinRoom', receivedChatRoomId);
+        setUsers((prev) =>
+          prev
+            .map((u) =>
+              u.id === (savedMessage.senderId === userId ? savedMessage.receiverId : savedMessage.senderId)
+                ? { ...u, lastMessage: savedMessage.text, lastMessageTime: savedMessage.createdAt }
+                : u
+            )
+            .sort((a, b) => new Date(b.lastMessageTime || 0).getTime() - new Date(a.lastMessageTime || 0).getTime())
+        );
       }
     });
 
-    newSocket.on('groupMessage', (data) => {
-      if (!data.success || !data.message) return;
-      const { senderId, chatRoomId, text, createdAt, _id } = data.message;
-      const newMessage: Message = {
-        _id,
-        senderId,
-        chatRoomId,
-        text,
-        createdAt,
-        status: 'delivered',
-      };
-
-      if (chatRoomId === selectedRoomId) {
+    newSocket.on('groupMessage', (savedMessage: Message) => {
+      if (savedMessage.chatRoomId === selectedRoomId) {
         setMessages((prev) => {
-          const tempMsgIndex = prev.findIndex((msg) => msg._id.startsWith('temp-') && msg.text === text && msg.senderId === senderId);
-          if (tempMsgIndex !== -1) {
-            // Replace the temporary message
-            const updatedMessages = [...prev];
-            updatedMessages[tempMsgIndex] = newMessage;
-            return updatedMessages;
+          const exists = prev.some((msg) => msg._id === savedMessage._id);
+          if (!exists) {
+            const updatedMessage: Message = {
+              ...savedMessage,
+              status: 'delivered',
+            };
+            return [...prev, updatedMessage].sort((a, b) =>
+              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+            );
           }
-          // Add new message if not a replacement
-          return [...prev.filter((msg) => msg._id !== _id), newMessage].sort((a, b) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-          );
+          return prev;
         });
+        setChatRooms((prev) =>
+          prev
+            .map((r) =>
+              r._id === savedMessage.chatRoomId
+                ? { ...r, lastMessage: savedMessage.text, lastMessageTime: savedMessage.createdAt }
+                : r
+            )
+            .sort((a, b) => new Date(b.lastMessageTime || 0).getTime() - new Date(a.lastMessageTime || 0).getTime())
+        );
       }
-
-      // Update chat rooms with last message
-      setChatRooms((prev) =>
-        prev
-          .map((r) =>
-            r._id === chatRoomId
-              ? { ...r, lastMessage: text, lastMessageTime: createdAt }
-              : r
-          )
-          .sort((a, b) => new Date(b.lastMessageTime || 0).getTime() - new Date(a.lastMessageTime || 0).getTime())
-      );
     });
-
     newSocket.on('onlineUsers', setOnlineUsers);
 
     newSocket.on('callUser', (data) => {
@@ -477,68 +456,72 @@ const ChatPage: React.FC = () => {
       text: messageInput,
       createdAt: new Date().toISOString(),
       status: 'pending',
-      receiverId: selectedUser?.id, // Include receiverId for private messages
-      chatRoomId: selectedRoomId || chatRoomId || null, // Use existing chatRoomId if available
+      receiverId: selectedUser?.id,
+      chatRoomId: chatRoomId || 'temp-chatroom', // Temporary placeholder, will be replaced by backend
     };
 
-    // Add the temporary message immediately
+    // Add the temporary message immediately for optimistic UI update
     setMessages((prev) => [...prev, tempMessage]);
     setMessageInput('');
 
-    if (selectedRoomId) {
-      // Group message
-      const messagePayload = {
-        chatRoomId: selectedRoomId,
-        senderId: userId,
-        text: messageInput,
-        createdAt: tempMessage.createdAt,
-      };
-      socket?.emit('sendGroupMessage', messagePayload, (response: any) => {
-        if (response?.success && response.data) {
+    try {
+      if (selectedRoomId) {
+        // Group message
+        const messagePayload = {
+          chatRoomId: selectedRoomId,
+          senderId: userId,
+          text: messageInput,
+          createdAt: tempMessage.createdAt,
+        };
+
+        const response = await chatService.sendMessage(messagePayload);
+        if (response.status && response.data) {
+          const savedMessage: Message = {
+            ...response.data,
+            status: 'delivered',
+          };
           setMessages((prev) =>
-            prev.map((msg) =>
-              msg._id === tempId
-                ? { ...response.data, status: 'delivered' as const }
-                : msg
-            )
+            prev.map((msg) => (msg._id === tempId ? savedMessage : msg))
           );
+          socket?.emit('sendGroupMessage', savedMessage);
         } else {
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg._id === tempId ? { ...msg, status: 'failed' as const } : msg
-            )
-          );
+          throw new Error('Failed to save group message');
         }
-      });
-    } else if (selectedUser) {
-      // Private message
-      const messageData = new PrivateMessegeModel(userId, selectedUser.id, messageInput);
-      const messagePayload = {
-        message: messageData,
-        chatRoomId: chatRoomId || null,
-        createdAt: tempMessage.createdAt,
-      };
-      socket?.emit('sendMessage', messagePayload, (response: any) => {
-        if (response?.success && response.data) {
+      } else if (selectedUser) {
+        // Private message
+        const messageData = new PrivateMessegeModel(userId, selectedUser.id, messageInput);
+
+        const response = await chatService.sendPrivateMessage(messageData);
+        if (response.status && response.data) {
+          const savedMessage: Message = {
+            _id: response.data._id,
+            senderId: response.data.senderId,
+            receiverId: response.data.receiverId,
+            chatRoomId: response.data.chatRoomId, // Always provided by backend
+            text: response.data.text,
+            createdAt: response.data.createdAt,
+            status: 'delivered',
+          };
           setMessages((prev) =>
-            prev.map((msg) =>
-              msg._id === tempId
-                ? { ...response.data, status: 'delivered' as const }
-                : msg
-            )
+            prev.map((msg) => (msg._id === tempId ? savedMessage : msg))
           );
-          if (!chatRoomId && response.data.chatRoomId) {
-            setChatRoomId(response.data.chatRoomId);
-            socket.emit('joinRoom', response.data.chatRoomId);
+          if (!chatRoomId || chatRoomId === 'temp-chatroom') {
+            setChatRoomId(response.data.chatRoomId); // Update with real chatRoomId
+            socket?.emit('joinRoom', response.data.chatRoomId);
           }
+          socket?.emit('sendMessage', savedMessage);
         } else {
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg._id === tempId ? { ...msg, status: 'failed' as const } : msg
-            )
-          );
+          throw new Error('Failed to save private message');
         }
-      });
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === tempId ? { ...msg, status: 'failed' } : msg
+        )
+      );
+      message.error('Failed to send message');
     }
   };
 

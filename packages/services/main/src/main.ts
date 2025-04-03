@@ -19,8 +19,6 @@ async function bootstrap() {
 
     // Get configuration service
     const configService = app.get(ConfigService);
-    const port = process.env.PORT || configService.get<number>('port', 3005);
-    const responseTimeout = configService.get<number>('RESPONSE_TIMEOUT', 30) * 1000;
 
     // CORS Configuration
     app.enableCors({
@@ -78,8 +76,7 @@ async function bootstrap() {
     });
 
     // Start the server
-    const server = await app.listen(port);
-    server.setTimeout(responseTimeout);
+    const port = process.env.PORT || 3005;
 
     logger.log(`🚀 Server running on: http://localhost:${port}`);
     logger.log(`📖 API Documentation available at: http://localhost:${port}/docs`);

@@ -2,7 +2,10 @@
   "name": "@in-one/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "start": "node dist/main.js",
+    "start:prod": "node dist/main.js"
+  },
   "private": true,
   "devDependencies": {
     "@babel/core": "^7.14.5",

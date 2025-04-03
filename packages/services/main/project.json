@@ -6,12 +6,13 @@
   "tags": [],
   "targets": {
     "serve": {
-      "executor": "@nx/js:node",
+      "executor": "@nrwl/node:execute",
       "defaultConfiguration": "development",
       "dependsOn": ["build"],
       "options": {
         "buildTarget": "services-main:build",
-        "runBuildTargetDependencies": false
+        "runBuildTargetDependencies": false,
+        "port": 3005
       },
       "configurations": {
         "development": {
