@@ -24,7 +24,7 @@ export class LoggerMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction) {
     const { password, ...safeBody } = req.body;
     const logMessage = `Request to ${req.method} ${req.url} with body: ${JSON.stringify(safeBody)}`;
-    this.logger.info(logMessage); // Uncommented to enable logging
+    // this.logger.info(logMessage); 
     next();
   }
 }

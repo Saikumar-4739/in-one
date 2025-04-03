@@ -2,8 +2,11 @@ import { AxiosRequestConfig } from 'axios';
 import { CommonAxiosService } from '../common-axios-service';
 import { CommonResponse, CreateChatRoomModel, CreateMessageModel, EditMessageModel, ChatRoomIdRequestModel, MessegeIdRequestModel, UserIdRequestModel, PrivateMessegeModel} from '@in-one/shared-models';
 
+
+type RTCSdpType = 'offer' | 'answer' | 'pranswer' | 'rollback';
+
 type RTCSessionDescriptionInit = {
-    type?: 'offer' | 'answer' | 'rollback';
+    type?: RTCSdpType;
     sdp?: string;
   };
   
@@ -48,7 +51,7 @@ export class ChatHelpService extends CommonAxiosService {
     }
 
     async sendPrivateMessage(reqModel: PrivateMessegeModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
-        return await this.axiosPostCall(this.getURLwithMainEndPoint('privateMesse G'), reqModel, config);
+        return await this.axiosPostCall(this.getURLwithMainEndPoint('privateMessege'), reqModel, config);
     }
 
     async getChatHistoryByUsers(reqModel: { senderId: string; receiverId: string }, config?: AxiosRequestConfig): Promise<CommonResponse> {

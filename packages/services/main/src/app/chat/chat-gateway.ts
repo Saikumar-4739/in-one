@@ -16,7 +16,7 @@ type RTCIceCandidateInit = {
   usernameFragment?: string | null;
 };
 
-@WebSocketGateway(3006, { cors: { origin: '*', methods: ['GET', 'POST'] } }) // Explicitly set to port 3005
+@WebSocketGateway(3006, { cors: { origin: '*', methods: ['GET', 'POST'] } }) // Explicitly set to port 3006
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
@@ -36,23 +36,23 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
     this.activeUsers.set(userId, socket.id);
-    // this.logger.log(`User ${userId} connected with socket ${socket.id}`);
-    // this.server.emit('onlineUsers', Array.from(this.activeUsers.keys()));
+    this.logger.log(`User ${userId} connected with socket ${socket.id}`);
+    this.server.emit('onlineUsers', Array.from(this.activeUsers.keys()));
   }
 
   async handleDisconnect(socket: Socket) {
     const userId = [...this.activeUsers.entries()].find(([, id]) => id === socket.id)?.[0];
     if (userId) {
       this.activeUsers.delete(userId);
-      // this.logger.log(`User ${userId} disconnected`);
-      // this.server.emit('onlineUsers', Array.from(this.activeUsers.keys()));
+      this.logger.log(`User ${userId} disconnected`);
+      this.server.emit('onlineUsers', Array.from(this.activeUsers.keys()));
     }
   }
 
   @SubscribeMessage('joinRoom')
   async handleJoinRoom(@MessageBody() chatRoomId: string, @ConnectedSocket() socket: Socket) {
     socket.join(chatRoomId);
-    // this.logger.log(`Socket ${socket.id} joined room ${chatRoomId}`);
+    this.logger.log(`Socket ${socket.id} joined room ${chatRoomId}`);
     this.server.to(chatRoomId).emit('userJoined', { userId: socket.id });
     return { success: true, message: `Joined room ${chatRoomId}` };
   }
@@ -116,29 +116,36 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('callUser')
   handleCallUser(
-    @MessageBody() data: { userToCall: string; signalData: RTCSessionDescriptionInit; from: string },
+    @MessageBody() data: { userToCall: string; signalData: RTCSessionDescriptionInit; from: string; callId: string; callType: string },
     @ConnectedSocket() socket: Socket
   ) {
     const targetSocketId = this.activeUsers.get(data.userToCall);
+    this.logger.log(`CallUser: from ${data.from} to ${data.userToCall}, targetSocketId: ${targetSocketId}`);
     if (targetSocketId) {
       this.server.to(targetSocketId).emit('callUser', {
         signal: data.signalData,
-        from: data.from
+        from: data.from,
+        callId: data.callId,
+        callType: data.callType,
+        userToCall: data.userToCall, // Added this line to fix the issue
       });
+    } else {
+      this.logger.warn(`User ${data.userToCall} not found`);
     }
     return { success: true };
   }
 
   @SubscribeMessage('answerCall')
   handleAnswerCall(
-    @MessageBody() data: { signal: RTCSessionDescriptionInit; to: string },
+    @MessageBody() data: { signal: RTCSessionDescriptionInit; to: string; callId: string },
     @ConnectedSocket() socket: Socket
   ) {
     const targetSocketId = this.activeUsers.get(data.to);
+    this.logger.log(`AnswerCall: to ${data.to}, targetSocketId: ${targetSocketId}`);
     if (targetSocketId) {
-      this.server.to(targetSocketId).emit('callAccepted', {
-        signal: data.signal
-      });
+      this.server.to(targetSocketId).emit('callAccepted', data);
+    } else {
+      this.logger.warn(`User ${data.to} not found`);
     }
     return { success: true };
   }
@@ -149,10 +156,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() socket: Socket
   ) {
     const targetSocketId = this.activeUsers.get(data.to);
+    this.logger.log(`IceCandidate: to ${data.to}, targetSocketId: ${targetSocketId}`);
     if (targetSocketId) {
       this.server.to(targetSocketId).emit('iceCandidate', {
-        candidate: data.candidate
+        candidate: data.candidate,
       });
+    } else {
+      this.logger.warn(`User ${data.to} not found`);
     }
     return { success: true };
   }
@@ -163,8 +173,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() socket: Socket
   ) {
     const targetSocketId = this.activeUsers.get(data.to);
+    this.logger.log(`EndCall: to ${data.to}, targetSocketId: ${targetSocketId}`);
     if (targetSocketId) {
       this.server.to(targetSocketId).emit('callEnded');
+    } else {
+      this.logger.warn(`User ${data.to} not found`);
     }
     return { success: true };
   }
