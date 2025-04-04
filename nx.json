@@ -52,7 +52,12 @@
       "options": {
         "targetName": "test"
       },
-      "exclude": ["packages/services/main-e2e/**/*"]
+      "exclude": [
+        "packages/services/main-e2e/**/*",
+        "services/masters-e2e/**/*",
+        "packages/services/masters-e2e/**/*",
+        "packages/services/masters-e2e/**/*"
+      ]
     },
     {
       "plugin": "@nx/next/plugin",

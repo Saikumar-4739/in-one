@@ -14,12 +14,12 @@
     "rootDir": "../../", // Adjusted rootDir
     "strictPropertyInitialization": false
   },
-  "exclude": ["jest.config.ts", "src/**/*.spec.ts", "src/**/*.test.ts"],
+  "exclude": ["jest.config.ts", "src/.spec.ts", "src/.test.ts"],
   "include": [
-    "src/**/*.ts",
+      "../../libs/shared-services/src/**/*",
+    "src/**/*",
     "../../libs/shared-models/src/**/*.ts",
-    "../../libs/backend-utils/src/**/*.ts",
-    "../../libs/shared-services/src/**/*.ts" // Explicitly include
+
   ],
   "references": [
     {

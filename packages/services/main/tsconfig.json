@@ -18,7 +18,7 @@
     "esModuleInterop": true,
     "strict": true,
     "target": "ES6",
-    "module": "commonjs",
+    "module": "NodeNext",
     "noUnusedLocals": false,
     "skipLibCheck": true,
     "outDir": "./dist",
