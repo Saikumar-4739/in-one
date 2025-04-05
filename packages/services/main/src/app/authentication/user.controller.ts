@@ -1,10 +1,9 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { UserService } from './user.service';
-import { CommonResponse, CreateUserModel, EmailRequestModel, ExceptionHandler, ResetPassowordModel, UpdateUserModel, UserIdRequestModel } from '@in-one/shared-models';
+import { CommonResponse, CreateUserModel, EmailRequestModel, ExceptionHandler, ResetPassowordModel, UpdateUserModel, UserIdRequestModel, UserLoginModel } from '@in-one/shared-models';
 import { ApiBody, ApiTags } from '@nestjs/swagger';
-import { UserLoginModel } from './dto\'s/user.login.dto';
 
-@ApiTags('Users') 
+@ApiTags('Users')
 @Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) { }
@@ -38,10 +37,10 @@ export class UserController {
       return ExceptionHandler.handleError(error, 'Error fetching user');
     }
   }
-  
+
   @Post('updateUser')
-  @ApiBody({type: UpdateUserModel})
-  async updateUser( @Body('userId') reqModel: UpdateUserModel): Promise<CommonResponse> {
+  @ApiBody({ type: UpdateUserModel })
+  async updateUser(@Body('userId') reqModel: UpdateUserModel): Promise<CommonResponse> {
     try {
       return await this.userService.updateUser(reqModel);
     } catch (error) {
@@ -89,23 +88,24 @@ export class UserController {
     }
   }
 
-  @Post('forgotPassword')
-  @ApiBody({ type: EmailRequestModel })
-  async forgotPassword(@Body('email') reqModel: EmailRequestModel): Promise<CommonResponse> {
-    try {
-      return await this.userService.sendResetPasswordEmail(reqModel);
-    } catch (error) {
-      return ExceptionHandler.handleError(error, 'Error sending reset password email');
-    }
-  }
-
   @Post('resetPassword')
   @ApiBody({ type: ResetPassowordModel })
-  async resetPassword( @Body('email') reqModel: ResetPassowordModel): Promise<CommonResponse> {
+  async resetPassword(@Body() reqModel: ResetPassowordModel): Promise<CommonResponse> {
     try {
       return await this.userService.resetPassword(reqModel);
     } catch (error) {
       return ExceptionHandler.handleError(error, 'Error resetting password');
+    }
+  }
+
+  // Add forgot password endpoint if not already present
+  @Post('forgotPassword')
+  @ApiBody({ type: EmailRequestModel })
+  async forgotPassword(@Body() reqModel: EmailRequestModel): Promise<CommonResponse> {
+    try {
+      return await this.userService.sendResetPasswordEmail(reqModel);
+    } catch (error) {
+      return ExceptionHandler.handleError(error, 'Error sending OTP');
     }
   }
 }

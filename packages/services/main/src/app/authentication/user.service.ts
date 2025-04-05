@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { CommonResponse, CreateUserModel, EmailRequestModel, ResetPassowordModel, UpdateUserModel, UserIdRequestModel, UserRole, UserStatus, WelcomeRequestModel } from '@in-one/shared-models';
+import { CommonResponse, CreateUserModel, EmailRequestModel, ResetPassowordModel, UpdateUserModel, UserIdRequestModel, UserLoginModel, UserRole, UserStatus, WelcomeRequestModel } from '@in-one/shared-models';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
 import * as nodemailer from 'nodemailer';
 import { UserRepository } from './repository/user.repository';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as CryptoJS from 'crypto-js';
-import { UserLoginModel } from './dto\'s/user.login.dto';
+
 
 @Injectable()
 export class UserService {
@@ -112,28 +112,28 @@ export class UserService {
       if (!user) {
         return new CommonResponse(false, 401, 'Invalid credentials');
       }
-  
+
       const secretKey = process.env.ENCRYPTION_KEY;
       if (!secretKey) {
         throw new Error("Missing ENCRYPTION_KEY in environment variables");
       }
-  
+
       const decryptedPassword = CryptoJS.AES.decrypt(reqModel.password, secretKey).toString(CryptoJS.enc.Utf8);
       const isPasswordValid = await bcrypt.compare(decryptedPassword, user.password);
       if (!isPasswordValid) {
         return new CommonResponse(false, 401, 'Invalid credentials');
       }
-  
+
       const payload = { username: user.username, sub: user.id };
       const accessToken = this.jwtService.sign(payload, { expiresIn: '7d' });
       const refreshToken = this.jwtService.sign(payload, { expiresIn: '15d' });
-  
+
       // Update status and lastSeen
-      await this.userRepository.update(user.id, { 
+      await this.userRepository.update(user.id, {
         status: UserStatus.ONLINE,
         lastSeen: new Date()
       });
-  
+
       return new CommonResponse(true, 200, 'User logged in successfully', {
         accessToken,
         refreshToken,
@@ -211,18 +211,19 @@ export class UserService {
       if (!reqModel.userId) {
         return new CommonResponse(false, 400, 'Invalid user ID');
       }
+
       const userRepo = this.userRepository;
       const user = await userRepo.findOne({ where: { id: reqModel.userId } });
+
       if (!user) {
         return new CommonResponse(false, 404, 'User not found');
       }
-      
+
       // Update status and lastSeen
-      await userRepo.update(user.id, {
-        status: UserStatus.OFFLINE,
-        lastSeen: new Date()
-      });
-  
+      user.status = UserStatus.OFFLINE;
+      user.lastSeen = new Date();
+      await userRepo.save(user);
+
       return new CommonResponse(true, 200, 'User logged out successfully');
     } catch (error) {
       console.error('Logout error:', error);
@@ -244,15 +245,15 @@ export class UserService {
 
   async getUserActivityStatus(reqModel: UserIdRequestModel): Promise<CommonResponse> {
     try {
-      const user = await this.userRepository.findOne({ 
+      const user = await this.userRepository.findOne({
         where: { id: reqModel.userId },
         select: ['id', 'status', 'lastSeen', 'createdAt', 'updatedAt']
       });
-  
+
       if (!user) {
         return new CommonResponse(false, 404, 'User not found');
       }
-  
+
       const responseData = {
         status: user.status || UserStatus.OFFLINE,
         isOnline: user.status === UserStatus.ONLINE,
@@ -260,7 +261,7 @@ export class UserService {
         firstLogin: user.createdAt,
         lastActivity: user.updatedAt
       };
-  
+
       return new CommonResponse(
         true,
         200,
@@ -274,19 +275,30 @@ export class UserService {
   }
 
   async sendResetPasswordEmail(reqModel: EmailRequestModel): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
+    console.log('Request email:', reqModel?.email);
 
     try {
-      const userRepo = this.transactionManager.getRepository(this.userRepository);
+      if (!reqModel || !reqModel.email) {
+        console.log('Invalid request: Email is missing');
+        return new CommonResponse(false, 400, 'Email is required');
+      }
+
+      const userRepo = this.userRepository; // Direct access to repository
+      console.log('Querying for email:', reqModel.email);
       const user = await userRepo.findOne({ where: { email: reqModel.email } });
+      console.log('User found:', user);
+
       if (!user) {
-        await this.transactionManager.rollbackTransaction();
+        console.log(`No user found for email: ${reqModel.email}`);
         return new CommonResponse(false, 404, 'User not found');
       }
+
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000);
+
       await userRepo.update(user.id, { resetPasswordOtp: otp, resetPasswordExpires });
-      await this.transactionManager.commitTransaction();
+      console.log('OTP and expiration updated:', { otp, resetPasswordExpires });
+
       const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
@@ -294,13 +306,14 @@ export class UserService {
 
       await transporter.sendMail({
         from: process.env.EMAIL_USER,
-        to: reqModel.email,
+        to: user.email,
         subject: 'Password Reset OTP',
-        text: `Your OTP for password reset is ${otp}`,
+        text: `Your OTP for password reset is ${otp}. It expires in 15 minutes.`,
       });
+
       return new CommonResponse(true, 200, 'OTP sent successfully');
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
+      console.error('Error in sendResetPasswordEmail:', error);
       return new CommonResponse(false, 500, 'Error sending OTP');
     }
   }
@@ -310,23 +323,37 @@ export class UserService {
     try {
       const userRepo = this.transactionManager.getRepository(this.userRepository);
       const user = await userRepo.findOne({ where: { email: reqModel.email } });
+
       if (!user) {
         await this.transactionManager.rollbackTransaction();
         return new CommonResponse(false, 404, 'User not found');
       }
-      if (user.resetPasswordOtp !== reqModel.otp || !user.resetPasswordExpires || user.resetPasswordExpires < new Date()) {
+
+      console.log('Stored OTP:', user.resetPasswordOtp);
+      console.log('Provided OTP:', reqModel.otp);
+      console.log('Expiration:', user.resetPasswordExpires);
+      console.log('Current Time:', new Date());
+
+      if (
+        user.resetPasswordOtp?.toString() !== reqModel.otp.toString() ||
+        !user.resetPasswordExpires ||
+        user.resetPasswordExpires < new Date()
+      ) {
         await this.transactionManager.rollbackTransaction();
         return new CommonResponse(false, 401, 'Invalid or expired OTP');
       }
+
       const hashedPassword = await bcrypt.hash(reqModel.newPassword, 10);
       await userRepo.update(user.id, {
         password: hashedPassword,
-        resetPasswordOtp: null as any,
-        resetPasswordExpires: null as any,
+        resetPasswordOtp: reqModel.otp,
+        resetPasswordExpires: undefined,
       });
+
       await this.transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'Password reset successfully');
     } catch (error) {
+      console.error('Error in resetPassword:', error);
       await this.transactionManager.rollbackTransaction();
       return new CommonResponse(false, 500, 'Error resetting password');
     }

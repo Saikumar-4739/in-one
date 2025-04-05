@@ -45,7 +45,7 @@
 .logo-circle {
   width: 50px;
   height: 50px;
-  background-color: #be92fc;
+  background-color: #8a2be2;
   color: #050505;
   font-weight: bold;
   font-size: 22px;
@@ -123,7 +123,7 @@
 .ant-btn-primary {
   background: #be92fc !important; /* Changed to black */
   border-color: #000 !important;
-  color: #0a0a0a !important;
+  color: #ffffff !important;
 }
 
 .ant-btn-primary:hover {

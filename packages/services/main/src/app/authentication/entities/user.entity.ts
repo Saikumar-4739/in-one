@@ -45,7 +45,7 @@ export class UserEntity {
   twoFactorExpires?: Date;
 
   @Column({ type: 'enum', enum: UserStatus, default: UserStatus.OFFLINE, nullable: true })
-  status?: UserStatus;
+  status: UserStatus;
 
   @Column({ type: 'datetime', nullable: true })
   lastSeen?: Date;
