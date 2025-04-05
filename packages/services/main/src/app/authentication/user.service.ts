@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { CommonResponse, UpdateUserModel, UserIdRequestModel, UserRole, UserStatus, WelcomeRequestModel } from '@in-one/shared-models';
+import { CommonResponse, UpdateUserModel, UserIdRequestModel, UserRole, WelcomeRequestModel } from '@in-one/shared-models';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
 import * as nodemailer from 'nodemailer';
 import { UserRepository } from './repository/user.repository';
@@ -235,9 +235,9 @@ export class UserService {
       }
 
       const responseData = {
-        status: user.status || UserStatus.OFFLINE,
-        isOnline: user.status === UserStatus.ONLINE,
-        lastSeen: user.lastSeen || user.updatedAt, // Use lastSeen if available, fallback to updatedAt
+        status: user.status,
+        isOnline: user.status === "online",
+        lastSeen: user.lastSeen || user.updatedAt,
         firstLogin: user.createdAt,
         lastActivity: user.updatedAt
       };

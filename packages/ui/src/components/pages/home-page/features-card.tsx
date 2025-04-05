@@ -42,37 +42,13 @@ interface FeatureCardProps {
 export const FeatureCard: React.FC<FeatureCardProps> = ({ feature, index }) => {
   return (
     <Link to={`/${feature.name.toLowerCase().replace(' ', '-')}`} key={index}>
-      <motion.div 
-        style={{
-          flex: '1 0 clamp(80px, 20%, 120px)',
-          maxWidth: 'clamp(80px, 20%, 120px)',
-          minWidth: '80px',
-          textAlign: 'center',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }} 
-        whileHover="hover"
-      >
+      <motion.div style={{ flex: '1 0 clamp(80px, 20%, 120px)', maxWidth: 'clamp(80px, 20%, 120px)', minWidth: '80px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }} whileHover="hover">
         <motion.div
           variants={circleVariants}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          style={{
-            backgroundColor: feature.color,
-            borderRadius: '50%',
-            width: 'clamp(50px, 12vw, 100px)',
-            height: 'clamp(50px, 12vw, 100px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#fff',
-            fontSize: 'clamp(16px, 4vw, 36px)',
-            cursor: 'pointer',
-            marginBottom: 'clamp(2px, 1vw, 5px)', 
-          }}
+          style={{ backgroundColor: feature.color, borderRadius: '50%', width: 'clamp(50px, 12vw, 100px)', height: 'clamp(50px, 12vw, 100px)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 'clamp(16px, 4vw, 36px)', cursor: 'pointer', marginBottom: 'clamp(2px, 1vw, 5px)' }}
           animate={{ rotate: [0, 5, -5, 0] }}
           transition={{ duration: 0.8, repeat: Infinity, repeatType: 'loop', ease: 'easeInOut' }}
         >
@@ -83,12 +59,7 @@ export const FeatureCard: React.FC<FeatureCardProps> = ({ feature, index }) => {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          style={{
-            fontSize: 'clamp(12px, 2.5vw, 18px)',
-            fontWeight: 'bold',
-            width: '100%',
-            textAlign: 'center',
-          }}
+          style={{ fontSize: 'clamp(12px, 2.5vw, 18px)', fontWeight: 'bold', width: '100%', textAlign: 'center' }}
         >
           {feature.name}
         </motion.div>

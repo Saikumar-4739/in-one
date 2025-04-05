@@ -2,11 +2,10 @@ import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { UserEntity } from '../authentication/entities/user.entity';
-import { AudioMessegeModel, CallModel, CommonResponse, CreateChatRoomModel, CreateMessageModel, EditMessageModel, EndCallModel, MessageResponseModel, MessegeIdRequestModel, PrivateMessegeModel, UserIdRequestModel } from '@in-one/shared-models';
+import { CommonResponse, CreateChatRoomModel, CreateMessageModel, EditMessageModel, MessageResponseModel, MessegeIdRequestModel, PrivateMessegeModel, UserIdRequestModel } from '@in-one/shared-models';
 import { ChatRoomRepository } from './repository/chatroom.repository';
 import { MessegeRepository } from './repository/messege.repository';
 import { CallRepository } from './repository/call.repository';
-import { AudioRepository } from './repository/audio.repository';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
 import { ChatRoomIdRequestModel } from './dto\'s/chat.room.id';
 import { CallEntity } from './entities/call.entity';
@@ -30,7 +29,6 @@ export class ChatService {
     @InjectRepository(MessegeRepository) private readonly messageRepository: MessegeRepository,
     @InjectRepository(UserEntity) private readonly userRepository: Repository<UserEntity>,
     @InjectRepository(CallRepository) private readonly callRepository: CallRepository,
-    @InjectRepository(AudioRepository) private readonly audioMessageRepository: AudioRepository,
     private readonly transactionManager: GenericTransactionManager
   ) { }
 
@@ -296,8 +294,6 @@ export class ChatService {
         throw new HttpException('Caller or receiver not found', HttpStatus.NOT_FOUND);
       }
 
-      const callType = signalData.type === 'offer' ? 'video' : 'audio';
-
       const newCall = new CallEntity();
       newCall.caller = caller;
       newCall.receiver = receiver;
@@ -320,7 +316,6 @@ export class ChatService {
       return new CommonResponse(false, 500, 'Error initiating call', null);
     }
   }
-
 
   async answerCall(callId: string, signalData: RTCSessionDescriptionInit, answererId: string): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
@@ -361,7 +356,6 @@ export class ChatService {
       return new CommonResponse(false, 500, 'Error answering call', null);
     }
   }
-
 
   async handleIceCandidate(callId: string, candidate: RTCIceCandidateInit, userId: string): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();

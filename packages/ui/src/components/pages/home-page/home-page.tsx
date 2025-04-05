@@ -36,47 +36,17 @@ const HomePage: React.FC = () => {
   ];
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      width: '100%',
-      maxWidth: '100vw',
-      overflowX: 'hidden'
-    }}>
-      <div style={{
-        position: 'relative',
-        height: '60vh',
-        width: '100%',
-        flexShrink: 0
-      }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
+      <div style={{ position: 'relative', height: '60vh', width: '100%', flexShrink: 0 }}>
         <motion.div
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            padding: 'clamp(10px, 3vw, 20px)',
-            textAlign: 'center',
-            color: '#000',
-            background: '#fff',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-          }}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, padding: 'clamp(10px, 3vw, 20px)', textAlign: 'center', color: '#000', background: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}
         >
           <motion.div variants={textVariants}>
-            <Title style={{
-              color: '#000',
-              fontSize: 'clamp(20px, 5vw, 48px)',
-              marginBottom: 'clamp(5px, 2vw, 10px)',
-              lineHeight: 1.2,
-            }}>
-              Welcome to Your <span style={{color: '#8a2be2', fontWeight: 'bold'}}>IN</span>-One
+            <Title style={{ color: '#000', fontSize: 'clamp(20px, 5vw, 48px)', marginBottom: 'clamp(5px, 2vw, 10px)', lineHeight: 1.2 }}>
+              Welcome to Your <span style={{ color: '#8a2be2', fontWeight: 'bold' }}>IN</span>-One
             </Title>
             <Paragraph style={{
               color: '#000',
@@ -87,43 +57,20 @@ const HomePage: React.FC = () => {
               Discover a seamless experience with powerful features designed to boost productivity and creativity.
             </Paragraph>
           </motion.div>
-          <motion.div variants={textVariants} style={{marginTop: 'clamp(10px, 3vw, 20px)'}}>
+          <motion.div variants={textVariants} style={{ marginTop: 'clamp(10px, 3vw, 20px)' }}>
             <Link to="/chat">
-              <Button size="large" style={{
-                padding: '0 clamp(15px, 4vw, 30px)',
-                backgroundColor: '#8a2be2',
-                borderColor: '#ffd700',
-                fontSize: 'clamp(12px, 2vw, 16px)',
-              }}>
+              <Button size="large" style={{ padding: '0 clamp(15px, 4vw, 30px)', backgroundColor: '#8a2be2', borderColor: '#ffd700', fontSize: 'clamp(12px, 2vw, 16px)' }}>
                 Get Started
               </Button>
             </Link>
           </motion.div>
         </motion.div>
       </div>
-      <div style={{
-        flexGrow: 1,
-        width: '100%',
-        padding: 'clamp(5px, 2vw, 10px)',
-        backgroundColor: '#fff',
-        textAlign: 'center',
-      }}>
-        <Title level={2} style={{
-          marginBottom: 'clamp(20px, 5vw, 40px)',
-          fontSize: 'clamp(18px, 4vw, 32px)',
-        }}> 
+      <div style={{ flexGrow: 1, width: '100%', padding: 'clamp(5px, 2vw, 10px)', backgroundColor: '#fff', textAlign: 'center' }}>
+        <Title level={2} style={{ marginBottom: 'clamp(20px, 5vw, 40px)', fontSize: 'clamp(18px, 4vw, 32px)' }}>
           Explore Our Features
         </Title>
-        <div style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'center',
-          gap: 'clamp(10px, 3vw, 30px)',
-          padding: '0 10px',
-          width: '100%',
-          maxWidth: '1200px',
-          margin: '0 auto'
-        }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 'clamp(10px, 3vw, 30px)', padding: '0 10px', width: '100%', maxWidth: '1200px', margin: '0 auto' }}>
           {features.map((feature, index) => (
             <FeatureCard key={index} feature={feature} index={index} />
           ))}

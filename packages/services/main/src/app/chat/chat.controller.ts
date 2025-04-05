@@ -1,6 +1,6 @@
 import { Controller, Post, Body, HttpException, HttpStatus } from '@nestjs/common';
 import { ChatService } from './chat.service';
-import { AudioMessegeModel, CallModel, CommonResponse, CreateChatRoomModel, CreateMessageModel, EditMessageModel, EndCallModel, MessageResponseModel, MessegeIdRequestModel, PrivateMessegeModel, UserIdRequestModel } from '@in-one/shared-models'; // ✅ Import CommonResponse
+import { CommonResponse, CreateChatRoomModel, CreateMessageModel, EditMessageModel, EndCallModel, MessageResponseModel, MessegeIdRequestModel, PrivateMessegeModel, UserIdRequestModel } from '@in-one/shared-models'; // ✅ Import CommonResponse
 import { ExceptionHandler } from '@in-one/shared-models';
 import { ApiBody } from '@nestjs/swagger';
 import { ChatRoomIdRequestModel } from './dto\'s/chat.room.id';

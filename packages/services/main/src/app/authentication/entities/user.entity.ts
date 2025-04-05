@@ -1,5 +1,4 @@
-import { UserRole, UserStatus } from '@in-one/shared-models';
-import { AudioMessageEntity } from 'src/app/chat/entities/audio.entity';
+import { UserRole } from '@in-one/shared-models';
 import { CallEntity } from 'src/app/chat/entities/call.entity';
 import { ChatRoomEntity } from 'src/app/chat/entities/chatroom.entity';
 import { MessageEntity } from 'src/app/chat/entities/messege.entity';
@@ -49,12 +48,6 @@ export class UserEntity {
 
   @UpdateDateColumn({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP(6)', onUpdate: 'CURRENT_TIMESTAMP(6)' })
   updatedAt: Date;
-
-  @OneToMany(() => AudioMessageEntity, (audioMessage) => audioMessage.sender)
-  sentAudioMessages: AudioMessageEntity[];
-
-  @OneToMany(() => AudioMessageEntity, (audioMessage) => audioMessage.receiver)
-  receivedAudioMessages: AudioMessageEntity[];
 
   @OneToMany(() => CallEntity, (call) => call.caller)
   callsMade: CallEntity[];

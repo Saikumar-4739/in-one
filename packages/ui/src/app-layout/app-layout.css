@@ -6,13 +6,12 @@
 
 .app-layout {
   font-family: "Poppins", sans-serif;
-  background: #fff; /* White background */
-  color: #000; /* Black text */
+  background: #fff;
+  color: #000;
   min-height: 80vh;
   overflow-x: hidden;
 }
 
-/* Updated Header (Smaller Height) */
 .custom-header {
   position: fixed;
   top: 0;
@@ -20,25 +19,23 @@
   right: 0;
   display: flex;
   align-items: center;
-  padding: 10px 30px; /* Reduced padding for smaller height */
+  padding: 10px 30px;
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(8px);
   z-index: 1000;
   box-shadow: 0 3px 25px rgba(0, 0, 0, 0.05);
-  height: 70px; /* Decreased height */
-  
+  height: 70px;
 }
 
 .header-container {
   display: flex;
-  align-items: center; /* Align items vertically */
+  align-items: center;
 }
 
-
 .header-circle {
-  width: 50px; /* Slightly smaller */
+  width: 50px;
   height: 50px;
-  background: #8a2be2; /* Violet */
+  background: #8a2be2;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -52,24 +49,24 @@
 .header-title {
   color: #000;
   margin-top: 50px;
-  font-size: 20px; /* Adjusted for smaller header */
+  font-size: 20px;
 }
 
 .header-actions {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 12px; /* Slightly reduced gap */
+  gap: 12px;
 }
 
 .header-icon {
-  font-size: 108px; /* Slightly smaller icons */
-  color: #8a2be2; /* Violet color */
+  font-size: 108px;
+  color: #8a2be2;
 }
 
 .header-avatar {
   cursor: pointer;
-  width: 2px; /* Adjusted for smaller header */
+  width: 2px;
   height: 25px;
 }
 
@@ -82,9 +79,8 @@ button:hover {
   transition: transform 0.2s ease-in-out;
 }
 
-/* Side Navigation */
 .side-nav {
-  gap : 10px;
+  gap: 10px;
   position: fixed;
   top: 0;
   left: 0;
@@ -92,9 +88,8 @@ button:hover {
   height: 100vh;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(12px);
-  padding: 70px 20px 20px; /* Adjusted padding to align with smaller header */
-  z-index: 999; /* Below header */
-  /* border-right: 2px solid #8a2be2; */
+  padding: 70px 20px 20px;
+  z-index: 999;
   box-shadow: 0 0 50px rgba(0, 0, 0, 0.1);
 }
 
@@ -115,7 +110,7 @@ button:hover {
 }
 
 .nav-item a:hover {
-  background: #8a2be2; /* Violet hover */
+  background: #8a2be2;
   color: #fff;
   transform: translateX(10px);
 }
@@ -130,13 +125,11 @@ button:hover {
   font-weight: 500;
 }
 
-/* Content Area */
 .content-container {
   min-height: 100vh;
-  transition: margin-left 0.3s ease; /* Smooth transition for margin shift */
+  transition: margin-left 0.3s ease;
 }
 
-/* Modal */
 .ant-modal-content {
   border-radius: 12px;
   background: #fff;

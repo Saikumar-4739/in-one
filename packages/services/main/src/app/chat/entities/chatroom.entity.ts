@@ -1,7 +1,6 @@
 import { UserEntity } from 'src/app/authentication/entities/user.entity';
 import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 import { MessageEntity } from './messege.entity';
-import { AudioMessageEntity } from './audio.entity';
 
 @Entity('chat_rooms')
 export class ChatRoomEntity {
@@ -17,9 +16,6 @@ export class ChatRoomEntity {
 
     @OneToMany(() => MessageEntity, (message) => message.chatRoom)
     messages: MessageEntity[];
-
-    @OneToMany(() => AudioMessageEntity, (audioMessage) => audioMessage.chatRoom, { cascade: true })
-    audioMessages: AudioMessageEntity[];
 
     @Column({ default: false })
     isGroup: boolean;
