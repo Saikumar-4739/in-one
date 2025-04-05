@@ -38,20 +38,11 @@ export class UserEntity {
   @Column({ nullable: true })
   resetPasswordExpires?: Date;
 
-  @Column({ nullable: true })
-  twoFactorOtp?: string;
-
-  @Column({ nullable: true })
-  twoFactorExpires?: Date;
-
-  @Column({ type: 'enum', enum: UserStatus, default: UserStatus.OFFLINE, nullable: true })
-  status: UserStatus;
+  @Column({ type: 'varchar', default: 'offline', nullable: true })
+  status: string;
 
   @Column({ type: 'datetime', nullable: true })
   lastSeen?: Date;
-
-  @Column({ type: 'simple-array', nullable: true })
-  contacts?: string[];
 
   @CreateDateColumn({ type: 'datetime', })
   createdAt: Date;

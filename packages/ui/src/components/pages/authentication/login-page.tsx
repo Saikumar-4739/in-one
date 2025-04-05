@@ -91,7 +91,7 @@ const LoginPage: React.FC = () => {
     }
     const passwordRegex = /^(?=(.*[a-z]){2,})(?=(.*[A-Z]){1,})(?=(.*\d){1,})(?=(.*[@$!%*?&\#_\-\+\/]){1,})[A-Za-z\d@$!%*?&\#_\-\+\/]{8,}$/;
     if (!passwordRegex.test(password)) {
-      message.error("Password must be at least 8 characters with 2 lowercase, 1 uppercase, 1 number, and 1 special character.");
+      message.error("Invalid Password Format");
       return;
     }
     setLoading(true);
@@ -109,7 +109,7 @@ const LoginPage: React.FC = () => {
         message.error(response.internalMessage || "Sign-up failed.");
       }
     } catch (error) {
-      message.error("An error occurred. Please try again.");
+      message.error("An error,引导 occurred. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -121,46 +121,19 @@ const LoginPage: React.FC = () => {
       return;
     }
 
-    setLoading(true);
     try {
       const req = new EmailRequestModel(resetEmail);
       const response: CommonResponse = await userService.forgotPassword(req);
 
       if (response.status) {
-        message.success("OTP sent to your email!");
+        message.success("Password reset link sent to your email.");
         setForgotPasswordModal(false);
-        setResetPasswordModal(true);
+        setResetPasswordModal(true); // Open OTP and new password modal
       } else {
         message.error(response.internalMessage || "Email not found.");
       }
     } catch (error) {
       message.error("An error occurred. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResendOtp = async () => {
-    if (!resetEmail) {
-      message.error("Please enter your email first in the forgot password modal.");
-      setResetPasswordModal(false);
-      setForgotPasswordModal(true);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const req = new EmailRequestModel(resetEmail);
-      const response: CommonResponse = await userService.forgotPassword(req);
-      if (response.status) {
-        message.success("OTP resent to your email!");
-      } else {
-        message.error(response.internalMessage || "Failed to resend OTP.");
-      }
-    } catch (error) {
-      message.error("An error occurred. Please try again.");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -170,9 +143,10 @@ const LoginPage: React.FC = () => {
       return;
     }
 
+    // Optionally, you can reuse the same password validation regex here
     const passwordRegex = /^(?=(.*[a-z]){2,})(?=(.*[A-Z]){1,})(?=(.*\d){1,})(?=(.*[@$!%*?&\#_\-\+\/]){1,})[A-Za-z\d@$!%*?&\#_\-\+\/]{8,}$/;
     if (!passwordRegex.test(newPassword)) {
-      message.error("Password must be at least 8 characters with 2 lowercase, 1 uppercase, 1 number, and 1 special character.");
+      message.error("Invalid Password Format");
       return;
     }
 
@@ -212,48 +186,60 @@ const LoginPage: React.FC = () => {
 
         <Form layout="vertical" onFinish={isSignup ? handleSignup : handleLogin}>
           {isSignup && (
-            <Form.Item label={<Text strong>Username</Text>} required>
-              <Input prefix={<UserOutlined />} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Enter your username" />
+            <Form.Item label="Username" required>
+              <Input prefix={<UserOutlined />} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Enter your username" style={{ color: "black" }} />
             </Form.Item>
           )}
 
-          <Form.Item label={<Text strong>Email</Text>} required>
-            <Input prefix={<MailOutlined />} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email" />
+          <Form.Item label="Email" required>
+            <Input prefix={<MailOutlined />} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Enter your email" style={{ color: "black" }} />
           </Form.Item>
 
-          <Form.Item label={<Text strong>Password</Text>} required>
-            <Input.Password prefix={<LockOutlined />} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" autoComplete={isSignup ? "new-password" : "current-password"} />
+          <Form.Item label="Password" required>
+            <Input.Password prefix={<LockOutlined />} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter your password" style={{ color: "black" }} autoComplete={isSignup ? "new-password" : "current-password"} />
           </Form.Item>
 
           {isSignup && (
-            <div>
+            <div style={{ textAlign: "left", padding: "10px" }}>
               <Upload beforeUpload={handleImageUpload} showUploadList={false}>
-                <Button type="primary" icon={<UploadOutlined />}>Upload Profile Picture</Button>
+                <Button type="primary" icon={<UploadOutlined />}>Upload Image</Button>
               </Upload>
+
               {profilePictureName && (
-                <div style={{ marginTop: "10px", display: "flex", alignItems: "center", gap: "10px" }}>
-                  <Text>{profilePictureName}</Text>
+                <div style={{ marginTop: "10px", display: "flex", alignItems: "left", justifyContent: "left" }}>
+                  <p style={{ fontSize: "14px", color: "#be92fc" }}>{profilePictureName}</p>
                   <Tooltip title="Remove Image">
-                    <CloseCircleOutlined onClick={handleRemoveImage} style={{ cursor: "pointer" }} />
+                    <CloseCircleOutlined onClick={handleRemoveImage} style={{ fontSize: "18px", color: "#be92fc", cursor: "pointer" }} />
                   </Tooltip>
                 </div>
               )}
+
               {profilePicture && (
-                <div style={{ marginTop: "10px" }}>
-                  <img src={profilePicture} alt="Preview" style={{ width: "60px", height: "60px", borderRadius: "50%" }} />
+                <div style={{ marginTop: "10px", position: "relative", display: "inline-block" }}>
+                  <img
+                    src={profilePicture}
+                    alt="Preview"
+                    style={{
+                      width: "60px",
+                      height: "60px",
+                      borderRadius: "50%",
+                      border: "2px solid #ddd",
+                      boxShadow: "0 2px 5px rgba(0, 0, 0, 0.2)",
+                      transition: "transform 0.2s ease-in-out",
+                    }}
+                    onMouseOver={(e) => (e.currentTarget.style.transform = "scale(1.1)")}
+                    onMouseOut={(e) => (e.currentTarget.style.transform = "scale(1)")}
+                  />
                 </div>
               )}
             </div>
           )}
-
           <Form.Item>
             <Checkbox checked={remember} onChange={(e) => setRemember(e.target.checked)}>Remember me</Checkbox>
           </Form.Item>
 
           <Form.Item>
-            <Button type="primary" block htmlType="submit" loading={loading}>
-              {isSignup ? "Sign Up" : "Sign In"}
-            </Button>
+            <Button type="primary" block htmlType="submit" loading={loading}>{isSignup ? "Sign Up" : "Sign In"}</Button>
           </Form.Item>
         </Form>
 
@@ -264,75 +250,85 @@ const LoginPage: React.FC = () => {
             <>Don't have an account? <a onClick={() => setIsSignup(true)}>Sign up</a></>
           )}
         </Text>
-
-        {!isSignup && (
-          <div style={{ marginTop: "12px", textAlign: "center" }}>
+        <div style={{ marginTop: '12px', textAlign: 'center' }}>
+          {!isSignup && (
             <a
               onClick={() => setForgotPasswordModal(true)}
-              style={{ display: "inline-flex", alignItems: "center", gap: "5px", cursor: "pointer" }}
+              style={{
+                color: '#8a2be2',
+                fontSize: '12px',
+                position: 'relative',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                cursor: 'pointer',
+                textDecoration: 'none',
+              }}
             >
               <QuestionCircleOutlined />
               Forgot Password?
+              <span
+                style={{
+                  position: 'absolute',
+                  bottom: '-4px',
+                  left: '0',
+                  width: '0',
+                  height: '2px',
+                  backgroundColor: '#8a2be2',
+                  transition: 'width 0.3s ease',
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.width = '100%')}
+                onMouseOut={(e) => (e.currentTarget.style.width = '0')}
+              />
             </a>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Forgot Password Modal */}
       <Modal
-        title={<Title level={4} style={{ margin: 0 }}>Forgot Password</Title>}
+        title="Forgot Password"
         open={forgotPasswordModal}
         onCancel={() => setForgotPasswordModal(false)}
         footer={null}
         centered
         width={400}
       >
-        <Form layout="vertical">
-          <Form.Item label={<Text strong>Email</Text>} required>
-            <Input
-              prefix={<MailOutlined />}
-              placeholder="Enter your email"
-              value={resetEmail}
-              onChange={(e) => setResetEmail(e.target.value)}
-            />
-          </Form.Item>
-          <Button type="primary" block onClick={handleForgotPassword} loading={loading}>
-            Send OTP
-          </Button>
-        </Form>
+        <Input
+          placeholder="Enter your email"
+          value={resetEmail}
+          onChange={(e) => setResetEmail(e.target.value)}
+          style={{ marginBottom: "15px" }}
+        />
+        <Button type="primary" block onClick={handleForgotPassword}>
+          Send OTP
+        </Button>
       </Modal>
 
       {/* Reset Password Modal */}
       <Modal
-        title={<Title level={4} style={{ margin: 0 }}>Reset Password</Title>}
+        title="Reset Password"
         open={resetPasswordModal}
         onCancel={() => setResetPasswordModal(false)}
         footer={null}
         centered
         width={400}
       >
-        <Form layout="vertical">
-          <Form.Item label={<Text strong>OTP</Text>} required>
-            <Input
-              placeholder="Enter the OTP"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-            />
-          </Form.Item>
-          <Form.Item label={<Text strong>New Password</Text>} required>
-            <Input.Password
-              placeholder="Enter new password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-            />
-          </Form.Item>
-          <Button type="primary" block onClick={handleResetPassword} loading={loading} style={{ marginBottom: "10px" }}>
-            Reset Password
-          </Button>
-          <Button type="link" block onClick={handleResendOtp} disabled={loading}>
-            Resend OTP
-          </Button>
-        </Form>
+        <Input
+          placeholder="Enter the OTP"
+          value={otp}
+          onChange={(e) => setOtp(e.target.value)}
+          style={{ marginBottom: "15px" }}
+        />
+        <Input.Password
+          placeholder="Enter new password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          style={{ marginBottom: "15px" }}
+        />
+        <Button type="primary" block onClick={handleResetPassword} loading={loading}>
+          Reset Password
+        </Button>
       </Modal>
     </div>
   );

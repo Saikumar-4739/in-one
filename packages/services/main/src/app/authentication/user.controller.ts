@@ -1,7 +1,10 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { UserService } from './user.service';
-import { CommonResponse, CreateUserModel, EmailRequestModel, ExceptionHandler, ResetPassowordModel, UpdateUserModel, UserIdRequestModel, UserLoginModel } from '@in-one/shared-models';
+import { CommonResponse, CreateUserModel, EmailRequestModel, ExceptionHandler, ResetPassowordModel, UpdateUserModel, UserIdRequestModel } from '@in-one/shared-models';
 import { ApiBody, ApiTags } from '@nestjs/swagger';
+import { EmailRequestDto } from './dto\'s/email-id-request-model';
+import { UserLoginModel } from './dto\'s/user.login.dto';
+import { ResetPasswordDto } from './dto\'s/reset-passoword-model';
 
 @ApiTags('Users')
 @Controller('users')
@@ -60,9 +63,9 @@ export class UserController {
 
   @Post('logoutUser')
   @ApiBody({ schema: { properties: { userId: { type: 'string' } } } })
-  async logoutUser(@Body('userId') reqModel: UserIdRequestModel): Promise<CommonResponse> {
+  async logoutUser(@Body('userId') userId: string): Promise<CommonResponse> {
     try {
-      return await this.userService.logoutUser(reqModel);
+      return await this.userService.logoutUser(userId);
     } catch (error) {
       return ExceptionHandler.handleError(error, 'Error logging out user');
     }
@@ -89,8 +92,8 @@ export class UserController {
   }
 
   @Post('resetPassword')
-  @ApiBody({ type: ResetPassowordModel })
-  async resetPassword(@Body() reqModel: ResetPassowordModel): Promise<CommonResponse> {
+  @ApiBody({ type: ResetPasswordDto })
+  async resetPassword(@Body() reqModel: ResetPasswordDto): Promise<CommonResponse> {
     try {
       return await this.userService.resetPassword(reqModel);
     } catch (error) {
@@ -98,10 +101,9 @@ export class UserController {
     }
   }
 
-  // Add forgot password endpoint if not already present
   @Post('forgotPassword')
-  @ApiBody({ type: EmailRequestModel })
-  async forgotPassword(@Body() reqModel: EmailRequestModel): Promise<CommonResponse> {
+  @ApiBody({ type: EmailRequestDto })
+  async forgotPassword(@Body() reqModel: EmailRequestDto): Promise<CommonResponse> {
     try {
       return await this.userService.sendResetPasswordEmail(reqModel);
     } catch (error) {

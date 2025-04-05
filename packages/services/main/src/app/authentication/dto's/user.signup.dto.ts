@@ -20,18 +20,4 @@ export class CreateUserModel {
 
   @IsOptional()
   role?: UserRole;
-
-  constructor(
-    username: string,
-    email: string,
-    password: string,
-    profilePicture?: string,
-    role?: UserRole
-  ) {
-    this.username = username;
-    this.email = email;
-    this.password = password;
-    this.profilePicture = profilePicture;
-    this.role = role;
-  }
 }

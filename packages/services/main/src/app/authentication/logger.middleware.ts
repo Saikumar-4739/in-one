@@ -14,16 +14,16 @@ export class LoggerMiddleware implements NestMiddleware {
       })
     ),
     transports: [
-      new winston.transports.Console(), // This ensures logs show in terminal
+      new winston.transports.Console(),
       new winston.transports.File({ 
-        filename: path.join(__dirname, '..', 'logs', 'http.log') // Creates logs folder one level up
+        filename: path.join(__dirname, '..', 'logs', 'http.log') 
       })
     ],
   });
 
   use(req: Request, res: Response, next: NextFunction) {
     const { password, ...safeBody } = req.body;
-    const logMessage = `Request to ${req.method} ${req.url} with body: ${JSON.stringify(safeBody)}`;
+    // const logMessage = `Request to ${req.method} ${req.url} with body: ${JSON.stringify(safeBody)}`;/
     // this.logger.info(logMessage); 
     next();
   }
