@@ -14,7 +14,7 @@
     }
   ],
   "compilerOptions": {
-    "moduleResolution": "node",
+    "moduleResolution": "nodenext",
     "esModuleInterop": true,
     "strict": true,
     "target": "ES6",
