@@ -2,7 +2,8 @@ import { WebSocketGateway, WebSocketServer, SubscribeMessage, MessageBody, Conne
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
 import { Logger } from '@nestjs/common';
-import { PrivateMessegeModel } from '@in-one/shared-models';
+import { CreateMessageModel, PrivateMessegeModel } from '@in-one/shared-models';
+import { PrivateMessageDto } from './dto\'s/private-messege-model';
 
 type RTCSessionDescriptionInit = {
   type?: 'offer' | 'answer' | 'rollback';
@@ -54,30 +55,28 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('sendMessage')
-  async handleSendMessage(@MessageBody() data: { message: PrivateMessegeModel; chatRoomId?: string; createdAt: string }, @ConnectedSocket() socket: Socket) {
+  async handleSendMessage(@MessageBody() data: { message: PrivateMessageDto }, @ConnectedSocket() socket: Socket) {
     try {
       const response = await this.chatService.sendPrivateMessage(data.message);
       if (!response.status || !response.data) throw new Error('Failed to send private message');
 
       const newMessage = response.data;
-      const chatRoomId = newMessage.chatRoomId || data.chatRoomId || `${data.message.senderId}-${data.message.receiverId}`;
-      // Join the room if not already in it
+      const chatRoomId = newMessage.chatRoomId;
       socket.join(chatRoomId);
-      // Emit to all participants in the room
-      this.server.to(chatRoomId).emit('privateMessage', { success: true, message: newMessage });
+      this.server.to(chatRoomId).emit('privateMessage', newMessage);
       return { success: true, data: newMessage };
     } catch (error) {
       this.logger.error(`❌ Error in sendMessage: ${error}`);
-      return { success: false, message: 'Failed to send message', error };
+      return { success: false, message: 'Failed to send message', error: error };
     }
   }
 
   @SubscribeMessage('sendGroupMessage')
-  async handleSendGroupMessage(@MessageBody() data: { chatRoomId: string; senderId: string; text: string; createdAt: string }, @ConnectedSocket() socket: Socket) {
+  async handleSendGroupMessage(@MessageBody() data: CreateMessageModel, @ConnectedSocket() socket: Socket) {
     try {
-      const messageData = { chatRoomId: data.chatRoomId, senderId: data.senderId, text: data.text };
-      const response = await this.chatService.createMessage(messageData);
+      const response = await this.chatService.createMessage(data);
       if (!response || !response._id) throw new Error('Failed to create group message');
+
       const newMessage = {
         _id: response._id,
         senderId: response.senderId,
@@ -85,11 +84,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         text: response.text,
         createdAt: response.createdAt,
       };
-      this.server.to(data.chatRoomId).emit('groupMessage', { success: true, message: newMessage });
+      socket.join(newMessage.chatRoomId);
+      this.server.to(newMessage.chatRoomId).emit('groupMessage', newMessage);
       return { success: true, data: newMessage };
     } catch (error) {
       this.logger.error(`❌ Error in sendGroupMessage: ${error}`);
-      return { success: false, message: 'Failed to send group message', error };
+      return { success: false, message: 'Failed to send group message', error: error };
     }
   }
 

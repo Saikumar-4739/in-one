@@ -14,7 +14,7 @@ export class MessageEntity {
   @ManyToOne(() => UserEntity, (user) => user.receivedMessages, { nullable: true, onDelete: 'CASCADE' })
   receiver: UserEntity;
 
-  @ManyToOne(() => ChatRoomEntity, (chatRoom) => chatRoom.messages, { nullable: false, onDelete: 'CASCADE',})
+  @ManyToOne(() => ChatRoomEntity, (chatRoom) => chatRoom.messages, { nullable: false, onDelete: 'CASCADE' })
   chatRoom: ChatRoomEntity;
 
   @Column({ type: 'text', nullable: true })
@@ -26,12 +26,15 @@ export class MessageEntity {
   @Column({ type: 'varchar', nullable: true })
   fileUrl: string;
 
-  @Column({ type: 'enum', enum: FileType, nullable: true})
+  @Column({ type: 'enum', enum: FileType, nullable: true })
   fileType: FileType;
 
   @ManyToMany(() => UserEntity)
   @JoinTable({ name: 'message_reads' })
   readBy: UserEntity[];
+
+  @Column({ type: 'enum', enum: ['pending', 'delivered', 'read', 'failed'], default: 'pending' }) // New column
+  status: 'pending' | 'delivered' | 'read' | 'failed';
 
   @CreateDateColumn()
   createdAt: Date;

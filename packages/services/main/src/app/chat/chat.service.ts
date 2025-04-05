@@ -9,6 +9,7 @@ import { CallRepository } from './repository/call.repository';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
 import { ChatRoomIdRequestModel } from './dto\'s/chat.room.id';
 import { CallEntity } from './entities/call.entity';
+import { PrivateMessageDto } from './dto\'s/private-messege-model';
 
 type RTCSessionDescriptionInit = {
   type?: 'offer' | 'answer' | 'rollback';
@@ -43,9 +44,27 @@ export class ChatService {
         throw new HttpException('Sender not found', HttpStatus.NOT_FOUND);
       }
 
-      const chatRoom = await chatRoomRepo.findOne({ where: { id: reqModel.chatRoomId } });
+      let chatRoom = reqModel.chatRoomId
+        ? await chatRoomRepo.findOne({ where: { id: reqModel.chatRoomId }, relations: ['participants'] })
+        : null;
+
       if (!chatRoom) {
-        throw new HttpException('Chat room not found', HttpStatus.NOT_FOUND);
+        // Create a new group if chatRoomId is not provided
+        const participants = reqModel.participants?.length
+          ? await this.userRepository.findByIds([sender.id, ...reqModel.participants])
+          : [sender]; // Default to sender only if no participants
+
+        chatRoom = chatRoomRepo.create({
+          participants,
+          name: reqModel.groupName || `Group-${Date.now()}`,
+          isGroup: participants.length > 1,
+          lastMessage: reqModel.text,
+          groupCreator: sender, // Assuming groupCreator is added to ChatRoomEntity
+        });
+        chatRoom = await chatRoomRepo.save(chatRoom);
+      } else {
+        // Update existing chat room
+        await chatRoomRepo.update(chatRoom.id, { lastMessage: reqModel.text });
       }
 
       const newMessage = messageRepo.create({
@@ -53,10 +72,10 @@ export class ChatService {
         chatRoom,
         text: reqModel.text,
         createdAt: new Date(),
+        status: 'delivered', // Assuming status is added to MessageEntity
       });
 
       const savedMessage = await messageRepo.save(newMessage);
-      await chatRoomRepo.update(reqModel.chatRoomId, { lastMessage: reqModel.text });
       await this.transactionManager.commitTransaction();
 
       return {
@@ -215,10 +234,19 @@ export class ChatService {
     }
   }
 
-  async sendPrivateMessage(reqModel: PrivateMessegeModel): Promise<CommonResponse> {
+  async sendPrivateMessage(reqModel: PrivateMessageDto): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
     try {
-      let chatRoom = await this.chatRoomRepository.findOne({
+      const messageRepo = this.transactionManager.getRepository(this.messageRepository);
+      const chatRoomRepo = this.transactionManager.getRepository(this.chatRoomRepository);
+
+      const sender = await this.userRepository.findOne({ where: { id: reqModel.senderId } });
+      const receiver = await this.userRepository.findOne({ where: { id: reqModel.receiverId } });
+      if (!sender || !receiver) {
+        throw new HttpException('Sender or receiver not found', HttpStatus.NOT_FOUND);
+      }
+
+      let chatRoom = await chatRoomRepo.findOne({
         where: {
           isGroup: false,
           participants: { id: In([reqModel.senderId, reqModel.receiverId]) },
@@ -227,27 +255,29 @@ export class ChatService {
       });
 
       if (!chatRoom) {
-        chatRoom = this.chatRoomRepository.create({
-          participants: await this.userRepository.findByIds([reqModel.senderId, reqModel.receiverId]),
+        chatRoom = chatRoomRepo.create({
+          participants: [sender, receiver],
           isGroup: false,
           lastMessage: reqModel.text,
         });
-        chatRoom = await this.chatRoomRepository.save(chatRoom); // Ensure saved
+        chatRoom = await chatRoomRepo.save(chatRoom);
+      } else {
+        await chatRoomRepo.update(chatRoom.id, { lastMessage: reqModel.text });
       }
 
-      const newMessage = this.messageRepository.create({
-        sender: { id: reqModel.senderId } as UserEntity,
-        receiver: { id: reqModel.receiverId } as UserEntity,
+      const newMessage = messageRepo.create({
+        sender,
+        receiver,
         chatRoom,
         text: reqModel.text,
         createdAt: new Date(),
+        status: 'delivered',
       });
 
-      const savedMessage = await this.messageRepository.save(newMessage);
-      await this.chatRoomRepository.update(chatRoom.id, { lastMessage: reqModel.text });
+      const savedMessage = await messageRepo.save(newMessage);
       await this.transactionManager.commitTransaction();
 
-      return new CommonResponse(true, 200, 'Message sent successfully', {
+      return new CommonResponse(true, 200, 'Private message sent successfully', {
         _id: savedMessage.id,
         senderId: savedMessage.sender.id,
         receiverId: savedMessage.receiver?.id,
@@ -257,7 +287,7 @@ export class ChatService {
       });
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
-      return new CommonResponse(false, 500, 'Error sending private message', null);
+      return new CommonResponse(false, 500, `Error sending private message: ${error}`, null);
     }
   }
 

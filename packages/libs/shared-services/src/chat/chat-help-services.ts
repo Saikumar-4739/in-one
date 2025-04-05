@@ -24,7 +24,7 @@ export class ChatHelpService extends CommonAxiosService {
 
     async sendMessage(reqModel: CreateMessageModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
         return await this.axiosPostCall(this.getURLwithMainEndPoint('sendMessage'), reqModel, config);
-    }
+      }
 
     async getMessages(reqModel: ChatRoomIdRequestModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
         return await this.axiosPostCall(this.getURLwithMainEndPoint('getAllMessages'), reqModel, config);
@@ -52,7 +52,7 @@ export class ChatHelpService extends CommonAxiosService {
 
     async sendPrivateMessage(reqModel: PrivateMessegeModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
         return await this.axiosPostCall(this.getURLwithMainEndPoint('privateMessege'), reqModel, config);
-    }
+      }
 
     async getChatHistoryByUsers(reqModel: { senderId: string; receiverId: string }, config?: AxiosRequestConfig): Promise<CommonResponse> {
         return await this.axiosPostCall(this.getURLwithMainEndPoint('getChatHistoryByUsers'), reqModel, config);

@@ -1,4 +1,5 @@
 import { UserEntity } from 'src/app/authentication/entities/user.entity';
+import { ChatRoomEntity } from './chatroom.entity'; // Add this import
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('calls')
@@ -11,6 +12,9 @@ export class CallEntity {
 
     @ManyToOne(() => UserEntity, user => user.callsReceived, { nullable: false })
     receiver: UserEntity; 
+
+    @ManyToOne(() => ChatRoomEntity, (chatRoom) => chatRoom.calls, { nullable: true }) // New relation
+    chatRoom: ChatRoomEntity;
 
     @Column({ type: 'enum', enum: ['audio', 'video'], default: 'audio' })
     callType: 'audio' | 'video';

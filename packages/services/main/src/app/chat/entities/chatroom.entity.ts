@@ -1,6 +1,8 @@
 import { UserEntity } from 'src/app/authentication/entities/user.entity';
-import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToMany, JoinTable, CreateDateColumn, UpdateDateColumn, OneToMany, ManyToOne } from 'typeorm';
 import { MessageEntity } from './messege.entity';
+import { CallEntity } from './call.entity';
+
 
 @Entity('chat_rooms')
 export class ChatRoomEntity {
@@ -17,6 +19,9 @@ export class ChatRoomEntity {
     @OneToMany(() => MessageEntity, (message) => message.chatRoom)
     messages: MessageEntity[];
 
+    @OneToMany(() => CallEntity, (call) => call.chatRoom) // New relation
+    calls: CallEntity[];
+
     @Column({ default: false })
     isGroup: boolean;
 
@@ -25,6 +30,9 @@ export class ChatRoomEntity {
 
     @Column({ default: '' })
     lastMessage: string;
+
+    @ManyToOne(() => UserEntity, (user) => user.createdChatRooms, { nullable: true }) // New column
+    groupCreator: UserEntity;
 
     @CreateDateColumn()
     createdAt: Date;

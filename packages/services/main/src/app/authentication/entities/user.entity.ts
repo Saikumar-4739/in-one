@@ -37,13 +37,13 @@ export class UserEntity {
   @Column({ nullable: true })
   resetPasswordExpires?: Date;
 
-  @Column({ type: 'varchar', default: 'offline', nullable: true })
-  status: string;
+  @Column({ type: 'enum', enum: ['online', 'offline', 'away', 'busy'], default: 'offline' }) // Updated (optional)
+  status: 'online' | 'offline' | 'away' | 'busy';
 
   @Column({ type: 'datetime', nullable: true })
   lastSeen?: Date;
 
-  @CreateDateColumn({ type: 'datetime', })
+  @CreateDateColumn({ type: 'datetime' })
   createdAt: Date;
 
   @UpdateDateColumn({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP(6)', onUpdate: 'CURRENT_TIMESTAMP(6)' })
@@ -58,11 +58,17 @@ export class UserEntity {
   @ManyToMany(() => ChatRoomEntity, (chatRoom) => chatRoom.participants)
   chatRooms: ChatRoomEntity[];
 
+  @OneToMany(() => ChatRoomEntity, (chatRoom) => chatRoom.groupCreator) // New relation
+  createdChatRooms: ChatRoomEntity[];
+
   @OneToMany(() => MessageEntity, (message) => message.sender)
   sentMessages: MessageEntity[];
 
   @OneToMany(() => MessageEntity, (message) => message.receiver)
   receivedMessages: MessageEntity[];
+
+  @ManyToMany(() => MessageEntity, (message) => message.readBy) // New relation (optional)
+  messagesRead: MessageEntity[];
 
   @OneToMany(() => NoteEntity, (note) => note.userId)
   notes: NoteEntity[];

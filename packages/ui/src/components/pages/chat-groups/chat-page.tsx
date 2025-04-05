@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CreateChatRoomModel, PrivateMessegeModel, UserIdRequestModel } from '@in-one/shared-models';
+import { CreateChatRoomModel, CreateMessageModel, PrivateMessegeModel, UserIdRequestModel } from '@in-one/shared-models';
 import { Button, Input, Typography, Avatar, message, Space, Select, Checkbox, Modal } from 'antd';
 import { SendOutlined, UserOutlined, SearchOutlined, PhoneOutlined, PlusOutlined, SmileOutlined, AudioOutlined, VideoCameraOutlined, CloseOutlined } from '@ant-design/icons';
 import { ChatHelpService, UserHelpService } from '@in-one/shared-services';
@@ -31,7 +31,6 @@ interface Message {
   text: string;
   createdAt: string;
   status: 'pending' | 'delivered' | 'failed';
-  image?: string;
 }
 
 const ChatPage: React.FC = () => {
@@ -58,8 +57,8 @@ const ChatPage: React.FC = () => {
   const lastCheckedUserId = useRef<string | null>(null);
   const chatService = new ChatHelpService();
   const userService = new UserHelpService();
-  const [pendingMessages, setPendingMessages] = useState<any[]>([]);
 
+  // Call states
   const [isCalling, setIsCalling] = useState<boolean>(false);
   const [incomingCall, setIncomingCall] = useState<{ callerId: string; callType: 'audio' | 'video'; signalData: any; callId: string } | null>(null);
   const [callType, setCallType] = useState<'audio' | 'video' | null>(null);
@@ -75,6 +74,7 @@ const ChatPage: React.FC = () => {
       fetchChatRooms();
       initSocket(userId);
       setHasFetchedUsers(true);
+      requestNotificationPermission();
     }
     return () => {
       socket?.disconnect();
@@ -91,15 +91,9 @@ const ChatPage: React.FC = () => {
 
   useEffect(() => {
     if (selectedUser && userId) {
-      const relevantPending = pendingMessages.filter(
-        (msg) => (msg.senderId === selectedUser.id && msg.receiverId === userId) || (msg.senderId === userId && msg.receiverId === selectedUser.id)
-      );
-      if (relevantPending.length > 0) {
-        setMessages((prev) => [...prev, ...relevantPending]);
-        setPendingMessages((prev) => prev.filter((msg) => !relevantPending.includes(msg)));
-      }
+      fetchChatHistory();
     }
-  }, [selectedUser]);
+  }, [selectedUser, userId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -119,6 +113,18 @@ const ChatPage: React.FC = () => {
     }
   }, [localStream, remoteStream]);
 
+  const requestNotificationPermission = () => {
+    if (Notification.permission !== 'granted') {
+      Notification.requestPermission();
+    }
+  };
+
+  const showNotification = (title: string, body: string) => {
+    if (Notification.permission === 'granted') {
+      new Notification(title, { body, icon: '/favicon.ico' });
+    }
+  };
+
   const initSocket = (userId: string) => {
     const newSocket = io('http://localhost:3006', {
       query: { userId },
@@ -130,74 +136,29 @@ const ChatPage: React.FC = () => {
 
     newSocket.on('connect', () => {
       console.log('Socket connected');
-      if (selectedRoomId) newSocket.emit('joinRoom', selectedRoomId);
-      else if (chatRoomId) newSocket.emit('joinRoom', chatRoomId);
+      if (selectedRoomId || chatRoomId) newSocket.emit('joinRoom', selectedRoomId || chatRoomId);
     });
 
     newSocket.on('privateMessage', (savedMessage: Message) => {
-      if (
-        (savedMessage.senderId === userId && savedMessage.receiverId === selectedUser?.id) ||
-        (savedMessage.senderId === selectedUser?.id && savedMessage.receiverId === userId)
-      ) {
-        setMessages((prev) => {
-          const exists = prev.some((msg) => msg._id === savedMessage._id);
-          if (!exists) {
-            const updatedMessage: Message = {
-              ...savedMessage,
-              status: 'delivered',
-            };
-            return [...prev, updatedMessage];
-          }
-          return prev;
-        });
-        setUsers((prev) =>
-          prev
-            .map((u) =>
-              u.id === (savedMessage.senderId === userId ? savedMessage.receiverId : savedMessage.senderId)
-                ? { ...u, lastMessage: savedMessage.text, lastMessageTime: savedMessage.createdAt }
-                : u
-            )
-            .sort((a, b) => new Date(b.lastMessageTime || 0).getTime() - new Date(a.lastMessageTime || 0).getTime())
-        );
-      }
+      setMessages((prev) => {
+        const exists = prev.some((msg) => msg._id === savedMessage._id);
+        return exists ? prev : [...prev, { ...savedMessage, status: 'delivered' }];
+      });
     });
 
     newSocket.on('groupMessage', (savedMessage: Message) => {
-      if (savedMessage.chatRoomId === selectedRoomId) {
-        setMessages((prev) => {
-          const exists = prev.some((msg) => msg._id === savedMessage._id);
-          if (!exists) {
-            const updatedMessage: Message = {
-              ...savedMessage,
-              status: 'delivered',
-            };
-            return [...prev, updatedMessage].sort((a, b) =>
-              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-            );
-          }
-          return prev;
-        });
-        setChatRooms((prev) =>
-          prev
-            .map((r) =>
-              r._id === savedMessage.chatRoomId
-                ? { ...r, lastMessage: savedMessage.text, lastMessageTime: savedMessage.createdAt }
-                : r
-            )
-            .sort((a, b) => new Date(b.lastMessageTime || 0).getTime() - new Date(a.lastMessageTime || 0).getTime())
-        );
-      }
+      setMessages((prev) => {
+        const exists = prev.some((msg) => msg._id === savedMessage._id);
+        return exists ? prev : [...prev, { ...savedMessage, status: 'delivered' }];
+      });
     });
+
     newSocket.on('onlineUsers', setOnlineUsers);
 
     newSocket.on('callUser', (data) => {
       if (data.userToCall === userId && !isCalling) {
-        setIncomingCall({
-          callerId: data.from,
-          callType: data.callType,
-          signalData: data.signal,
-          callId: data.callId,
-        });
+        setIncomingCall({ callerId: data.from, callType: data.callType, signalData: data.signal, callId: data.callId });
+        showNotification('Incoming Call', `Incoming ${data.callType} call from ${users.find(u => u.id === data.from)?.username}`);
         const caller = users.find((u) => u.id === data.from);
         if (caller && (!selectedUser || selectedUser.id !== caller.id)) {
           setSelectedUser(caller);
@@ -222,6 +183,30 @@ const ChatPage: React.FC = () => {
     });
 
     setSocket(newSocket);
+  };
+
+  const updateUserList = (savedMessage: Message) => {
+    setUsers((prev) =>
+      prev
+        .map((u) =>
+          u.id === (savedMessage.senderId === userId ? savedMessage.receiverId : savedMessage.senderId)
+            ? { ...u, lastMessage: savedMessage.text, lastMessageTime: savedMessage.createdAt }
+            : u
+        )
+        .sort((a, b) => new Date(b.lastMessageTime || 0).getTime() - new Date(a.lastMessageTime || 0).getTime())
+    );
+  };
+
+  const updateChatRoomList = (savedMessage: Message) => {
+    setChatRooms((prev) =>
+      prev
+        .map((r) =>
+          r._id === savedMessage.chatRoomId
+            ? { ...r, lastMessage: savedMessage.text, lastMessageTime: savedMessage.createdAt }
+            : r
+        )
+        .sort((a, b) => new Date(b.lastMessageTime || 0).getTime() - new Date(a.lastMessageTime || 0).getTime())
+    );
   };
 
   const setupPeerConnection = () => {
@@ -251,7 +236,7 @@ const ChatPage: React.FC = () => {
     if (!selectedUser || !userId || !socket) return;
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: type === 'video', audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: type === 'video' ? { facingMode: 'user' } : false, audio: true });
       setLocalStream(stream);
 
       const pc = setupPeerConnection();
@@ -289,7 +274,7 @@ const ChatPage: React.FC = () => {
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: incomingCall.callType === 'video', audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: incomingCall.callType === 'video' ? { facingMode: 'user' } : false, audio: true });
       setLocalStream(stream);
 
       const pc = setupPeerConnection();
@@ -364,7 +349,7 @@ const ChatPage: React.FC = () => {
     try {
       const response = await chatService.getChatRooms(new UserIdRequestModel(userId!));
       if (response.status && response.data?.data) {
-        setChatRooms(response.data.data.sort((a: { lastMessageTime: any; }, b: { lastMessageTime: any; }) => new Date(b.lastMessageTime || 0).getTime() - new Date(a.lastMessageTime || 0).getTime()));
+        setChatRooms(response.data.data.sort((a: { lastMessageTime: any }, b: { lastMessageTime: any }) => new Date(b.lastMessageTime || 0).getTime() - new Date(a.lastMessageTime || 0).getTime()));
       }
     } catch (error) {
       message.error('Failed to fetch chat rooms');
@@ -449,78 +434,78 @@ const ChatPage: React.FC = () => {
   const handleSendMessage = async () => {
     if (!messageInput.trim() || !userId) return;
 
-    const tempId = `temp-${Date.now()}`; // Unique temporary ID
+    const tempId = `temp-${Date.now()}`;
     const tempMessage: Message = {
       _id: tempId,
       senderId: userId,
       text: messageInput,
       createdAt: new Date().toISOString(),
       status: 'pending',
-      receiverId: selectedUser?.id,
-      chatRoomId: chatRoomId || 'temp-chatroom', // Temporary placeholder, will be replaced by backend
+      chatRoomId: selectedRoomId || chatRoomId || 'temp-chatroom',
+      receiverId: selectedUser?.id || undefined,
     };
 
-    // Add the temporary message immediately for optimistic UI update
     setMessages((prev) => [...prev, tempMessage]);
     setMessageInput('');
 
     try {
-      if (selectedRoomId) {
-        // Group message
-        const messagePayload = {
+  if (selectedRoomId) {
+        // Existing group message
+        const messagePayload: CreateMessageModel = {
           chatRoomId: selectedRoomId,
           senderId: userId,
           text: messageInput,
-          createdAt: tempMessage.createdAt,
         };
-
         const response = await chatService.sendMessage(messagePayload);
         if (response.status && response.data) {
-          const savedMessage: Message = {
-            ...response.data,
-            status: 'delivered',
-          };
-          setMessages((prev) =>
-            prev.map((msg) => (msg._id === tempId ? savedMessage : msg))
-          );
-          socket?.emit('sendGroupMessage', savedMessage);
+          const savedMessage: Message = { ...response.data, status: 'delivered' };
+          setMessages((prev) => prev.map((msg) => (msg._id === tempId ? savedMessage : msg)));
+          socket?.emit('sendGroupMessage', messagePayload);
         } else {
-          throw new Error('Failed to save group message');
+          throw new Error('Failed to send group message');
         }
       } else if (selectedUser) {
         // Private message
-        const messageData = new PrivateMessegeModel(userId, selectedUser.id, messageInput);
-
+        const messageData: PrivateMessegeModel = {
+          senderId: userId,
+          receiverId: selectedUser.id, // Use selectedUser.id
+          text: messageInput,
+        };
         const response = await chatService.sendPrivateMessage(messageData);
         if (response.status && response.data) {
-          const savedMessage: Message = {
-            _id: response.data._id,
-            senderId: response.data.senderId,
-            receiverId: response.data.receiverId,
-            chatRoomId: response.data.chatRoomId, // Always provided by backend
-            text: response.data.text,
-            createdAt: response.data.createdAt,
-            status: 'delivered',
-          };
-          setMessages((prev) =>
-            prev.map((msg) => (msg._id === tempId ? savedMessage : msg))
-          );
+          const savedMessage: Message = { ...response.data, status: 'delivered' };
+          setMessages((prev) => prev.map((msg) => (msg._id === tempId ? savedMessage : msg)));
           if (!chatRoomId || chatRoomId === 'temp-chatroom') {
-            setChatRoomId(response.data.chatRoomId); // Update with real chatRoomId
-            socket?.emit('joinRoom', response.data.chatRoomId);
+            setChatRoomId(savedMessage.chatRoomId);
+            socket?.emit('joinRoom', savedMessage.chatRoomId);
           }
-          socket?.emit('sendMessage', savedMessage);
+          socket?.emit('sendMessage', { message: messageData });
         } else {
-          throw new Error('Failed to save private message');
+          throw new Error('Failed to send private message');
+        }
+      } else {
+        // New group creation
+        const messagePayload: CreateMessageModel = {
+          senderId: userId,
+          text: messageInput,
+          participants: [], // Solo group by default
+          groupName: `Group-${Date.now()}`,
+        };
+        const response = await chatService.sendMessage(messagePayload);
+        if (response.status && response.data) {
+          const savedMessage: Message = { ...response.data, status: 'delivered' };
+          setMessages((prev) => prev.map((msg) => (msg._id === tempId ? savedMessage : msg)));
+          setChatRoomId(savedMessage.chatRoomId);
+          setSelectedRoomId(savedMessage.chatRoomId);
+          socket?.emit('joinRoom', savedMessage.chatRoomId);
+          socket?.emit('sendGroupMessage', messagePayload);
+        } else {
+          throw new Error('Failed to create new group');
         }
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg._id === tempId ? { ...msg, status: 'failed' } : msg
-        )
-      );
+      setMessages((prev) => prev.map((msg) => (msg._id === tempId ? { ...msg, status: 'failed' } : msg)));
       message.error('Failed to send message');
     }
   };
@@ -669,23 +654,9 @@ const ChatPage: React.FC = () => {
                 <Space style={{ marginLeft: 'auto' }}>
                   <Button icon={<AudioOutlined />} onClick={() => startCall('audio')} disabled={isCalling || !!incomingCall} type="text" />
                   <Button icon={<VideoCameraOutlined />} onClick={() => startCall('video')} disabled={isCalling || !!incomingCall} type="text" />
-                  {isCalling && <Button icon={<CloseOutlined />} onClick={endCall} type="text" danger />}
                 </Space>
               )}
             </motion.div>
-
-            {isCalling && (
-              <div className="call-container">
-                <div className="video-wrapper">
-                  <video ref={localVideoRef} autoPlay muted playsInline className="local-video" />
-                  <Text className="video-label">You</Text>
-                </div>
-                <div className="video-wrapper">
-                  <video ref={remoteVideoRef} autoPlay playsInline className="remote-video" />
-                  <Text className="video-label">{selectedUser?.username || 'Remote'}</Text>
-                </div>
-              </div>
-            )}
 
             <div className="messages-container" ref={messagesContainerRef}>
               {messages.length > 0 ? (
@@ -771,22 +742,52 @@ const ChatPage: React.FC = () => {
               </Space>
             </div>
           </div>
-          <Modal
-            title="Incoming Call"
-            open={!!incomingCall}
-            onCancel={endCall}
-            footer={[
-              <Button key="reject" onClick={endCall} danger>Reject</Button>,
-              <Button key="accept" type="primary" onClick={handleAcceptCall}>Accept</Button>,
-            ]}
-          >
-            <Text>
-              Incoming {incomingCall?.callType} call from{' '}
-              {users.find((u) => u.id === incomingCall?.callerId)?.username || 'Unknown'}
-            </Text>
-          </Modal>
         </motion.div>
       )}
+
+      {/* Call Modal */}
+      <Modal
+        title={callType === 'audio' ? 'Audio Call' : 'Video Call'}
+        open={isCalling}
+        onCancel={endCall}
+        footer={[
+          <Button key="end" danger onClick={endCall}>End Call</Button>,
+        ]}
+        width={callType === 'video' ? 800 : 400}
+      >
+        <div className="call-container">
+          {callType === 'audio' ? (
+            <AudioOutlined style={{ fontSize: 64, color: '#1890ff' }} />
+          ) : (
+            <>
+              <div className="video-wrapper">
+                <video ref={localVideoRef} autoPlay muted playsInline className="local-video" />
+                <Text className="video-label">You</Text>
+              </div>
+              <div className="video-wrapper">
+                <video ref={remoteVideoRef} autoPlay playsInline className="remote-video" />
+                <Text className="video-label">{selectedUser?.username || 'Remote'}</Text>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
+
+      {/* Incoming Call Modal */}
+      <Modal
+        title="Incoming Call"
+        open={!!incomingCall}
+        onCancel={endCall}
+        footer={[
+          <Button key="reject" onClick={endCall} danger>Reject</Button>,
+          <Button key="accept" type="primary" onClick={handleAcceptCall}>Accept</Button>,
+        ]}
+      >
+        <Text>
+          Incoming {incomingCall?.callType} call from{' '}
+          {users.find((u) => u.id === incomingCall?.callerId)?.username || 'Unknown'}
+        </Text>
+      </Modal>
     </div>
   );
 };
