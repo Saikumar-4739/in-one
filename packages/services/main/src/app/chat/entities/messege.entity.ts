@@ -1,21 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, ManyToMany, JoinTable, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { UserEntity } from 'src/app/authentication/entities/user.entity';
-import { ChatRoomEntity } from './chatroom.entity';
+// messages.entity.ts
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { FileType } from '@in-one/shared-models';
 
 @Entity('messages')
 export class MessageEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
-
-  @ManyToOne(() => UserEntity, (user) => user.sentMessages, { nullable: false, onDelete: 'CASCADE' })
-  sender: UserEntity;
-
-  @ManyToOne(() => UserEntity, (user) => user.receivedMessages, { nullable: true, onDelete: 'CASCADE' })
-  receiver: UserEntity;
-
-  @ManyToOne(() => ChatRoomEntity, (chatRoom) => chatRoom.messages, { nullable: false, onDelete: 'CASCADE' })
-  chatRoom: ChatRoomEntity;
 
   @Column({ type: 'text', nullable: true })
   text: string;
@@ -29,12 +19,17 @@ export class MessageEntity {
   @Column({ type: 'enum', enum: FileType, nullable: true })
   fileType: FileType;
 
-  @ManyToMany(() => UserEntity)
-  @JoinTable({ name: 'message_reads' })
-  readBy: UserEntity[];
-
-  @Column({ type: 'enum', enum: ['pending', 'delivered', 'read', 'failed'], default: 'pending' }) // New column
+  @Column({ type: 'enum', enum: ['pending', 'delivered', 'read', 'failed'], default: 'pending' })
   status: 'pending' | 'delivered' | 'read' | 'failed';
+
+  @Column({ type: 'varchar', nullable: true })
+  senderId: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  chatRoomId: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  receiverId: string;
 
   @CreateDateColumn()
   createdAt: Date;

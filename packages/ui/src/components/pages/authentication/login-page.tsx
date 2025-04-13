@@ -48,7 +48,7 @@ const LoginPage: React.FC = () => {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      message.error("Please enter email and password.");
+      message.error('Please enter email and password.');
       return;
     }
 
@@ -58,27 +58,31 @@ const LoginPage: React.FC = () => {
     const loginData = new UserLoginModel(email, encryptedPassword);
 
     try {
-      const response = await userService.loginUser(loginData);
+      console.log('Login payload:', loginData);
+      const response: CommonResponse = await userService.loginUser(loginData);
+      console.log('Login response:', response);
       if (response.status && response.data?.accessToken) {
-        message.success("Login successful!");
-        localStorage.setItem("token", response.data.accessToken);
-        localStorage.setItem("username", response.data.user?.username || "");
-        localStorage.setItem("email", response.data.user?.email || "");
-        localStorage.setItem("userId", response.data.user?.id || "");
-        localStorage.setItem("profilePicture", response.data.user?.profilePicture || "");
+        message.success('Login successful!');
+        localStorage.setItem('token', response.data.accessToken);
+        localStorage.setItem('username', response.data.user?.username || '');
+        localStorage.setItem('email', response.data.user?.email || '');
+        localStorage.setItem('userId', response.data.user?.id || '');
+        localStorage.setItem('profilePicture', response.data.user?.profilePicture || '');
+        localStorage.setItem('role', response.data.user?.role); // Store role
         if (remember) {
-          localStorage.setItem("rememberEmail", email);
+          localStorage.setItem('rememberEmail', email);
         } else {
-          localStorage.removeItem("rememberEmail");
+          localStorage.removeItem('rememberEmail');
         }
-        window.dispatchEvent(new Event("storage"));
-        navigate("/home", { replace: true });
+        window.dispatchEvent(new Event('storage'));
+        navigate('/home', { replace: true });
       } else {
-        message.error(response.internalMessage || "Invalid credentials.");
+        message.error(response.internalMessage || 'Invalid credentials.');
       }
-    } catch (error) {
-      console.error("Login Error:", error);
-      message.error("An error occurred. Please try again.");
+    } catch (error: any) {
+      console.error('Login error:', error.response || error);
+      const errorMessage = error.response?.data?.message || 'An error occurred during login.';
+      message.error(errorMessage);
     } finally {
       setLoading(false);
     }

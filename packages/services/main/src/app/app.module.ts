@@ -2,15 +2,15 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { UserModule } from './authentication/user.module';
+import { UserModule } from './user/user.module';
 import { ChatModule } from './chat/chat.module';
 import { DatabaseModule } from 'src/database/database.module';
 import { NewsModule } from './news/news.module';
-import { VideoModule } from './entertainment/video/video.module';
-import { PhotoModule } from './entertainment/photo/photo.module';
+import { VideoModule } from './video/video.module';
+import { PhotoModule } from './photo/photo.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { JwtModule } from '@nestjs/jwt';
-import { LoggerMiddleware } from './authentication/logger.middleware';
+import { LoggerMiddleware } from './user/logger.middleware';
 import { StoriesModule } from './stories/story.module';
 import { NotesModule } from './notes/notes.module';
 
@@ -18,17 +18,17 @@ import { NotesModule } from './notes/notes.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '../../env', 
+      envFilePath: '../../env',
     }),
     JwtModule.register({
-      secret: process.env.JWT_SECRET, 
+      secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: '7d' },
     }),
     ThrottlerModule.forRoot({
       throttlers: [
         {
-          ttl: 60000, 
-          limit: 10, 
+          ttl: 60000,
+          limit: 10,
         },
       ],
     }),

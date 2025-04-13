@@ -2,11 +2,11 @@ import { Controller, Post, Body, Delete, UseInterceptors, UploadedFile } from '@
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CommonResponse, CreateStoryModel, UpdateStoryModel, ExceptionHandler } from '@in-one/shared-models';
 import { StoriesService } from './story.service';
-import { photMulterOptions } from '../entertainment/photo/photo.multer.config';
+import { photMulterOptions } from '../photo/photo.multer.config';
 
 @Controller('stories')
 export class StoriesController {
-  constructor(private readonly storiesService: StoriesService) {}
+  constructor(private readonly storiesService: StoriesService) { }
 
   @Post('createStory')
   @UseInterceptors(FileInterceptor('image', photMulterOptions)) // Changed 'file' to 'image' to match your DTO

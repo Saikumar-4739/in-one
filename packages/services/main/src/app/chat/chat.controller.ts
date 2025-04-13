@@ -1,10 +1,8 @@
 import { Controller, Post, Body, HttpException, HttpStatus } from '@nestjs/common';
 import { ChatService } from './chat.service';
-import { CommonResponse, CreateChatRoomModel, CreateMessageModel, EditMessageModel, EndCallModel, MessageResponseModel, MessegeIdRequestModel, PrivateMessegeModel, UserIdRequestModel } from '@in-one/shared-models'; // ✅ Import CommonResponse
+import { ChatRoomIdRequestModel, CommonResponse, CreateChatRoomModel, CreateMessageModel, EditMessageModel, EndCallModel, MessageResponseModel, MessegeIdRequestModel, PrivateMessegeModel, UserIdRequestModel } from '@in-one/shared-models'; // ✅ Import CommonResponse
 import { ExceptionHandler } from '@in-one/shared-models';
 import { ApiBody } from '@nestjs/swagger';
-import { ChatRoomIdRequestModel } from './dto\'s/chat.room.id';
-import { PrivateMessageDto } from './dto\'s/private-messege-model';
 
 
 type RTCSessionDescriptionInit = {
@@ -100,8 +98,8 @@ export class ChatController {
   }
 
   @Post('privateMessege')
-  @ApiBody({ type: PrivateMessageDto })
-  async sendPrivateMessage(@Body() reqModel: PrivateMessageDto): Promise<CommonResponse> {
+  @ApiBody({ type: PrivateMessegeModel })
+  async sendPrivateMessage(@Body() reqModel: PrivateMessegeModel): Promise<CommonResponse> {
     try {
       return await this.chatService.sendPrivateMessage(reqModel);
     } catch (error) {

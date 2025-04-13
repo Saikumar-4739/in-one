@@ -1,13 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { UserEntity } from 'src/app/authentication/entities/user.entity';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('stories')
 export class StoryEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => UserEntity, (user) => user.stories, { nullable: false })
-  user: UserEntity;
+  @Column({ type: 'varchar', nullable: true })
+  userId: string;
 
   @Column({ type: 'varchar', length: 255, nullable: false })
   username: string;

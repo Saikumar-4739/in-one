@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, MoreThan } from 'typeorm';
-import { UserEntity } from '../authentication/entities/user.entity';
+import { UserEntity } from '../user/entities/user.entity';
 import { CommonResponse, CreateStoryModel, UpdateStoryModel } from '@in-one/shared-models';
 import { StoriesRepository } from './repository/story.repository';
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
@@ -69,7 +69,7 @@ export class StoriesService {
       }
 
       const newStory = storiesRepo.create({
-        user: user,
+        userId: user.id,
         username: user.username, // Assuming UserEntity has a username field
         imageUrl: imageUrl,
         storyUrl: undefined, // Not provided in DTO, set as needed
@@ -154,8 +154,8 @@ export class StoriesService {
     try {
       const [stories, total] = await this.storiesRepository.findAndCount({
         where: {
-          user: { id: userId },
-          expiresAt: MoreThan(new Date())
+          userId,
+          expiresAt: MoreThan(new Date()),
         },
         skip: (page - 1) * limit,
         take: limit,
@@ -163,6 +163,7 @@ export class StoriesService {
       });
       return new CommonResponse(true, 200, 'User stories retrieved successfully', { stories, total });
     } catch (error) {
+      console.error('❌ Error retrieving user stories:', error);
       return new CommonResponse(false, 500, 'Error retrieving user stories', error);
     }
   }
@@ -181,7 +182,7 @@ export class StoriesService {
     } catch (error) {
       return new CommonResponse(false, 500, 'Error searching stories', error);
     }
-}
+  }
 
   async cleanupExpiredStories(): Promise<void> {
     try {

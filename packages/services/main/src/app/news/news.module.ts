@@ -3,18 +3,18 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { NewsService } from './news.service';
 import { NewsController } from './news.controller';
 import { NewsEntity } from './entities/news.entity';
-import { NewsCommentEntity } from './entities/comment.entity';
 import { NewsRepository } from './repository/news.repository';
-import { UserEntity } from '../authentication/entities/user.entity';
-import { CommentRepository } from './repository/comment.repository';
+import { UserEntity } from '../user/entities/user.entity';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
+import { CommentEntity } from '../masters/common-entities/comment.entity';
+import { LikeEntity } from '../masters/common-entities/like.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([NewsEntity, NewsCommentEntity, UserEntity]), 
+    TypeOrmModule.forFeature([NewsEntity, UserEntity, CommentEntity, LikeEntity]),
   ],
   controllers: [NewsController],
-  providers: [ NewsService, NewsRepository, CommentRepository, GenericTransactionManager],
+  providers: [NewsService, NewsRepository, GenericTransactionManager],
   exports: [NewsService],
 })
-export class NewsModule {}
+export class NewsModule { }

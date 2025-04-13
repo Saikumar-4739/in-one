@@ -1,15 +1,23 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { UserEntity } from '../authentication/entities/user.entity';
-import { CommonResponse, CreateChatRoomModel, CreateMessageModel, EditMessageModel, MessageResponseModel, MessegeIdRequestModel, PrivateMessegeModel, UserIdRequestModel } from '@in-one/shared-models';
+import { UserEntity } from '../user/entities/user.entity';
+import {
+  CommonResponse,
+  CreateChatRoomModel,
+  CreateMessageModel,
+  EditMessageModel,
+  MessageResponseModel,
+  MessegeIdRequestModel,
+  PrivateMessegeModel,
+  UserIdRequestModel,
+} from '@in-one/shared-models';
 import { ChatRoomRepository } from './repository/chatroom.repository';
 import { MessegeRepository } from './repository/messege.repository';
 import { CallRepository } from './repository/call.repository';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
-import { ChatRoomIdRequestModel } from './dto\'s/chat.room.id';
-import { CallEntity } from './entities/call.entity';
-import { PrivateMessageDto } from './dto\'s/private-messege-model';
+import { ChatRoomParticipantRepository } from './repository/chat_room_participants.repo';
+import { ChatRoomEntity } from './entities/chatroom.entity';
 
 type RTCSessionDescriptionInit = {
   type?: 'offer' | 'answer' | 'rollback';
@@ -23,6 +31,10 @@ type RTCIceCandidateInit = {
   usernameFragment?: string | null;
 };
 
+interface ChatRoomIdRequestModel {
+  chatRoomId: string;
+}
+
 @Injectable()
 export class ChatService {
   constructor(
@@ -30,7 +42,9 @@ export class ChatService {
     @InjectRepository(MessegeRepository) private readonly messageRepository: MessegeRepository,
     @InjectRepository(UserEntity) private readonly userRepository: Repository<UserEntity>,
     @InjectRepository(CallRepository) private readonly callRepository: CallRepository,
-    private readonly transactionManager: GenericTransactionManager
+    @InjectRepository(ChatRoomParticipantRepository)
+    private readonly participantRepository: ChatRoomParticipantRepository,
+    private readonly transactionManager: GenericTransactionManager,
   ) { }
 
   async createMessage(reqModel: CreateMessageModel): Promise<MessageResponseModel> {
@@ -38,41 +52,57 @@ export class ChatService {
     try {
       const messageRepo = this.transactionManager.getRepository(this.messageRepository);
       const chatRoomRepo = this.transactionManager.getRepository(this.chatRoomRepository);
+      const participantRepo = this.transactionManager.getRepository(this.participantRepository);
 
       const sender = await this.userRepository.findOne({ where: { id: reqModel.senderId } });
       if (!sender) {
         throw new HttpException('Sender not found', HttpStatus.NOT_FOUND);
       }
 
-      let chatRoom = reqModel.chatRoomId
-        ? await chatRoomRepo.findOne({ where: { id: reqModel.chatRoomId }, relations: ['participants'] })
-        : null;
-
-      if (!chatRoom) {
-        // Create a new group if chatRoomId is not provided
-        const participants = reqModel.participants?.length
-          ? await this.userRepository.findByIds([sender.id, ...reqModel.participants])
-          : [sender]; // Default to sender only if no participants
-
-        chatRoom = chatRoomRepo.create({
-          participants,
-          name: reqModel.groupName || `Group-${Date.now()}`,
-          isGroup: participants.length > 1,
-          lastMessage: reqModel.text,
-          groupCreator: sender, // Assuming groupCreator is added to ChatRoomEntity
-        });
-        chatRoom = await chatRoomRepo.save(chatRoom);
+      let chatRoom: ChatRoomEntity;
+      if (reqModel.chatRoomId) {
+        const foundChatRoom = await chatRoomRepo.findOne({ where: { id: reqModel.chatRoomId } });
+        if (!foundChatRoom) {
+          throw new HttpException('Chat room not found', HttpStatus.NOT_FOUND);
+        }
+        chatRoom = foundChatRoom;
       } else {
-        // Update existing chat room
+        // Create a new chat room
+        const participantIds = reqModel.participants?.length
+          ? [sender.id, ...reqModel.participants]
+          : [sender.id];
+
+        const participants = await this.userRepository.find({ where: { id: In(participantIds) } });
+        if (participants.length !== participantIds.length) {
+          throw new HttpException('One or more participants not found', HttpStatus.NOT_FOUND);
+        }
+
+        const newChatRoom = chatRoomRepo.create({
+          name: reqModel.groupName || `Group-${Date.now()}`,
+          isGroup: participantIds.length > 1,
+          lastMessage: reqModel.text,
+        });
+        chatRoom = await chatRoomRepo.save(newChatRoom);
+
+        // Add participants to chat_room_participants
+        const participantEntries = participantIds.map((userId) => ({
+          chatRoomId: chatRoom.id,
+          userId,
+        }));
+        await participantRepo.save(participantEntries);
+      }
+
+      // Update last message if chat room existed
+      if (reqModel.chatRoomId) {
         await chatRoomRepo.update(chatRoom.id, { lastMessage: reqModel.text });
       }
 
       const newMessage = messageRepo.create({
-        sender,
-        chatRoom,
+        senderId: sender.id,
+        chatRoomId: chatRoom.id,
         text: reqModel.text,
         createdAt: new Date(),
-        status: 'delivered', // Assuming status is added to MessageEntity
+        status: 'delivered',
       });
 
       const savedMessage = await messageRepo.save(newMessage);
@@ -80,8 +110,8 @@ export class ChatService {
 
       return {
         _id: savedMessage.id,
-        senderId: savedMessage.sender.id,
-        chatRoomId: savedMessage.chatRoom.id,
+        senderId: savedMessage.senderId,
+        chatRoomId: savedMessage.chatRoomId,
         text: savedMessage.text,
         createdAt: savedMessage.createdAt,
       };
@@ -94,13 +124,13 @@ export class ChatService {
   async getChatHistory(reqModel: ChatRoomIdRequestModel): Promise<MessageResponseModel[]> {
     try {
       const messages = await this.messageRepository.find({
-        where: { chatRoom: { id: reqModel.chatRoomId } },
-        relations: ['sender', 'chatRoom'],
+        where: { chatRoomId: reqModel.chatRoomId },
+        order: { createdAt: 'ASC' },
       });
       return messages.map((msg) => ({
         _id: msg.id,
-        senderId: msg.sender?.id ?? null,
-        chatRoomId: msg.chatRoom?.id ?? null,
+        senderId: msg.senderId,
+        chatRoomId: msg.chatRoomId,
         text: msg.text,
         createdAt: msg.createdAt,
       }));
@@ -113,18 +143,18 @@ export class ChatService {
     await this.transactionManager.startTransaction();
     try {
       const messageRepo = this.transactionManager.getRepository(this.messageRepository);
-      const updatedMessage = await messageRepo.findOne({ where: { id: reqModel.messageId }, relations: ['sender', 'chatRoom'] });
+      const message = await messageRepo.findOne({ where: { id: reqModel.messageId } });
 
-      if (!updatedMessage) {
+      if (!message) {
         throw new HttpException('Message not found', HttpStatus.NOT_FOUND);
       }
-      updatedMessage.text = reqModel.newText;
-      const savedMessage = await messageRepo.save(updatedMessage);
+      message.text = reqModel.newText;
+      const savedMessage = await messageRepo.save(message);
       await this.transactionManager.commitTransaction();
       return {
         _id: savedMessage.id,
-        senderId: savedMessage.sender.id,
-        chatRoomId: savedMessage.chatRoom.id,
+        senderId: savedMessage.senderId,
+        chatRoomId: savedMessage.chatRoomId,
         text: savedMessage.text,
         createdAt: savedMessage.createdAt,
       };
@@ -153,7 +183,7 @@ export class ChatService {
   async getAllUsers(): Promise<CommonResponse> {
     try {
       const users = await this.userRepository.find({
-        select: ['id', 'username', 'email', 'profilePicture']
+        select: ['id', 'username', 'email', 'profilePicture'],
       });
       return new CommonResponse(true, 200, 'Users retrieved successfully', users);
     } catch (error) {
@@ -163,17 +193,14 @@ export class ChatService {
 
   async getMessageById(reqModel: MessegeIdRequestModel): Promise<CommonResponse> {
     try {
-      const message = await this.messageRepository.findOne({
-        where: { id: reqModel.messageId },
-        relations: ['sender', 'chatRoom'],
-      });
+      const message = await this.messageRepository.findOne({ where: { id: reqModel.messageId } });
       if (!message) {
         return new CommonResponse(false, 404, 'Message not found', null);
       }
       return new CommonResponse(true, 200, 'Message retrieved successfully', {
         _id: message.id,
-        senderId: message.sender.id,
-        chatRoomId: message.chatRoom.id,
+        senderId: message.senderId,
+        chatRoomId: message.chatRoomId,
         text: message.text,
         createdAt: message.createdAt,
       });
@@ -184,21 +211,34 @@ export class ChatService {
 
   async getChatRoomsForUser(reqModel: UserIdRequestModel): Promise<CommonResponse> {
     try {
-      const chatRooms = await this.chatRoomRepository.find({
-        where: { participants: { id: reqModel.userId } },
-        relations: ['participants'],
+      // Find chat rooms where user is a participant
+      const participants = await this.participantRepository.find({
+        where: { userId: reqModel.userId },
       });
-
-      if (!chatRooms || chatRooms.length === 0) {
+      const chatRoomIds = participants.map((p) => p.chatRoomId);
+      if (!chatRoomIds.length) {
         return new CommonResponse(false, 404, 'No chat rooms found for user', []);
       }
-      const chatRoomResponses = chatRooms.map((room) => ({
-        _id: room.id,
-        participants: room.participants.map((p) => p.id),
-        name: room.name,
-        isGroup: room.isGroup,
-        lastMessage: room.lastMessage,
-      }));
+
+      const chatRooms = await this.chatRoomRepository.find({
+        where: { id: In(chatRoomIds) },
+      });
+
+      const chatRoomResponses = await Promise.all(
+        chatRooms.map(async (room) => {
+          const roomParticipants = await this.participantRepository.find({
+            where: { chatRoomId: room.id },
+          });
+          return {
+            _id: room.id,
+            participantIds: roomParticipants.map((p) => p.userId),
+            name: room.name,
+            isGroup: room.isGroup,
+            lastMessage: room.lastMessage,
+          };
+        }),
+      );
+
       return new CommonResponse(true, 200, 'Chat rooms fetched successfully', chatRoomResponses);
     } catch (error) {
       return new CommonResponse(false, 500, 'Error fetching chat rooms', []);
@@ -207,23 +247,34 @@ export class ChatService {
 
   async createChatRoom(reqModel: CreateChatRoomModel): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
-
     try {
-      const participants = await this.userRepository.findByIds(reqModel.participants);
-      if (!participants || participants.length === 0) {
-        await this.transactionManager.rollbackTransaction();
-        return new CommonResponse(false, 400, 'No participants found', null);
+      const participantRepo = this.transactionManager.getRepository(this.participantRepository);
+      const chatRoomRepo = this.transactionManager.getRepository(this.chatRoomRepository);
+
+      const participants = await this.userRepository.find({
+        where: { id: In(reqModel.participants) },
+      });
+      if (!participants.length) {
+        throw new HttpException('No participants found', HttpStatus.BAD_REQUEST);
       }
-      const newChatRoom = this.chatRoomRepository.create({
-        participants,
+
+      const newChatRoom = chatRoomRepo.create({
         name: reqModel.name || '',
         isGroup: reqModel.participants.length > 1,
       });
-      const savedChatRoom = await this.chatRoomRepository.save(newChatRoom);
+      const savedChatRoom = await chatRoomRepo.save(newChatRoom);
+
+      // Add participants
+      const participantEntries = reqModel.participants.map((userId) => ({
+        chatRoomId: savedChatRoom.id,
+        userId,
+      }));
+      await participantRepo.save(participantEntries);
+
       await this.transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'Chat room created successfully', {
         _id: savedChatRoom.id,
-        participants: savedChatRoom.participants.map((p) => p.id),
+        participantIds: reqModel.participants,
         name: savedChatRoom.name,
         isGroup: savedChatRoom.isGroup,
         lastMessage: savedChatRoom.lastMessage,
@@ -234,11 +285,12 @@ export class ChatService {
     }
   }
 
-  async sendPrivateMessage(reqModel: PrivateMessageDto): Promise<CommonResponse> {
+  async sendPrivateMessage(reqModel: PrivateMessegeModel): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
     try {
       const messageRepo = this.transactionManager.getRepository(this.messageRepository);
       const chatRoomRepo = this.transactionManager.getRepository(this.chatRoomRepository);
+      const participantRepo = this.transactionManager.getRepository(this.participantRepository);
 
       const sender = await this.userRepository.findOne({ where: { id: reqModel.senderId } });
       const receiver = await this.userRepository.findOne({ where: { id: reqModel.receiverId } });
@@ -246,29 +298,44 @@ export class ChatService {
         throw new HttpException('Sender or receiver not found', HttpStatus.NOT_FOUND);
       }
 
-      let chatRoom = await chatRoomRepo.findOne({
-        where: {
-          isGroup: false,
-          participants: { id: In([reqModel.senderId, reqModel.receiverId]) },
-        },
-        relations: ['participants'],
-      });
+      // Find private chat room (exactly two participants: sender and receiver)
+      const senderRooms = await participantRepo.find({ where: { userId: reqModel.senderId } });
+      const receiverRooms = await participantRepo.find({ where: { userId: reqModel.receiverId } });
+      const commonRoomIds = senderRooms
+        .map((p) => p.chatRoomId)
+        .filter((id) => receiverRooms.some((rp) => rp.chatRoomId === id));
+
+      let chatRoom: ChatRoomEntity | null = null;
+      for (const roomId of commonRoomIds) {
+        const room = await chatRoomRepo.findOne({ where: { id: roomId, isGroup: false } });
+        if (room) {
+          const participants = await participantRepo.find({ where: { chatRoomId: roomId } });
+          if (participants.length === 2) {
+            chatRoom = room;
+            break;
+          }
+        }
+      }
 
       if (!chatRoom) {
         chatRoom = chatRoomRepo.create({
-          participants: [sender, receiver],
           isGroup: false,
           lastMessage: reqModel.text,
         });
         chatRoom = await chatRoomRepo.save(chatRoom);
+
+        await participantRepo.save([
+          { chatRoomId: chatRoom.id, userId: reqModel.senderId },
+          { chatRoomId: chatRoom.id, userId: reqModel.receiverId },
+        ]);
       } else {
         await chatRoomRepo.update(chatRoom.id, { lastMessage: reqModel.text });
       }
 
       const newMessage = messageRepo.create({
-        sender,
-        receiver,
-        chatRoom,
+        senderId: reqModel.senderId,
+        receiverId: reqModel.receiverId,
+        chatRoomId: chatRoom.id,
         text: reqModel.text,
         createdAt: new Date(),
         status: 'delivered',
@@ -279,9 +346,9 @@ export class ChatService {
 
       return new CommonResponse(true, 200, 'Private message sent successfully', {
         _id: savedMessage.id,
-        senderId: savedMessage.sender.id,
-        receiverId: savedMessage.receiver?.id,
-        chatRoomId: savedMessage.chatRoom.id,
+        senderId: savedMessage.senderId,
+        receiverId: savedMessage.receiverId,
+        chatRoomId: savedMessage.chatRoomId,
         text: savedMessage.text,
         createdAt: savedMessage.createdAt,
       });
@@ -295,17 +362,16 @@ export class ChatService {
     try {
       const messages = await this.messageRepository.find({
         where: [
-          { sender: { id: reqModel.senderId }, receiver: { id: reqModel.receiverId } },
-          { sender: { id: reqModel.receiverId }, receiver: { id: reqModel.senderId } },
+          { senderId: reqModel.senderId, receiverId: reqModel.receiverId },
+          { senderId: reqModel.receiverId, receiverId: reqModel.senderId },
         ],
-        relations: ['sender', 'receiver', 'chatRoom'],
         order: { createdAt: 'ASC' },
       });
       return messages.map((msg) => ({
         _id: msg.id,
-        senderId: msg.sender?.id ?? null,
-        receiverId: msg.receiver?.id ?? null,
-        chatRoomId: msg.chatRoom?.id ?? null,
+        senderId: msg.senderId,
+        receiverId: msg.receiverId,
+        chatRoomId: msg.chatRoomId,
         text: msg.text,
         createdAt: msg.createdAt,
       }));
@@ -317,28 +383,31 @@ export class ChatService {
   async initiateCall(callerId: string, userToCall: string, signalData: RTCSessionDescriptionInit): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
     try {
+      const callRepo = this.transactionManager.getRepository(this.callRepository);
+
       const caller = await this.userRepository.findOne({ where: { id: callerId } });
       const receiver = await this.userRepository.findOne({ where: { id: userToCall } });
-
       if (!caller || !receiver) {
         throw new HttpException('Caller or receiver not found', HttpStatus.NOT_FOUND);
       }
 
-      const newCall = new CallEntity();
-      newCall.caller = caller;
-      newCall.receiver = receiver;
-      newCall.callType = 'video';
-      newCall.status = 'ongoing';
+      const newCall = callRepo.create({
+        callerId,
+        receiverId: userToCall,
+        callType: 'video',
+        status: 'ongoing',
+        signalData: JSON.stringify(signalData),
+      });
 
-      const savedCall = await this.callRepository.save(newCall);
+      const savedCall = await callRepo.save(newCall);
       await this.transactionManager.commitTransaction();
 
       return new CommonResponse(true, 200, 'Call initiated successfully', {
         callId: savedCall.id,
-        callerId: savedCall.caller.id,
-        receiverId: savedCall.receiver.id,
+        callerId: savedCall.callerId,
+        receiverId: savedCall.receiverId,
         callType: savedCall.callType,
-        signalData: signalData,
+        signalData,
         status: savedCall.status,
       });
     } catch (error) {
@@ -350,21 +419,19 @@ export class ChatService {
   async answerCall(callId: string, signalData: RTCSessionDescriptionInit, answererId: string): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
     try {
-      const call = await this.callRepository.findOne({
-        where: { id: callId },
-        relations: ['caller', 'receiver']
-      });
+      const callRepo = this.transactionManager.getRepository(this.callRepository);
+      const call = await callRepo.findOne({ where: { id: callId } });
 
       if (!call) {
         throw new HttpException('Call not found', HttpStatus.NOT_FOUND);
       }
 
-      if (call.receiver.id !== answererId) {
+      if (call.receiverId !== answererId) {
         throw new HttpException('Unauthorized to answer this call', HttpStatus.UNAUTHORIZED);
       }
 
-      const updatedCall = await this.callRepository.update(callId, {
-        status: 'ongoing', // Changed from 'accepted' to 'ongoing'
+      const updatedCall = await callRepo.update(callId, {
+        status: 'ongoing',
         answerTime: new Date(),
         signalData: JSON.stringify(signalData),
       });
@@ -390,30 +457,27 @@ export class ChatService {
   async handleIceCandidate(callId: string, candidate: RTCIceCandidateInit, userId: string): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
     try {
-      const call = await this.callRepository.findOne({
-        where: { id: callId },
-        relations: ['caller', 'receiver']
-      });
+      const callRepo = this.transactionManager.getRepository(this.callRepository);
+      const call = await callRepo.findOne({ where: { id: callId } });
 
       if (!call) {
         throw new HttpException('Call not found', HttpStatus.NOT_FOUND);
       }
 
-      if (call.caller.id !== userId && call.receiver.id !== userId) {
+      if (call.callerId !== userId && call.receiverId !== userId) {
         throw new HttpException('Unauthorized to modify this call', HttpStatus.UNAUTHORIZED);
       }
 
-      // Store ICE candidates - you might want to create a separate table for this in production
       const existingCandidates = call.iceCandidates ? JSON.parse(call.iceCandidates) : [];
       existingCandidates.push(candidate);
 
-      await this.callRepository.update(callId, {
-        iceCandidates: JSON.stringify(existingCandidates)
+      await callRepo.update(callId, {
+        iceCandidates: JSON.stringify(existingCandidates),
       });
 
       await this.transactionManager.commitTransaction();
 
-      return new CommonResponse(true, 200, 'ICE Ascending ICE candidates stored successfully', null);
+      return new CommonResponse(true, 200, 'ICE candidates stored successfully', null);
     } catch (error) {
       await this.transactionManager.rollbackTransaction();
       return new CommonResponse(false, 500, 'Error storing ICE candidates', null);
@@ -423,22 +487,26 @@ export class ChatService {
   async endCall(callId: string, userId: string): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();
     try {
-      const call = await this.callRepository.findOne({
-        where: { id: callId },
-        relations: ['caller', 'receiver']
-      });
+      const callRepo = this.transactionManager.getRepository(this.callRepository);
+      const call = await callRepo.findOne({ where: { id: callId } });
 
       if (!call) {
         throw new HttpException('Call not found', HttpStatus.NOT_FOUND);
       }
 
-      if (call.caller.id !== userId && call.receiver.id !== userId) {
+      if (call.callerId !== userId && call.receiverId !== userId) {
         throw new HttpException('Unauthorized to end this call', HttpStatus.UNAUTHORIZED);
       }
 
-      const updatedCall = await this.callRepository.update(callId, {
+      const endTime = new Date();
+      const duration = call.answerTime
+        ? Math.floor((endTime.getTime() - call.answerTime.getTime()) / 1000)
+        : 0;
+
+      const updatedCall = await callRepo.update(callId, {
         status: 'completed',
-        endTime: new Date()
+        endTime,
+        duration,
       });
 
       if (!updatedCall.affected) {
@@ -450,7 +518,8 @@ export class ChatService {
       return new CommonResponse(true, 200, 'Call ended successfully', {
         callId,
         status: 'completed',
-        endTime: new Date()
+        endTime,
+        duration,
       });
     } catch (error) {
       await this.transactionManager.rollbackTransaction();

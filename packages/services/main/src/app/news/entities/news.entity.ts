@@ -1,6 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { UserEntity } from 'src/app/authentication/entities/user.entity';
-import { NewsCommentEntity } from './comment.entity';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('news')
 export class NewsEntity {
@@ -49,20 +47,20 @@ export class NewsEntity {
   @Column({ type: 'int', default: 0 })
   likes: number;
 
-  @Column({ type: 'int', default: 0 }) 
+  @Column({ type: 'int', default: 0 })
   dislikes: number;
 
-  @Column({ type: 'int', default: 0 }) 
+  @Column({ type: 'int', default: 0 })
   shares: number;
 
-  @Column({ type: 'boolean', default: false }) 
+  @Column({ type: 'boolean', default: false })
   isImportant: boolean;
 
-  @OneToMany(() => NewsCommentEntity, (comment) => comment.news, { cascade: true })
-  comments: NewsCommentEntity[];
+  @Column({ type: 'varchar', nullable: false })
+  authorId: string; // Replaced ManyToOne with plain column
 
-  @ManyToOne(() => UserEntity, (user) => user.news, { nullable: false })
-  author: UserEntity;
+  @Column({ type: 'json', nullable: true })
+  commentIds: string[]; // Optional: store comment IDs as JSON array
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   seoTitle: string;

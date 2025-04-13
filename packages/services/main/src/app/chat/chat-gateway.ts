@@ -3,7 +3,6 @@ import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
 import { Logger } from '@nestjs/common';
 import { CreateMessageModel, PrivateMessegeModel } from '@in-one/shared-models';
-import { PrivateMessageDto } from './dto\'s/private-messege-model';
 
 type RTCSessionDescriptionInit = {
   type?: 'offer' | 'answer' | 'rollback';
@@ -55,7 +54,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('sendMessage')
-  async handleSendMessage(@MessageBody() data: { message: PrivateMessageDto }, @ConnectedSocket() socket: Socket) {
+  async handleSendMessage(@MessageBody() data: { message: PrivateMessegeModel }, @ConnectedSocket() socket: Socket) {
     try {
       const response = await this.chatService.sendPrivateMessage(data.message);
       if (!response.status || !response.data) throw new Error('Failed to send private message');

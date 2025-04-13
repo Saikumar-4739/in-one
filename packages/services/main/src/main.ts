@@ -1,15 +1,16 @@
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app/app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { Logger, ValidationPipe } from '@nestjs/common';
+import { ClassSerializerInterceptor, Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as express from 'express';
 import { join } from 'path';
 import rateLimit from 'express-rate-limit';
+import * as bodyParser from 'body-parser';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  
+
   try {
     // Create NestJS application
     const app = await NestFactory.create(AppModule, {
@@ -17,10 +18,10 @@ async function bootstrap() {
       abortOnError: false,
     });
 
-    // Get configuration service
     const configService = app.get(ConfigService);
 
-    // CORS Configuration
+    // Get configuration service
+
     app.enableCors({
       origin: configService.get<string>('CORS_ORIGIN', '*'),
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -30,14 +31,12 @@ async function bootstrap() {
       maxAge: 3600,
     });
 
-    // Global Validation Pipe
-    app.useGlobalPipes(
-      new ValidationPipe({
-        transform: true,
-        whitelist: true,
-        forbidNonWhitelisted: true,
-      }),
-    );
+    const reflector = app.get(Reflector);
+    app.use(bodyParser.urlencoded({ limit: configService.get('maxPayloadSize'), extended: true }));
+    app.use(bodyParser.json({ limit: configService.get('maxPayloadSize') }));
+    app.useGlobalPipes(new ValidationPipe({ validationError: { target: false }, transform: true, forbidUnknownValues: false }));
+    app.useGlobalInterceptors(new ClassSerializerInterceptor(reflector));
+
 
     // Static Files Serving
     const uploadsPath = join(__dirname, '..', 'uploads');

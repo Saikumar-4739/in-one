@@ -8,6 +8,7 @@ import {
   FolderOutlined,
   SearchOutlined,
   ShareAltOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import './notes-page.css';
@@ -25,6 +26,8 @@ const NotesPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedColor, setSelectedColor] = useState<string>('#ffffff');
   const [previewNote, setPreviewNote] = useState<any | null>(null);
+  const [isClearModalVisible, setIsClearModalVisible] = useState(false);
+  const [contentLength, setContentLength] = useState(0);
   const [userId] = useState<string | null>(() => localStorage.getItem('userId') || null);
   const notesService = new NotesHelpService();
 
@@ -81,7 +84,7 @@ const NotesPage: React.FC = () => {
           values.title,
           values.content,
           userId,
-          [], // No attachments
+          [],
           false,
           false,
           undefined,
@@ -114,6 +117,7 @@ const NotesPage: React.FC = () => {
       color: note.color || '#ffffff',
     });
     setSelectedColor(note.color || '#ffffff');
+    setContentLength(note.content.length);
   };
 
   const handlePinToggle = async (id: string) => {
@@ -149,6 +153,20 @@ const NotesPage: React.FC = () => {
     setPreviewNote(note);
   };
 
+  // const handleClearAllNotes = async () => {
+  //   if (!userId) return;
+  //   try {
+  //     // Assuming NotesHelpService has a method to clear all notes
+  //     await notesService.clearAllNotes(userId);
+  //     setNotes([]);
+  //     fetchNotes();
+  //     message.success('All notes cleared successfully');
+  //   } catch (error) {
+  //     console.error('Error clearing notes:', error);
+  //     message.error('Failed to clear all notes');
+  //   }
+  // };
+
   const filteredNotes = notes.filter(
     (note) =>
       note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -176,6 +194,15 @@ const NotesPage: React.FC = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="search-input"
             />
+            <Button
+              type="default"
+              icon={<DeleteOutlined />}
+              onClick={() => setIsClearModalVisible(true)}
+              className="clear-all-btn"
+              disabled={notes.length === 0}
+            >
+              Clear All
+            </Button>
           </Space>
         </div>
 
@@ -191,9 +218,19 @@ const NotesPage: React.FC = () => {
             <Form.Item name="title" rules={[{ required: true, message: 'Please enter a title' }]}>
               <Input placeholder="Title" className="form-title" />
             </Form.Item>
-            <Form.Item name="content" rules={[{ required: true, message: 'Please enter content' }]}>
-              <TextArea rows={4} placeholder="Take a note..." className="form-content" />
+            <Form.Item
+              name="content"
+              rules={[{ required: true, message: 'Please enter content' }]}
+            >
+              <TextArea
+                rows={4}
+                placeholder="Take a note..."
+                className="form-content"
+                maxLength={500}
+                onChange={(e) => setContentLength(e.target.value.length)}
+              />
             </Form.Item>
+            <div className="content-counter">{contentLength}/500</div>
             <Form.Item name="color" label="Color">
               <Select value={selectedColor} onChange={setSelectedColor}>
                 {colors.map((color) => (
@@ -215,20 +252,23 @@ const NotesPage: React.FC = () => {
               </Select>
             </Form.Item>
             <Form.Item>
-              <Button type="primary" htmlType="submit" className="save-btn">
-                {editingNoteId ? 'Update' : 'Save'}
-              </Button>
-              <Button
-                onClick={() => {
-                  setIsFormVisible(false);
-                  setEditingNoteId(null);
-                  form.resetFields();
-                  setSelectedColor('#ffffff');
-                }}
-                className="cancel-btn"
-              >
-                Cancel
-              </Button>
+              <Space>
+                <Button type="primary" htmlType="submit" className="action-btn save-btn">
+                  {editingNoteId ? 'Update' : 'Save'}
+                </Button>
+                <Button
+                  onClick={() => {
+                    setIsFormVisible(false);
+                    setEditingNoteId(null);
+                    form.resetFields();
+                    setSelectedColor('#ffffff');
+                    setContentLength(0);
+                  }}
+                  className="action-btn cancel-btn"
+                >
+                  Cancel
+                </Button>
+              </Space>
             </Form.Item>
           </Form>
         </motion.div>
@@ -248,8 +288,9 @@ const NotesPage: React.FC = () => {
                 setEditingNoteId(null);
                 form.resetFields();
                 setIsFormVisible(true);
+                setContentLength(0);
               }}
-              className="add-note-btn"
+              className="action-btn add-note-btn"
             >
               Add Note
             </Button>
@@ -281,20 +322,32 @@ const NotesPage: React.FC = () => {
                     <PushpinOutlined
                       key="pin"
                       className={note.isPinned ? 'pinned-icon' : ''}
-                      onClick={(e) => { e.stopPropagation(); handlePinToggle(note.id); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePinToggle(note.id);
+                      }}
                     />,
                     <EditOutlined
                       key="edit"
-                      onClick={(e) => { e.stopPropagation(); handleEdit(note); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(note);
+                      }}
                     />,
                     <FolderOutlined
                       key="archive"
                       className={note.isArchived ? 'archived-icon' : ''}
-                      onClick={(e) => { e.stopPropagation(); handleArchiveToggle(note.id); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleArchiveToggle(note.id);
+                      }}
                     />,
                     <ShareAltOutlined
                       key="share"
-                      onClick={(e) => { e.stopPropagation(); handleShare(note); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleShare(note);
+                      }}
                     />,
                   ]}
                 >
@@ -315,10 +368,10 @@ const NotesPage: React.FC = () => {
         {/* Preview Modal */}
         <Modal
           title={previewNote?.title}
-          visible={!!previewNote}
+          open={!!previewNote}
           onCancel={() => setPreviewNote(null)}
           footer={[
-            <Button key="close" onClick={() => setPreviewNote(null)}>
+            <Button key="close" onClick={() => setPreviewNote(null)} className="action-btn">
               Close
             </Button>,
           ]}
@@ -341,6 +394,23 @@ const NotesPage: React.FC = () => {
               </div>
             )}
           </div>
+        </Modal>
+
+        {/* Clear All Confirmation Modal */}
+        <Modal
+          title="Clear All Notes"
+          open={isClearModalVisible}
+          onOk={() => {
+            // handleClearAllNotes();
+            setIsClearModalVisible(false);
+          }}
+          onCancel={() => setIsClearModalVisible(false)}
+          okText="Confirm"
+          cancelText="Cancel"
+          okButtonProps={{ className: 'action-btn save-btn' }}
+          cancelButtonProps={{ className: 'action-btn cancel-btn' }}
+        >
+          <p>Are you sure you want to delete all your notes? This action cannot be undone.</p>
         </Modal>
       </div>
     </div>
