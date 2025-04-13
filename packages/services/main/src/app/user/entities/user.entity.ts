@@ -27,9 +27,6 @@ export class UserEntity {
   @Column({ type: 'timestamp', nullable: true })
   lastSeen: Date;
 
-  @Column({ type: 'json', nullable: true }) // Changed from 'jsonb' to 'json'
-  screenPreferences: { [key: string]: boolean };
-
   @Column({ nullable: true })
   resetPasswordOtp: string;
 

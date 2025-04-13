@@ -7,8 +7,4 @@ export class UserRepository extends Repository<UserEntity> {
   constructor(private dataSource: DataSource) {
     super(UserEntity, dataSource.createEntityManager());
   }
-
-  async findByIdWithPreferences(userId: string): Promise<UserEntity | null> {
-    return this.findOne({ where: { id: userId }, select: ['id', 'role', 'screenPreferences'] });
-  }
 }

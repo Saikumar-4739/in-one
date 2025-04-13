@@ -1,5 +1,4 @@
-// src/services/user.service.ts
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import * as nodemailer from 'nodemailer';
@@ -78,14 +77,53 @@ export class UserService {
         from: process.env.EMAIL_USER,
         to: reqModel.email,
         subject: 'Welcome to Our Platform!',
-        html: `
-        <html>
-        <body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; text-align: center;">
-            <h2 style="color: #333;">Hello, ${reqModel.username}!</h2>
-            <p style="color: #555;">Welcome to our platform!</p>
-            <p style="color: #777;">Best Regards,<br><strong>Your Team</strong></p>
-        </body>
-        </html>`,
+        html: `<!DOCTYPE html>
+               <html>
+                     <body style="margin: 0; padding: 0; background-color: #ffffff;">
+                        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #ffffff; padding: 20px 0;">
+                          <tr>
+                            <td align="center">
+                               <table width="600" style="background-color: #ffffff; border-radius: 10px; overflow: hidden;">
+                                  <!-- Header Section -->
+                                    <tr>
+                                  <td style="padding: 30px 20px; text-align: center; background-color: #8a2be2; border-top-left-radius: 10px; border-top-right-radius: 10px;">
+                               <h1 style="margin: 0; font-size: 30px; color: #ffffff; font-family: Arial, sans-serif;"> Welcome to In-One! </h1>
+                             </td>
+                       </tr>
+            <!-- Content Section -->
+            <tr>
+              <td style="padding: 30px 30px; text-align: center;">
+                <h2 style="font-size: 24px; margin: 0 0 20px; color: #333333; font-family: Arial, sans-serif;">
+                  Hello, ${reqModel.username}!
+                </h2>
+                <p style="font-size: 16px; color: #555555; margin: 10px 0 30px; font-family: Arial, sans-serif;">
+                  We're thrilled to have you with us. Get ready to explore all the amazing features our platform has to offer.
+                </p>
+                <a href="https://in-one.com" style="background-color: #8a2be2; color: #ffffff; padding: 12px 25px; text-decoration: none; border-radius: 6px; font-size: 16px; font-family: Arial, sans-serif;">
+                  Get Started
+                </a>
+              </td>
+            </tr>
+            <!-- Footer Section -->
+            <tr>
+              <td style="padding: 20px 30px; text-align: center; background-color: #f9f9f9;">
+                <p style="font-size: 16px; color: #888888; margin: 0; font-family: Arial, sans-serif;">
+                  Best Regards,<br><strong>In-One Team</strong>
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 30px; text-align: center; font-size: 12px; color: #aaaaaa; font-family: Arial, sans-serif;">
+                © 2025 In-One. All rights reserved.
+              </td>
+            </tr>
+          </table>
+        </td>
+           </tr>
+           </table>
+           </body>
+        </html>
+       `
       };
       await transporter.sendMail(mailOptions);
     } catch (error) {
@@ -247,26 +285,69 @@ export class UserService {
       if (!reqModel?.email) {
         return new CommonResponse(false, 400, 'Email is required');
       }
+
       const user = await this.userRepository.findOne({ where: { email: reqModel.email } });
       if (!user) {
         return new CommonResponse(false, 404, 'User not found');
       }
 
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      const resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000);
+      const resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
-      await this.userRepository.update(user.id, { resetPasswordOtp: otp, resetPasswordExpires });
+      await this.userRepository.update(user.id, {
+        resetPasswordOtp: otp,
+        resetPasswordExpires,
+      });
 
       const transporter = nodemailer.createTransport({
         service: 'gmail',
-        auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
       });
 
       await transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: user.email,
         subject: 'Password Reset OTP',
-        text: `Your OTP for password reset is ${otp}. It expires in 15 minutes.`,
+        html: `<!DOCTYPE html>
+  <html>
+    <body style="margin: 0; padding: 0; background-color: #ffffff;">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" style="padding: 20px 0; background-color: #ffffff;">
+              <!-- OTP Section -->
+              <tr>
+                <td style="padding: 30px; text-align: center;">
+                  <p style="font-size: 18px; color: #333333; font-family: Arial, sans-serif; margin: 0 0 20px;">
+                    Your One-Time Password (OTP) for password reset is:
+                  </p>
+                  <div style="display: inline-block; background-color: #f2f2f2; padding: 15px 30px; border-radius: 8px; font-size: 24px; font-weight: bold; color: #8a2be2; font-family: monospace; letter-spacing: 2px;">
+                    ${otp}
+                  </div>
+                  <p style="font-size: 16px; color: #666666; font-family: Arial, sans-serif; margin-top: 25px;">
+                    This code will expire in <strong>15 minutes</strong>. Please do not share it with anyone.
+                  </p>
+                </td>
+              </tr>
+              <!-- Footer -->
+              <tr>
+                <td style="padding: 20px; text-align: center; background-color: #f9f9f9;">
+                  <p style="font-size: 14px; color: #999999; font-family: Arial, sans-serif; margin: 0;">
+                    If you did not request a password reset, please ignore this message.
+                  </p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; text-align: center; font-size: 12px; color: #aaaaaa; font-family: Arial, sans-serif;">
+                  © 2025 In-One. All rights reserved.
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+  </html>`,
       });
 
       return new CommonResponse(true, 200, 'OTP sent successfully');
@@ -275,6 +356,7 @@ export class UserService {
       return new CommonResponse(false, 500, 'Error sending OTP');
     }
   }
+
 
   async resetPassword(reqModel: ResetPassowordModel): Promise<CommonResponse> {
     await this.transactionManager.startTransaction();

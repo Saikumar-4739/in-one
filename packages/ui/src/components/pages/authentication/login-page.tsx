@@ -58,9 +58,7 @@ const LoginPage: React.FC = () => {
     const loginData = new UserLoginModel(email, encryptedPassword);
 
     try {
-      console.log('Login payload:', loginData);
       const response: CommonResponse = await userService.loginUser(loginData);
-      console.log('Login response:', response);
       if (response.status && response.data?.accessToken) {
         message.success('Login successful!');
         localStorage.setItem('token', response.data.accessToken);
@@ -76,12 +74,10 @@ const LoginPage: React.FC = () => {
         window.dispatchEvent(new Event('storage'));
         navigate('/home', { replace: true });
       } else {
-        message.error(response.internalMessage || 'Invalid credentials.');
+        message.error(response.internalMessage);
       }
     } catch (error: any) {
-      console.error('Login error:', error.response || error);
-      const errorMessage = error.response?.data?.message || 'An error occurred during login.';
-      message.error(errorMessage);
+      message.error(error);
     } finally {
       setLoading(false);
     }
@@ -109,10 +105,10 @@ const LoginPage: React.FC = () => {
         setUsername("");
         setProfilePicture("");
       } else {
-        message.error(response.internalMessage || "Sign-up failed.");
+        message.error(response.internalMessage);
       }
     } catch (error) {
-      message.error("An error,引导 occurred. Please try again.");
+      message.error("An error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -129,9 +125,9 @@ const LoginPage: React.FC = () => {
       const response: CommonResponse = await userService.forgotPassword(req);
 
       if (response.status) {
-        message.success("Password reset link sent to your email.");
+        message.success("Reset Password Otp sent to your email.");
         setForgotPasswordModal(false);
-        setResetPasswordModal(true); // Open OTP and new password modal
+        setResetPasswordModal(true);
       } else {
         message.error(response.internalMessage || "Email not found.");
       }
@@ -146,7 +142,6 @@ const LoginPage: React.FC = () => {
       return;
     }
 
-    // Optionally, you can reuse the same password validation regex here
     const passwordRegex = /^(?=(.*[a-z]){2,})(?=(.*[A-Z]){1,})(?=(.*\d){1,})(?=(.*[@$!%*?&\#_\-\+\/]){1,})[A-Za-z\d@$!%*?&\#_\-\+\/]{8,}$/;
     if (!passwordRegex.test(newPassword)) {
       message.error("Invalid Password Format");
