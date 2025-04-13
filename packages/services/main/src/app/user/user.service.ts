@@ -126,7 +126,6 @@ export class UserService {
         user: {
           id: user.id,
           email: user.email,
-          profilePicture: user.profilePicture,
           username: user.username,
           role: user.role,
         },

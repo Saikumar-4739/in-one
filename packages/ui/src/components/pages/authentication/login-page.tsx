@@ -67,8 +67,7 @@ const LoginPage: React.FC = () => {
         localStorage.setItem('username', response.data.user?.username || '');
         localStorage.setItem('email', response.data.user?.email || '');
         localStorage.setItem('userId', response.data.user?.id || '');
-        localStorage.setItem('profilePicture', response.data.user?.profilePicture || '');
-        localStorage.setItem('role', response.data.user?.role); // Store role
+        localStorage.setItem('role', response.data.user?.role);
         if (remember) {
           localStorage.setItem('rememberEmail', email);
         } else {
