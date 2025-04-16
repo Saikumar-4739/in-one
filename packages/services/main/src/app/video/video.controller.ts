@@ -4,6 +4,11 @@ import { ApiTags, ApiBody, ApiConsumes, ApiOperation } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { VideoService } from './video.service';
 import { multerOptions } from './multer.config';
+import { GetVideoByIdModel } from './models/get-video-by-id.model';
+
+interface GetVideoByIdDto {
+  videoId: string;
+}
 
 @ApiTags('Videos')
 @Controller('videos')
@@ -43,6 +48,16 @@ async uploadVideo(
       return await this.videoService.getAllVideos();
     } catch (error) {
       return ExceptionHandler.handleError(error, 'Error fetching videos');
+    }
+  }
+
+  @Post('getVideoById')
+  @ApiBody({ type: GetVideoByIdModel })
+  async getVideoById(@Body() reqModel: GetVideoByIdDto): Promise<CommonResponse> {
+    try {
+      return await this.videoService.getVideoById(reqModel);
+    } catch (error) {
+      return ExceptionHandler.handleError(error, 'Error fetching video');
     }
   }
 

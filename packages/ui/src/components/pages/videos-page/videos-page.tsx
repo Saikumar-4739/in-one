@@ -1,4 +1,3 @@
-// VideosPage.tsx
 import React, { useState, useEffect } from 'react';
 import {
   UpdateVideoModel,
@@ -264,7 +263,7 @@ const VideosPage: React.FC = () => {
         <AnimatePresence>
           <div className="video-grid">
             {videos.map((video) => {
-              const isLiked = video.likes
+              const isLiked = Array.isArray(video.likes)
                 ? video.likes.some((l) => l.user?.id === userId)
                 : false;
               return (

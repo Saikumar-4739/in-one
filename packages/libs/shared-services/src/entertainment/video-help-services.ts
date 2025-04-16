@@ -1,6 +1,6 @@
 import { AxiosRequestConfig } from 'axios';
 import { CommonAxiosService } from '../common-axios-service';
-import { CommonResponse, LikeVideoModel, UpdateVideoModel, VideoIdRequestModel } from '@in-one/shared-models';
+import { CommonResponse, LikeVideoModel, UpdateVideoModel, VideoIdRequestModel,GetVideoByIdModel  } from '@in-one/shared-models';
 import FormData from 'form-data';
 
 export class VideoHelpService extends CommonAxiosService {
@@ -42,4 +42,9 @@ export class VideoHelpService extends CommonAxiosService {
     async unlikeVideo(reqModel: LikeVideoModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
         return await this.axiosPostCall(this.getURLwithMainEndPoint('unlikeVideo'), reqModel, config);
     }
+
+    async getVideoById(reqModel: GetVideoByIdModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
+      return await this.axiosPostCall(this.getURLwithMainEndPoint('videos/getVideoById'), reqModel, config);
+    }
+
 }

@@ -8,12 +8,17 @@ import * as fs from 'fs';
 import { UserEntity } from '../user/entities/user.entity';
 import { VideoEntity } from './enitities/video.entity';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
+import { GetVideoByIdModel } from './models/get-video-by-id.model';
+import { CommentEntity } from '../masters/common-entities/comment.entity';
+import { LikeEntity } from '../masters/common-entities/like.entity';
 
 @Injectable()
 export class VideoService {
   constructor(
     @InjectRepository(VideoEntity) private readonly videoRepository: Repository<VideoEntity>,
     @InjectRepository(UserEntity) private readonly userRepository: Repository<UserEntity>,
+    @InjectRepository(CommentEntity) private readonly commentRepository: Repository<CommentEntity>,
+    @InjectRepository(LikeEntity) private readonly likeRepository: Repository<LikeEntity>,
     private readonly transactionManager: GenericTransactionManager,
     @Inject('CLOUDINARY') private readonly cloudinary: any,
   ) { }
@@ -130,6 +135,75 @@ export class VideoService {
       return new CommonResponse(false, 500, 'Failed to fetch videos');
     }
   }
+
+  async getVideoById(reqModel: GetVideoByIdModel): Promise<CommonResponse> {
+    try {
+      await this.transactionManager.startTransaction();
+      const videoRepo = this.transactionManager.getRepository(this.videoRepository);
+      const userRepo = this.transactionManager.getRepository(this.userRepository);
+      const commentRepo = this.transactionManager.getRepository(this.commentRepository);
+      const likeRepo = this.transactionManager.getRepository(this.likeRepository);
+
+      const video = await videoRepo.findOne({ where: { id: reqModel.videoId } });
+      if (!video) {
+        throw new Error('Video not found');
+      }
+
+      const author = await userRepo.findOne({ where: { id: video.userId } });
+      if (!author) {
+        throw new Error('Author not found');
+      }
+
+      const comments = await commentRepo.find({ where: { videoId: reqModel.videoId } });
+      const likes = await likeRepo.find({ where: { videoId: reqModel.videoId } });
+
+      // Fetch authors for comments
+      const commentAuthors = await Promise.all(
+        comments.map(async (comment) => {
+          const commentAuthor = await userRepo.findOne({ where: { id: comment.userId } });
+          return {
+            id: comment.id,
+            content: comment.content,
+            createdAt: comment.createdAt.toISOString(),
+            author: commentAuthor
+              ? {
+                  id: commentAuthor.id,
+                  username: commentAuthor.username,
+                  avatarUrl: commentAuthor.profilePicture, // Map profilePicture to avatarUrl
+                }
+              : null,
+          };
+        }),
+      );
+
+      const formattedVideo = {
+        id: video.id,
+        videoUrl: video.videoUrl,
+        title: video.title,
+        description: video.description,
+        createdAt: video.createdAt.toISOString(),
+        views: video.views,
+        likes: likes.map((like) => ({ user: { id: like.userId } })),
+        author: {
+          id: author.id,
+          username: author.username,
+          avatarUrl: author.profilePicture, // Map profilePicture to avatarUrl
+        },
+        comments: commentAuthors.filter((comment) => comment.author !== null),
+      };
+
+      await this.transactionManager.commitTransaction();
+      return new CommonResponse(true, 200, 'Video retrieved successfully', formattedVideo);
+    } catch (error) {
+      console.error('Get video error:', error);
+      await this.transactionManager.rollbackTransaction();
+      return new CommonResponse(
+        false,
+        error instanceof Error && error.message.includes('not found') ? 404 : 500,
+        'Failed to fetch video'
+      );
+    }
+  }  
 
   async updateVideo(reqModel: UpdateVideoModel): Promise<CommonResponse> {
     try {
