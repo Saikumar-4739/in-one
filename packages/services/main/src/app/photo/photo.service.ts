@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { PhotoEntity } from './entities/photo.entity';
 import { UserEntity } from '../user/entities/user.entity';
 import { CommentEntity } from '../masters/common-entities/comment.entity';
@@ -11,6 +11,7 @@ import { Readable } from 'stream';
 import * as fs from 'fs';
 import * as cloudinaryInterface from '../masters/cloudinary/cloudinary.interface';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
+import { PhotoRepository } from './repository/photo.repository';
 
 interface CreateCommentModel {
   photoId: string;
@@ -25,11 +26,15 @@ interface CommentIdRequestModel {
 @Injectable()
 export class PhotoService {
   constructor(
-    @InjectRepository(PhotoEntity) private readonly photoRepository: Repository<PhotoEntity>,
-    @InjectRepository(UserEntity) private readonly userRepository: Repository<UserEntity>,
-    @InjectRepository(CommentEntity) private readonly commentRepository: Repository<CommentEntity>,
-    @InjectRepository(LikeEntity) private readonly likeRepository: Repository<LikeEntity>,
-    private readonly transactionManager: GenericTransactionManager,
+    private readonly dataSource: DataSource,
+    @InjectRepository(PhotoRepository)
+    private readonly photoRepository: PhotoRepository,
+    @InjectRepository(UserEntity)
+    private readonly userRepository: Repository<UserEntity>,
+    @InjectRepository(CommentEntity)
+    private readonly commentRepository: Repository<CommentEntity>,
+    @InjectRepository(LikeEntity)
+    private readonly likeRepository: Repository<LikeEntity>,
     @Inject('CLOUDINARY') private readonly cloudinary: cloudinaryInterface.CloudinaryService
   ) { }
 
@@ -79,20 +84,19 @@ export class PhotoService {
   }
 
   async createPhoto(reqModel: CreatePhotoModel, file: Express.Multer.File): Promise<CommonResponse> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      await this.transactionManager.startTransaction();
-      const photoRepo = this.transactionManager.getRepository(this.photoRepository);
-      const userRepo = this.transactionManager.getRepository(this.userRepository);
-
       // Validate userId
-      const user = await userRepo.findOne({ where: { id: reqModel.userId } });
+      const user = await this.userRepository.findOne({ where: { id: reqModel.userId } });
       if (!user) {
-        await this.transactionManager.rollbackTransaction();
-        return new CommonResponse(false, 404, 'User not found');
+        throw new Error('User not found');
       }
 
       const imageUrl = await this.uploadToCloudinary(file);
-      const newPhoto = photoRepo.create({
+
+      await transactionManager.startTransaction();
+
+      const newPhoto = transactionManager.getRepository(PhotoEntity).create({
         caption: reqModel.caption,
         imageUrl,
         userId: reqModel.userId,
@@ -101,13 +105,18 @@ export class PhotoService {
         commentsCount: 0,
       });
 
-      const savedPhoto = await photoRepo.save(newPhoto);
-      await this.transactionManager.commitTransaction();
+      const savedPhoto = await transactionManager.getRepository(PhotoEntity).save(newPhoto);
+      await transactionManager.commitTransaction();
+
       return new CommonResponse(true, 201, 'Photo uploaded successfully', savedPhoto);
     } catch (error) {
-      console.error('Create photo error:', error);
-      await this.transactionManager.rollbackTransaction();
-      return new CommonResponse(false, 500, 'Failed to upload photo');
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload photo';
+      return new CommonResponse(
+        false,
+        errorMessage.includes('not found') ? 404 : 500,
+        errorMessage
+      );
     }
   }
 
@@ -116,53 +125,50 @@ export class PhotoService {
       const photos = await this.photoRepository.find();
       return new CommonResponse(true, 200, 'Photos fetched successfully', photos);
     } catch (error) {
-      console.error('Get photos error:', error);
-      return new CommonResponse(false, 500, 'Failed to fetch photos');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch photos';
+      return new CommonResponse(false, 500, errorMessage);
     }
   }
 
   async updatePhoto(reqModel: UpdatePhotoModel): Promise<CommonResponse> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      await this.transactionManager.startTransaction();
-      const photoRepo = this.transactionManager.getRepository(this.photoRepository);
-
-      const photo = await photoRepo.findOne({ where: { id: reqModel.photoId } });
+      const photo = await this.photoRepository.findOne({ where: { id: reqModel.photoId } });
       if (!photo) {
-        await this.transactionManager.rollbackTransaction();
-        return new CommonResponse(false, 404, 'Photo not found');
+        throw new Error('Photo not found');
       }
+
+      await transactionManager.startTransaction();
 
       const updateData: Partial<PhotoEntity> = {};
       if (reqModel.caption !== undefined) updateData.caption = reqModel.caption;
       if (reqModel.visibility) updateData.visibility = reqModel.visibility;
 
-      await photoRepo.update(reqModel.photoId, updateData);
-      const updatedPhoto = await photoRepo.findOneOrFail({ where: { id: reqModel.photoId } });
-      await this.transactionManager.commitTransaction();
+      await transactionManager.getRepository(PhotoEntity).update(reqModel.photoId, updateData);
+      const updatedPhoto = await this.photoRepository.findOneOrFail({ where: { id: reqModel.photoId } });
+
+      await transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'Photo updated successfully', updatedPhoto);
     } catch (error) {
-      console.error('Update photo error:', error);
-      await this.transactionManager.rollbackTransaction();
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update photo';
       return new CommonResponse(
         false,
-        error instanceof Error && error.message.includes('not found') ? 404 : 500,
-        'Failed to update photo'
+        errorMessage.includes('not found') ? 404 : 500,
+        errorMessage
       );
     }
   }
 
   async deletePhoto(reqModel: PhotoIdRequestModel): Promise<CommonResponse> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      await this.transactionManager.startTransaction();
-      const photoRepo = this.transactionManager.getRepository(this.photoRepository);
-      const commentRepo = this.transactionManager.getRepository(this.commentRepository);
-      const likeRepo = this.transactionManager.getRepository(this.likeRepository);
-
-      const photo = await photoRepo.findOne({ where: { id: reqModel.photoId } });
+      const photo = await this.photoRepository.findOne({ where: { id: reqModel.photoId } });
       if (!photo) {
-        await this.transactionManager.rollbackTransaction();
-        return new CommonResponse(false, 404, 'Photo not found');
+        throw new Error('Photo not found');
       }
+
+      await transactionManager.startTransaction();
 
       const cloudinaryPublicId = photo.imageUrl.split('/').pop()?.split('.')[0];
       if (cloudinaryPublicId) {
@@ -170,163 +176,151 @@ export class PhotoService {
       }
 
       // Delete associated comments and likes
-      await commentRepo.delete({ photoId: reqModel.photoId });
-      await likeRepo.delete({ photoId: reqModel.photoId });
+      await transactionManager.getRepository(CommentEntity).delete({ photoId: reqModel.photoId });
+      await transactionManager.getRepository(LikeEntity).delete({ photoId: reqModel.photoId });
 
-      await photoRepo.delete({ id: reqModel.photoId });
-      await this.transactionManager.commitTransaction();
+      await transactionManager.getRepository(PhotoEntity).delete({ id: reqModel.photoId });
+      await transactionManager.commitTransaction();
+
       return new CommonResponse(true, 200, 'Photo deleted successfully');
     } catch (error) {
-      console.error('Delete photo error:', error);
-      await this.transactionManager.rollbackTransaction();
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete photo';
       return new CommonResponse(
         false,
-        error instanceof Error && error.message.includes('not found') ? 404 : 500,
-        'Failed to delete photo'
+        errorMessage.includes('not found') ? 404 : 500,
+        errorMessage
       );
     }
   }
 
   async likePhoto(reqModel: LikeRequestModel): Promise<CommonResponse> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      await this.transactionManager.startTransaction();
-      const photoRepo = this.transactionManager.getRepository(this.photoRepository);
-      const userRepo = this.transactionManager.getRepository(this.userRepository);
-      const likeRepo = this.transactionManager.getRepository(this.likeRepository);
-
-      // Validate userId
-      const user = await userRepo.findOne({ where: { id: reqModel.userId } });
+      // Validate userId and photoId
+      const user = await this.userRepository.findOne({ where: { id: reqModel.userId } });
       if (!user) {
-        await this.transactionManager.rollbackTransaction();
-        return new CommonResponse(false, 404, 'User not found');
+        throw new Error('User not found');
       }
 
-      const photo = await photoRepo.findOne({ where: { id: reqModel.photoId } });
+      const photo = await this.photoRepository.findOne({ where: { id: reqModel.photoId } });
       if (!photo) {
-        await this.transactionManager.rollbackTransaction();
-        return new CommonResponse(false, 404, 'Photo not found');
+        throw new Error('Photo not found');
       }
 
       // Check for existing like
-      const existingLike = await likeRepo.findOne({
+      const existingLike = await this.likeRepository.findOne({
         where: { userId: reqModel.userId, photoId: reqModel.photoId },
       });
       if (existingLike) {
-        await this.transactionManager.rollbackTransaction();
-        return new CommonResponse(false, 400, 'Photo already liked');
+        throw new Error('Photo already liked');
       }
 
+      await transactionManager.startTransaction();
+
       // Create like record
-      const like = likeRepo.create({
+      const like = transactionManager.getRepository(LikeEntity).create({
         userId: reqModel.userId,
         photoId: reqModel.photoId,
       });
-      await likeRepo.save(like);
+      await transactionManager.getRepository(LikeEntity).save(like);
 
       // Increment likes counter
-      await photoRepo.update(reqModel.photoId, { likes: photo.likes + 1 });
-      const updatedPhoto = await photoRepo.findOneOrFail({ where: { id: reqModel.photoId } });
+      await transactionManager.getRepository(PhotoEntity).update(reqModel.photoId, { likes: photo.likes + 1 });
+      const updatedPhoto = await transactionManager.getRepository(PhotoEntity).findOneOrFail({ where: { id: reqModel.photoId } });
 
-      await this.transactionManager.commitTransaction();
+      await transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'Photo liked successfully', updatedPhoto);
     } catch (error) {
-      console.error('Like photo error:', error);
-      await this.transactionManager.rollbackTransaction();
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Failed to like photo';
       return new CommonResponse(
         false,
-        error instanceof Error && error.message.includes('not found') ? 404 : 500,
-        'Failed to like photo'
+        errorMessage.includes('not found') || errorMessage.includes('already liked') ? 400 : 500,
+        errorMessage
       );
     }
   }
 
   async unlikePhoto(reqModel: LikeRequestModel): Promise<CommonResponse> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      await this.transactionManager.startTransaction();
-      const photoRepo = this.transactionManager.getRepository(this.photoRepository);
-      const userRepo = this.transactionManager.getRepository(this.userRepository);
-      const likeRepo = this.transactionManager.getRepository(this.likeRepository);
-
-      // Validate userId
-      const user = await userRepo.findOne({ where: { id: reqModel.userId } });
+      // Validate userId and photoId
+      const user = await this.userRepository.findOne({ where: { id: reqModel.userId } });
       if (!user) {
-        await this.transactionManager.rollbackTransaction();
-        return new CommonResponse(false, 404, 'User not found');
+        throw new Error('User not found');
       }
 
-      const photo = await photoRepo.findOne({ where: { id: reqModel.photoId } });
+      const photo = await this.photoRepository.findOne({ where: { id: reqModel.photoId } });
       if (!photo) {
-        await this.transactionManager.rollbackTransaction();
-        return new CommonResponse(false, 404, 'Photo not found');
+        throw new Error('Photo not found');
       }
 
-      // Find and delete like record
-      const like = await likeRepo.findOne({
+      // Find like record
+      const like = await this.likeRepository.findOne({
         where: { userId: reqModel.userId, photoId: reqModel.photoId },
       });
       if (!like) {
-        await this.transactionManager.rollbackTransaction();
-        return new CommonResponse(false, 404, 'Like not found');
+        throw new Error('Like not found');
       }
 
-      await likeRepo.delete({ id: like.id });
+      await transactionManager.startTransaction();
+
+      // Delete like record
+      await transactionManager.getRepository(LikeEntity).delete({ id: like.id });
 
       // Decrement likes counter, ensuring it doesn't go below 0
       const newLikes = photo.likes > 0 ? photo.likes - 1 : 0;
-      await photoRepo.update(reqModel.photoId, { likes: newLikes });
-      const updatedPhoto = await photoRepo.findOneOrFail({ where: { id: reqModel.photoId } });
+      await transactionManager.getRepository(PhotoEntity).update(reqModel.photoId, { likes: newLikes });
+      const updatedPhoto = await this.photoRepository.findOneOrFail({ where: { id: reqModel.photoId } });
 
-      await this.transactionManager.commitTransaction();
+      await transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'Photo unliked successfully', updatedPhoto);
     } catch (error) {
-      console.error('Unlike photo error:', error);
-      await this.transactionManager.rollbackTransaction();
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Failed to unlike photo';
       return new CommonResponse(
         false,
-        error instanceof Error && error.message.includes('not found') ? 404 : 500,
-        'Failed to unlike photo'
+        errorMessage.includes('not found') ? 400 : 500,
+        errorMessage
       );
     }
   }
 
   async createComment(reqModel: CreateCommentModel): Promise<CommonResponse> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      await this.transactionManager.startTransaction();
-      const photoRepo = this.transactionManager.getRepository(this.photoRepository);
-      const commentRepo = this.transactionManager.getRepository(this.commentRepository);
-      const userRepo = this.transactionManager.getRepository(this.userRepository);
-
-      // Validate userId
-      const user = await userRepo.findOne({ where: { id: reqModel.userId } });
+      // Validate userId and photoId
+      const user = await this.userRepository.findOne({ where: { id: reqModel.userId } });
       if (!user) {
-        await this.transactionManager.rollbackTransaction();
-        return new CommonResponse(false, 404, 'User not found');
+        throw new Error('User not found');
       }
 
-      const photo = await photoRepo.findOne({ where: { id: reqModel.photoId } });
+      const photo = await this.photoRepository.findOne({ where: { id: reqModel.photoId } });
       if (!photo) {
-        await this.transactionManager.rollbackTransaction();
-        return new CommonResponse(false, 404, 'Photo not found');
+        throw new Error('Photo not found');
       }
 
-      const newComment = commentRepo.create({
+      await transactionManager.startTransaction();
+
+      const newComment = transactionManager.getRepository(CommentEntity).create({
         content: reqModel.content,
         userId: reqModel.userId,
         photoId: reqModel.photoId,
       });
 
-      const savedComment = await commentRepo.save(newComment);
-      await photoRepo.update(reqModel.photoId, { commentsCount: photo.commentsCount + 1 });
+      const savedComment = await transactionManager.getRepository(CommentEntity).save(newComment);
+      await transactionManager.getRepository(PhotoEntity).update(reqModel.photoId, { commentsCount: photo.commentsCount + 1 });
 
-      await this.transactionManager.commitTransaction();
+      await transactionManager.commitTransaction();
       return new CommonResponse(true, 201, 'Comment created successfully', savedComment);
     } catch (error) {
-      console.error('Create comment error:', error);
-      await this.transactionManager.rollbackTransaction();
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create comment';
       return new CommonResponse(
         false,
-        error instanceof Error && error.message.includes('not found') ? 404 : 500,
-        'Failed to create comment'
+        errorMessage.includes('not found') ? 404 : 500,
+        errorMessage
       );
     }
   }
@@ -339,68 +333,66 @@ export class PhotoService {
       });
       return new CommonResponse(true, 200, 'Comments fetched successfully', comments);
     } catch (error) {
-      console.error('Get comments error:', error);
-      return new CommonResponse(false, 500, 'Failed to fetch comments');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch comments';
+      return new CommonResponse(false, 500, errorMessage);
     }
   }
 
   async updateComment(commentId: string, content: string): Promise<CommonResponse> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      await this.transactionManager.startTransaction();
-      const commentRepo = this.transactionManager.getRepository(this.commentRepository);
-
-      const comment = await commentRepo.findOne({ where: { id: commentId } });
+      const comment = await this.commentRepository.findOne({ where: { id: commentId } });
       if (!comment) {
-        await this.transactionManager.rollbackTransaction();
-        return new CommonResponse(false, 404, 'Comment not found');
+        throw new Error('Comment not found');
       }
 
-      await commentRepo.update(commentId, { content });
-      const updatedComment = await commentRepo.findOneOrFail({ where: { id: commentId } });
+      await transactionManager.startTransaction();
 
-      await this.transactionManager.commitTransaction();
+      await transactionManager.getRepository(CommentEntity).update(commentId, { content });
+      const updatedComment = await this.commentRepository.findOneOrFail({ where: { id: commentId } });
+
+      await transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'Comment updated successfully', updatedComment);
     } catch (error) {
-      console.error('Update comment error:', error);
-      await this.transactionManager.rollbackTransaction();
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update comment';
       return new CommonResponse(
         false,
-        error instanceof Error && error.message.includes('not found') ? 404 : 500,
-        'Failed to update comment'
+        errorMessage.includes('not found') ? 404 : 500,
+        errorMessage
       );
     }
   }
 
   async deleteComment(reqModel: CommentIdRequestModel): Promise<CommonResponse> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      await this.transactionManager.startTransaction();
-      const commentRepo = this.transactionManager.getRepository(this.commentRepository);
-      const photoRepo = this.transactionManager.getRepository(this.photoRepository);
-
-      const comment = await commentRepo.findOne({ where: { id: reqModel.commentId } });
+      const comment = await this.commentRepository.findOne({ where: { id: reqModel.commentId } });
       if (!comment) {
-        await this.transactionManager.rollbackTransaction();
-        return new CommonResponse(false, 404, 'Comment not found');
+        throw new Error('Comment not found');
       }
+
+      await transactionManager.startTransaction();
 
       const photoId = comment.photoId;
       if (photoId) {
-        const photo = await photoRepo.findOne({ where: { id: photoId } });
+        const photo = await this.photoRepository.findOne({ where: { id: photoId } });
         if (photo && photo.commentsCount > 0) {
-          await photoRepo.update(photoId, { commentsCount: photo.commentsCount - 1 });
+          await transactionManager.getRepository(PhotoEntity).update(photoId, { commentsCount: photo.commentsCount - 1 });
         }
       }
 
-      await commentRepo.delete({ id: reqModel.commentId });
-      await this.transactionManager.commitTransaction();
+      await transactionManager.getRepository(CommentEntity).delete({ id: reqModel.commentId });
+      await transactionManager.commitTransaction();
+
       return new CommonResponse(true, 200, 'Comment deleted successfully');
     } catch (error) {
-      console.error('Delete comment error:', error);
-      await this.transactionManager.rollbackTransaction();
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete comment';
       return new CommonResponse(
         false,
-        error instanceof Error && error.message.includes('not found') ? 404 : 500,
-        'Failed to delete comment'
+        errorMessage.includes('not found') ? 404 : 500,
+        errorMessage
       );
     }
   }

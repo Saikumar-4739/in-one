@@ -1,17 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, ObjectLiteral, QueryRunner, Repository } from 'typeorm';
+import { DataSource, EntityManager, ObjectLiteral, QueryRunner, Repository } from 'typeorm';
 
 export interface ITransactionHelper {
   startTransaction(): Promise<void>;
   completeTransaction(work: () => Promise<void>): Promise<void>;
-  getRepository<T extends ObjectLiteral>(entity: Repository<T>): Repository<T>;
+  getRepository<T extends ObjectLiteral>(entity: { new(): T }): Repository<T>;
 }
+
 
 @Injectable()
 export class GenericTransactionManager implements ITransactionHelper {
   private queryRunner: QueryRunner;
+  private transactionManager: EntityManager;
 
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(private readonly dataSource: DataSource) { }
 
   async startTransaction(): Promise<void> {
     this.queryRunner = this.dataSource.createQueryRunner();
@@ -48,11 +50,11 @@ export class GenericTransactionManager implements ITransactionHelper {
     await this.queryRunner.release();
   }
 
-  getRepository<T extends ObjectLiteral>(entity: Repository<T>): Repository<T> {
-    if (!this.queryRunner) {
+  getRepository<T extends ObjectLiteral>(entity: { new(): T }): Repository<T> {
+    if (!this.queryRunner?.manager) {
       throw new Error('Transaction not started. Please call startTransaction() first.');
     }
-    return this.queryRunner.manager.getRepository(entity.target as any);
+    return this.queryRunner.manager.getRepository(entity);
   }
 
   async completeTransaction(work: () => Promise<void>): Promise<void> {

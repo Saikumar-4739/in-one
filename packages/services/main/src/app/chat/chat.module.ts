@@ -13,9 +13,10 @@ import { UserRepository } from '../user/repository/user.repository';
 import { CallRepository } from './repository/call.repository';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
 import { ChatRoomParticipantRepository } from './repository/chat_room_participants.repo';
+import { ChatRoomParticipantEntity } from './entities/chat.room.participants';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ChatRoomEntity, MessageEntity, UserEntity, CallEntity])],
+  imports: [TypeOrmModule.forFeature([ChatRoomEntity, MessageEntity, UserEntity, CallEntity, ChatRoomParticipantEntity])],
   providers: [ChatService, ChatGateway, ChatRoomRepository, MessegeRepository, UserRepository, CallRepository, GenericTransactionManager, ChatRoomParticipantRepository],
   controllers: [ChatController],
 })

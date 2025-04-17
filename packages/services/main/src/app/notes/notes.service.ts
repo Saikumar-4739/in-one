@@ -1,65 +1,79 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Like } from 'typeorm';
+import { Like, DataSource } from 'typeorm';
 import { NotesRepository } from './repository/notes.repository';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
 import { CommonResponse, CreateNoteModel, UpdateNoteModel } from '@in-one/shared-models';
+import { NoteEntity } from './entities/notes.entity';
 
 @Injectable()
 export class NotesService {
   constructor(
     @InjectRepository(NotesRepository)
     private notesRepository: NotesRepository,
-    private readonly transactionManager: GenericTransactionManager,
+    private readonly dataSource: DataSource,
   ) { }
 
   async createNote(createNoteDto: CreateNoteModel): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
       // Validate required fields
       if (!createNoteDto.title || !createNoteDto.content || !createNoteDto.userId) {
         throw new Error('Title, content, and userId are required');
       }
 
-      const noteRepo = this.transactionManager.getRepository(this.notesRepository);
+      await transactionManager.startTransaction();
+
       const noteData = {
         ...createNoteDto,
-        userId: createNoteDto.userId, // Simple string, not an object
+        userId: createNoteDto.userId,
         isPinned: createNoteDto.isPinned ?? false,
         isArchived: createNoteDto.isArchived ?? false,
         attachments: createNoteDto.attachments ?? [],
         sharedWith: createNoteDto.sharedWith ?? [],
       };
 
-      const newNote = noteRepo.create(noteData);
-      const savedNote = await noteRepo.save(newNote);
-      await this.transactionManager.commitTransaction();
+      const newNote = transactionManager.getRepository(NoteEntity).create(noteData);
+      const savedNote = await transactionManager.getRepository(NoteEntity).save(newNote);
+      await transactionManager.commitTransaction();
+
       return new CommonResponse(true, 201, 'Note created successfully', savedNote);
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
-      console.error('❌ Error creating note:', error);
-      return new CommonResponse(false, 500, 'Failed to create note', error);
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create note';
+      return new CommonResponse(
+        false,
+        errorMessage.includes('required') ? 400 : 500,
+        errorMessage,
+        null
+      );
     }
   }
 
   async updateNote(id: string, updateNoteDto: UpdateNoteModel, userId: string): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      const noteRepo = this.transactionManager.getRepository(this.notesRepository);
-      const existingNote = await noteRepo.findOne({ where: { id, userId } });
-
+      const existingNote = await this.notesRepository.findOne({ where: { id, userId } });
       if (!existingNote) {
         throw new Error('Note not found or unauthorized');
       }
 
-      const updatedNote = noteRepo.merge(existingNote, updateNoteDto);
-      const savedNote = await noteRepo.save(updatedNote);
-      await this.transactionManager.commitTransaction();
+      await transactionManager.startTransaction();
+
+      const updatedNote = transactionManager.getRepository(NoteEntity).merge(existingNote, updateNoteDto);
+      const savedNote = await transactionManager.getRepository(NoteEntity).save(updatedNote);
+      await transactionManager.commitTransaction();
+
       return new CommonResponse(true, 200, 'Note updated successfully', savedNote);
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
-      console.error('❌ Error updating note:', error);
-      return new CommonResponse(false, 500, 'Failed to update note', error);
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update note';
+      return new CommonResponse(
+        false,
+        errorMessage.includes('not found') ? 404 : 500,
+        errorMessage,
+        null
+      );
     }
   }
 
@@ -76,52 +90,72 @@ export class NotesService {
       });
       return new CommonResponse(true, 200, 'Notes retrieved successfully', notes);
     } catch (error) {
-      console.error('❌ Error retrieving notes:', error);
-      return new CommonResponse(false, 500, 'Failed to retrieve notes', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to retrieve notes';
+      return new CommonResponse(false, 500, errorMessage, null);
     }
   }
 
   async togglePin(id: string, userId: string): Promise<CommonResponse> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
       const note = await this.notesRepository.findOne({ where: { id, userId } });
-
       if (!note) {
         throw new Error('Note not found or unauthorized');
       }
 
+      await transactionManager.startTransaction();
+
       note.isPinned = !note.isPinned;
-      const savedNote = await this.notesRepository.save(note);
+      const savedNote = await transactionManager.getRepository(NoteEntity).save(note);
+      await transactionManager.commitTransaction();
+
       return new CommonResponse(
         true,
         200,
         `Note ${note.isPinned ? 'pinned' : 'unpinned'} successfully`,
-        savedNote,
+        savedNote
       );
     } catch (error) {
-      console.error('❌ Error toggling pin:', error);
-      return new CommonResponse(false, 500, 'Failed to toggle pin', error);
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Failed to toggle pin';
+      return new CommonResponse(
+        false,
+        errorMessage.includes('not found') ? 404 : 500,
+        errorMessage,
+        null
+      );
     }
   }
 
   async toggleArchive(id: string, userId: string): Promise<CommonResponse> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
       const note = await this.notesRepository.findOne({ where: { id, userId } });
-
       if (!note) {
         throw new Error('Note not found or unauthorized');
       }
 
+      await transactionManager.startTransaction();
+
       note.isArchived = !note.isArchived;
-      const savedNote = await this.notesRepository.save(note);
+      const savedNote = await transactionManager.getRepository(NoteEntity).save(note);
+      await transactionManager.commitTransaction();
+
       return new CommonResponse(
         true,
         200,
         `Note ${note.isArchived ? 'archived' : 'unarchived'} successfully`,
-        savedNote,
+        savedNote
       );
     } catch (error) {
-      console.error('❌ Error toggling archive:', error);
-      return new CommonResponse(false, 500, 'Failed to toggle archive', error);
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Failed to toggle archive';
+      return new CommonResponse(
+        false,
+        errorMessage.includes('not found') ? 404 : 500,
+        errorMessage,
+        null
+      );
     }
   }
 
@@ -143,8 +177,13 @@ export class NotesService {
       });
       return new CommonResponse(true, 200, 'Notes found successfully', notes);
     } catch (error) {
-      console.error('❌ Error searching notes:', error);
-      return new CommonResponse(false, 500, 'Failed to search notes', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to search notes';
+      return new CommonResponse(
+        false,
+        errorMessage.includes('empty') ? 400 : 500,
+        errorMessage,
+        null
+      );
     }
   }
 
@@ -159,8 +198,8 @@ export class NotesService {
       const counts = { total, active, archived };
       return new CommonResponse(true, 200, 'Note counts retrieved successfully', counts);
     } catch (error) {
-      console.error('❌ Error counting notes:', error);
-      return new CommonResponse(false, 500, 'Failed to count notes', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to count notes';
+      return new CommonResponse(false, 500, errorMessage, null);
     }
   }
 }

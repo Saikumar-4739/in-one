@@ -114,9 +114,9 @@ const NewsPage: React.FC = () => {
       }
 
       const createModel: CreateNewsModel = new CreateNewsModel(
+        userId,
         values.title,
         values.content,
-        userId,
         values.summary || '',
         values.category,
         values.tags ? values.tags.split(',').map((tag: string) => tag.trim()) : [],
@@ -157,6 +157,7 @@ const NewsPage: React.FC = () => {
     setLoading(true);
     try {
       const updateModel: UpdateNewsModel = {
+        authorId: userId,
         title: values.title,
         content: values.content,
         newsId: editingNewsId,

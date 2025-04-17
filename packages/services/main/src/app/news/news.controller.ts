@@ -1,6 +1,6 @@
 import { Controller, Post, Get, Body, Delete } from '@nestjs/common';
 import { NewsService } from './news.service';
-import { CommonResponse, CreateNewsModel, UpdateNewsModel, CreateCommentModel, ExceptionHandler } from '@in-one/shared-models';
+import { CommonResponse, CreateNewsModel, UpdateNewsModel, CreateCommentModel, ExceptionHandler, NewsIdRequestModel, CommentIdRequestModel } from '@in-one/shared-models';
 import { ApiBody } from '@nestjs/swagger';
 
 @Controller('news')
@@ -9,34 +9,27 @@ export class NewsController {
 
   @Post('createNews')
   @ApiBody({ type: CreateNewsModel })
-  async createNews(@Body() createNewsDto: CreateNewsModel): Promise<CommonResponse> {
+  async createNews(@Body() reqModel: CreateNewsModel): Promise<CommonResponse> {
     try {
-      console.log(createNewsDto)
-      return await this.newsService.createNews(createNewsDto);
+      return await this.newsService.createNews(reqModel);
     } catch (error) {
       return ExceptionHandler.handleError(error, 'Error creating news');
     }
   }
 
-  @Post('bulkNews')
-  async createMultipleNews(@Body() createNewsDtos: CreateNewsModel[]) {
-    return this.newsService.createMultipleNews(createNewsDtos);
-  }
-
   @Post('updateNews')
-  async updateNews(@Body() body: { id: string } & UpdateNewsModel): Promise<CommonResponse> {
+  async updateNews(@Body() reqModel: UpdateNewsModel): Promise<CommonResponse> {
     try {
-      const { id, ...updateNewsDto } = body;
-      return await this.newsService.updateNews(id, updateNewsDto);
+      return await this.newsService.updateNews(reqModel);
     } catch (error) {
       return ExceptionHandler.handleError(error, 'Error updating news');
     }
   }
 
   @Post('deleteNews')
-  async deleteNews(@Body() body: { id: string }): Promise<CommonResponse> {
+  async deleteNews(@Body() reqModel: NewsIdRequestModel): Promise<CommonResponse> {
     try {
-      return await this.newsService.deleteNews(body.id);
+      return await this.newsService.deleteNews(reqModel);
     } catch (error) {
       return ExceptionHandler.handleError(error, 'Error deleting news');
     }
@@ -60,15 +53,6 @@ export class NewsController {
     }
   }
 
-  // @Post('likeNews')
-  // async likeNews(@Body() body: { id: string }): Promise<CommonResponse> {
-  //   try {
-  //     return await this.newsService.toggleLikeNews(body.id);
-  //   } catch (error) {
-  //     return ExceptionHandler.handleError(error, 'Error liking news');
-  //   }
-  // }
-
   @Post('addComment')
   async addComment(@Body() createCommentDto: CreateCommentModel): Promise<CommonResponse> {
     try {
@@ -79,22 +63,13 @@ export class NewsController {
   }
 
   @Post('deleteComment')
-  async deleteComment(@Body() body: { id: string }): Promise<CommonResponse> {
+  async deleteComment(@Body() reqModel: CommentIdRequestModel): Promise<CommonResponse> {
     try {
-      return await this.newsService.deleteComment(body.id);
+      return await this.newsService.deleteComment(reqModel);
     } catch (error) {
       return ExceptionHandler.handleError(error, 'Error deleting comment');
     }
   }
-
-  // @Post('dislikeNews')
-  // async dislikeNews(@Body() body: { id: string }): Promise<CommonResponse> {
-  //   try {
-  //     return await this.newsService.toggleDislikeNews(body.id);
-  //   } catch (error) {
-  //     return ExceptionHandler.handleError(error, 'Error disliking news');
-  //   }
-  // }
 
   @Post('shareNews')
   async shareNews(@Body() body: { id: string; platform: string }): Promise<CommonResponse> {

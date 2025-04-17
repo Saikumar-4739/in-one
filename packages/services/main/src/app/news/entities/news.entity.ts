@@ -57,10 +57,10 @@ export class NewsEntity {
   isImportant: boolean;
 
   @Column({ type: 'varchar', nullable: false })
-  authorId: string; // Replaced ManyToOne with plain column
+  authorId: string;
 
   @Column({ type: 'json', nullable: true })
-  commentIds: string[]; // Optional: store comment IDs as JSON array
+  commentIds: string[];
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   seoTitle: string;

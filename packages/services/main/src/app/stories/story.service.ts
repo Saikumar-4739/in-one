@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, MoreThan } from 'typeorm';
+import { Repository, Like, MoreThan, DataSource } from 'typeorm';
 import { UserEntity } from '../user/entities/user.entity';
 import { CommonResponse, CreateStoryModel, UpdateStoryModel } from '@in-one/shared-models';
 import { StoriesRepository } from './repository/story.repository';
@@ -8,13 +8,16 @@ import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 import { Inject } from '@nestjs/common';
 import { Readable } from 'stream';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
+import { StoryEntity } from './entities/story.entity';
 
 @Injectable()
 export class StoriesService {
   constructor(
-    @InjectRepository(StoriesRepository) private readonly storiesRepository: StoriesRepository,
-    @InjectRepository(UserEntity) private readonly userRepository: Repository<UserEntity>,
-    private readonly transactionManager: GenericTransactionManager,
+    private readonly dataSource: DataSource,
+    @InjectRepository(StoriesRepository)
+    private readonly storiesRepository: StoriesRepository,
+    @InjectRepository(UserEntity)
+    private readonly userRepository: Repository<UserEntity>,
     @Inject('CLOUDINARY') private readonly cloudinary: any
   ) {
     setInterval(() => this.cleanupExpiredStories(), 1000 * 60 * 60);
@@ -49,13 +52,13 @@ export class StoriesService {
   }
 
   async createStory(createStoryDto: CreateStoryModel): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      const storiesRepo = this.transactionManager.getRepository(this.storiesRepository);
-      const userRepo = this.transactionManager.getRepository(this.userRepository);
-
-      const user = await userRepo.findOne({ where: { id: createStoryDto.userId } });
-      if (!user) throw new Error('User not found');
+      // Validate user
+      const user = await this.userRepository.findOne({ where: { id: createStoryDto.userId } });
+      if (!user) {
+        throw new Error('User not found');
+      }
 
       let imageUrl: string | undefined;
       if (createStoryDto.image) {
@@ -68,11 +71,13 @@ export class StoriesService {
         }
       }
 
-      const newStory = storiesRepo.create({
+      await transactionManager.startTransaction();
+
+      const newStory = transactionManager.getRepository(StoryEntity).create({
         userId: user.id,
-        username: user.username, // Assuming UserEntity has a username field
+        username: user.username,
         imageUrl: imageUrl,
-        storyUrl: undefined, // Not provided in DTO, set as needed
+        storyUrl: undefined,
         content: createStoryDto.content ?? '',
         visibility: createStoryDto.visibility ?? 'public',
         views: 0,
@@ -83,53 +88,77 @@ export class StoriesService {
         isHighlighted: false
       });
 
-      const savedStory = await storiesRepo.save(newStory);
-      await this.transactionManager.commitTransaction();
+      const savedStory = await transactionManager.getRepository(StoryEntity).save(newStory);
+      await transactionManager.commitTransaction();
+
       return new CommonResponse(true, 201, 'Story created successfully', savedStory);
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
-      console.error('❌ Error creating story:', error);
-      return new CommonResponse(false, 500, 'Error creating story', error);
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Error creating story';
+      return new CommonResponse(
+        false,
+        errorMessage.includes('not found') ? 404 : 500,
+        errorMessage,
+        null
+      );
     }
   }
 
   async updateStory(id: string, updateStoryDto: UpdateStoryModel): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      const storiesRepo = this.transactionManager.getRepository(this.storiesRepository);
-      const existingStory = await storiesRepo.findOne({
+      const existingStory = await this.storiesRepository.findOne({
         where: {
           id,
           expiresAt: MoreThan(new Date())
         }
       });
-      if (!existingStory) throw new Error('Story not found or has expired');
+      if (!existingStory) {
+        throw new Error('Story not found or has expired');
+      }
 
-      const updatedStory = storiesRepo.merge(existingStory, updateStoryDto);
-      const savedStory = await storiesRepo.save(updatedStory);
-      await this.transactionManager.commitTransaction();
+      await transactionManager.startTransaction();
+
+      const updatedStory = transactionManager.getRepository(StoryEntity).merge(existingStory, updateStoryDto);
+      const savedStory = await transactionManager.getRepository(StoryEntity).save(updatedStory);
+      await transactionManager.commitTransaction();
+
       return new CommonResponse(true, 200, 'Story updated successfully', savedStory);
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
-      console.error('❌ Error updating story:', error);
-      return new CommonResponse(false, 500, 'Error updating story', error);
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Error updating story';
+      return new CommonResponse(
+        false,
+        errorMessage.includes('not found') ? 404 : 500,
+        errorMessage,
+        null
+      );
     }
   }
 
   async deleteStory(id: string): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      const storiesRepo = this.transactionManager.getRepository(this.storiesRepository);
-      const story = await storiesRepo.findOne({ where: { id } });
-      if (!story) throw new Error('Story not found');
+      const story = await this.storiesRepository.findOne({ where: { id } });
+      if (!story) {
+        throw new Error('Story not found');
+      }
 
-      await storiesRepo.remove(story);
-      await this.transactionManager.commitTransaction();
+      await transactionManager.startTransaction();
+
+      await transactionManager.getRepository(StoryEntity).remove(story);
+      await transactionManager.commitTransaction();
+
       return new CommonResponse(true, 200, 'Story deleted successfully', null);
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
-      console.error('❌ Error deleting story:', error);
-      return new CommonResponse(false, 500, 'Error deleting story', error);
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Error deleting story';
+      return new CommonResponse(
+        false,
+        errorMessage.includes('not found') ? 404 : 500,
+        errorMessage,
+        null
+      );
     }
   }
 
@@ -146,7 +175,8 @@ export class StoriesService {
       });
       return new CommonResponse(true, 200, 'Stories retrieved successfully', { stories, total });
     } catch (error) {
-      return new CommonResponse(false, 500, 'Error retrieving stories', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error retrieving stories';
+      return new CommonResponse(false, 500, errorMessage, null);
     }
   }
 
@@ -163,8 +193,8 @@ export class StoriesService {
       });
       return new CommonResponse(true, 200, 'User stories retrieved successfully', { stories, total });
     } catch (error) {
-      console.error('❌ Error retrieving user stories:', error);
-      return new CommonResponse(false, 500, 'Error retrieving user stories', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error retrieving user stories';
+      return new CommonResponse(false, 500, errorMessage, null);
     }
   }
 
@@ -180,42 +210,59 @@ export class StoriesService {
       });
       return new CommonResponse(true, 200, 'Search results retrieved', stories);
     } catch (error) {
-      return new CommonResponse(false, 500, 'Error searching stories', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error searching stories';
+      return new CommonResponse(false, 500, errorMessage, null);
     }
   }
 
   async cleanupExpiredStories(): Promise<void> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      await this.storiesRepository
+      await transactionManager.startTransaction();
+
+      await transactionManager.getRepository(StoryEntity)
         .createQueryBuilder()
         .delete()
         .from('stories')
         .where('expiresAt <= :now', { now: new Date() })
         .execute();
+
+      await transactionManager.commitTransaction();
     } catch (error) {
+      await transactionManager.rollbackTransaction();
       console.error('❌ Error cleaning up expired stories:', error);
     }
   }
 
   async markStoryAsViewed(id: string, userId: string): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      const storiesRepo = this.transactionManager.getRepository(this.storiesRepository);
-      const story = await storiesRepo.findOne({
+      const story = await this.storiesRepository.findOne({
         where: {
           id: id,
           expiresAt: MoreThan(new Date())
         }
       });
-      if (!story) throw new Error('Story not found or has expired');
+      if (!story) {
+        throw new Error('Story not found or has expired');
+      }
+
+      await transactionManager.startTransaction();
+
       story.views = story.views ? story.views + 1 : 1;
-      const updatedStory = await storiesRepo.save(story);
-      await this.transactionManager.commitTransaction();
+      const updatedStory = await transactionManager.getRepository(StoryEntity).save(story);
+      await transactionManager.commitTransaction();
+
       return new CommonResponse(true, 200, 'Story marked as viewed', updatedStory);
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
-      console.error('❌ Error marking story as viewed:', error);
-      return new CommonResponse(false, 500, 'Error marking story as viewed', error);
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Error marking story as viewed';
+      return new CommonResponse(
+        false,
+        errorMessage.includes('not found') ? 404 : 500,
+        errorMessage,
+        null
+      );
     }
   }
 }

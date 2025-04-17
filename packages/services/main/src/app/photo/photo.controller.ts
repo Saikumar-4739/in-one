@@ -28,9 +28,10 @@ interface PhotoCommentsRequestModel {
 @ApiTags('Photos')
 @Controller('photos')
 export class PhotoController {
-  constructor(private readonly photoService: PhotoService) {}
+  constructor(private readonly photoService: PhotoService) { }
 
   @Post('uploadPhoto')
+  @ApiBody({})
   @UseInterceptors(FileInterceptor('file', photMulterOptions))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Upload a new photo' })

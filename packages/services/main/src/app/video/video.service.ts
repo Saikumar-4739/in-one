@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { CommonResponse, CreateVideoModel, LikeVideoModel, UpdateVideoModel, VideoIdRequestModel } from '@in-one/shared-models';
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 import { Readable } from 'stream';
@@ -11,15 +11,20 @@ import { GenericTransactionManager } from 'src/database/trasanction-manager';
 import { GetVideoByIdModel } from './models/get-video-by-id.model';
 import { CommentEntity } from '../masters/common-entities/comment.entity';
 import { LikeEntity } from '../masters/common-entities/like.entity';
+import { VideoRepository } from './repository/video.repository';
 
 @Injectable()
 export class VideoService {
   constructor(
-    @InjectRepository(VideoEntity) private readonly videoRepository: Repository<VideoEntity>,
-    @InjectRepository(UserEntity) private readonly userRepository: Repository<UserEntity>,
-    @InjectRepository(CommentEntity) private readonly commentRepository: Repository<CommentEntity>,
-    @InjectRepository(LikeEntity) private readonly likeRepository: Repository<LikeEntity>,
-    private readonly transactionManager: GenericTransactionManager,
+    private readonly dataSource: DataSource,
+    @InjectRepository(VideoRepository)
+    private readonly videoRepository: VideoRepository,
+    @InjectRepository(UserEntity)
+    private readonly userRepository: Repository<UserEntity>,
+    @InjectRepository(CommentEntity)
+    private readonly commentRepository: Repository<CommentEntity>,
+    @InjectRepository(LikeEntity)
+    private readonly likeRepository: Repository<LikeEntity>,
     @Inject('CLOUDINARY') private readonly cloudinary: any,
   ) { }
 
@@ -56,7 +61,6 @@ export class VideoService {
           this.cloudinary.uploader.upload_stream(
             { resource_type: resourceType, folder },
             (error: any, result: UploadApiResponse) => {
-              59
               if (error || !result) reject(error || new Error('Upload failed'));
               else {
                 // Clean up the temporary file after upload
@@ -74,21 +78,13 @@ export class VideoService {
     });
   }
 
-  async createVideo(
-    reqModel: CreateVideoModel,
-    videoFile: Express.Multer.File,
-    thumbnailFile?: Express.Multer.File
-  ): Promise<CommonResponse> {
+  async createVideo(reqModel: CreateVideoModel, videoFile: Express.Multer.File, thumbnailFile?: Express.Multer.File): Promise<CommonResponse> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      await this.transactionManager.startTransaction();
-      const videoRepo = this.transactionManager.getRepository(this.videoRepository);
-      const userRepo = this.transactionManager.getRepository(this.userRepository);
-
       // Validate userId
-      const user = await userRepo.findOne({ where: { id: reqModel.userId } });
+      const user = await this.userRepository.findOne({ where: { id: reqModel.userId } });
       if (!user) {
-        await this.transactionManager.rollbackTransaction();
-        return new CommonResponse(false, 404, 'User not found');
+        throw new Error('User not found');
       }
 
       // Upload video to Cloudinary
@@ -101,7 +97,9 @@ export class VideoService {
         thumbnailUrl = thumbnailUploadResult.secure_url;
       }
 
-      const newVideo = videoRepo.create({
+      await transactionManager.startTransaction();
+
+      const newVideo = transactionManager.getRepository(VideoEntity).create({
         title: reqModel.title,
         description: reqModel.description,
         videoUrl: videoUploadResult.secure_url,
@@ -116,13 +114,17 @@ export class VideoService {
         isFeatured: reqModel.isFeatured || false,
       });
 
-      const savedVideo = await videoRepo.save(newVideo);
-      await this.transactionManager.commitTransaction();
+      const savedVideo = await transactionManager.getRepository(VideoEntity).save(newVideo);
+      await transactionManager.commitTransaction();
       return new CommonResponse(true, 201, 'Video uploaded successfully', savedVideo);
     } catch (error) {
-      console.error('Create video error:', error);
-      await this.transactionManager.rollbackTransaction();
-      return new CommonResponse(false, 500, 'Failed to upload video');
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload video';
+      return new CommonResponse(
+        false,
+        errorMessage.includes('not found') ? 404 : 500,
+        errorMessage
+      );
     }
   }
 
@@ -131,46 +133,43 @@ export class VideoService {
       const videos = await this.videoRepository.find();
       return new CommonResponse(true, 200, 'Videos fetched successfully', videos);
     } catch (error) {
-      console.error('Get videos error:', error);
-      return new CommonResponse(false, 500, 'Failed to fetch videos');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch videos';
+      return new CommonResponse(false, 500, errorMessage);
     }
   }
 
   async getVideoById(reqModel: GetVideoByIdModel): Promise<CommonResponse> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      await this.transactionManager.startTransaction();
-      const videoRepo = this.transactionManager.getRepository(this.videoRepository);
-      const userRepo = this.transactionManager.getRepository(this.userRepository);
-      const commentRepo = this.transactionManager.getRepository(this.commentRepository);
-      const likeRepo = this.transactionManager.getRepository(this.likeRepository);
+      await transactionManager.startTransaction();
 
-      const video = await videoRepo.findOne({ where: { id: reqModel.videoId } });
+      const video = await this.videoRepository.findOne({ where: { id: reqModel.videoId } });
       if (!video) {
         throw new Error('Video not found');
       }
 
-      const author = await userRepo.findOne({ where: { id: video.userId } });
+      const author = await this.userRepository.findOne({ where: { id: video.userId } });
       if (!author) {
         throw new Error('Author not found');
       }
 
-      const comments = await commentRepo.find({ where: { videoId: reqModel.videoId } });
-      const likes = await likeRepo.find({ where: { videoId: reqModel.videoId } });
+      const comments = await this.commentRepository.find({ where: { videoId: reqModel.videoId } });
+      const likes = await this.likeRepository.find({ where: { videoId: reqModel.videoId } });
 
       // Fetch authors for comments
       const commentAuthors = await Promise.all(
         comments.map(async (comment) => {
-          const commentAuthor = await userRepo.findOne({ where: { id: comment.userId } });
+          const commentAuthor = await this.userRepository.findOne({ where: { id: comment.userId } });
           return {
             id: comment.id,
             content: comment.content,
             createdAt: comment.createdAt.toISOString(),
             author: commentAuthor
               ? {
-                  id: commentAuthor.id,
-                  username: commentAuthor.username,
-                  avatarUrl: commentAuthor.profilePicture, // Map profilePicture to avatarUrl
-                }
+                id: commentAuthor.id,
+                username: commentAuthor.username,
+                avatarUrl: commentAuthor.profilePicture,
+              }
               : null,
           };
         }),
@@ -187,28 +186,33 @@ export class VideoService {
         author: {
           id: author.id,
           username: author.username,
-          avatarUrl: author.profilePicture, // Map profilePicture to avatarUrl
+          avatarUrl: author.profilePicture,
         },
         comments: commentAuthors.filter((comment) => comment.author !== null),
       };
 
-      await this.transactionManager.commitTransaction();
+      await transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'Video retrieved successfully', formattedVideo);
     } catch (error) {
-      console.error('Get video error:', error);
-      await this.transactionManager.rollbackTransaction();
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch video';
       return new CommonResponse(
         false,
-        error instanceof Error && error.message.includes('not found') ? 404 : 500,
-        'Failed to fetch video'
+        errorMessage.includes('not found') ? 404 : 500,
+        errorMessage
       );
     }
-  }  
+  }
 
   async updateVideo(reqModel: UpdateVideoModel): Promise<CommonResponse> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      await this.transactionManager.startTransaction();
-      const videoRepo = this.transactionManager.getRepository(this.videoRepository);
+      const video = await this.videoRepository.findOne({ where: { id: reqModel.videoId } });
+      if (!video) {
+        throw new Error('Video not found');
+      }
+
+      await transactionManager.startTransaction();
 
       // Update only provided fields
       const updateData: Partial<VideoEntity> = {};
@@ -220,26 +224,31 @@ export class VideoService {
       if (reqModel.status) updateData.status = reqModel.status;
       if (reqModel.isFeatured !== undefined) updateData.isFeatured = reqModel.isFeatured;
 
-      await videoRepo.update(reqModel.videoId, updateData);
-      const updatedVideo = await videoRepo.findOneOrFail({ where: { id: reqModel.videoId } });
-      await this.transactionManager.commitTransaction();
+      await transactionManager.getRepository(VideoEntity).update(reqModel.videoId, updateData);
+      const updatedVideo = await transactionManager.getRepository(VideoEntity).findOneOrFail({ where: { id: reqModel.videoId } });
+
+      await transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'Video updated successfully', updatedVideo);
     } catch (error) {
-      console.error('Update video error:', error);
-      await this.transactionManager.rollbackTransaction();
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update video';
       return new CommonResponse(
         false,
-        error instanceof Error && error.message.includes('not found') ? 404 : 500,
-        'Failed to update video'
+        errorMessage.includes('not found') ? 404 : 500,
+        errorMessage
       );
     }
   }
 
   async deleteVideo(reqModel: VideoIdRequestModel): Promise<CommonResponse> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      await this.transactionManager.startTransaction();
-      const videoRepo = this.transactionManager.getRepository(this.videoRepository);
-      const video = await videoRepo.findOneOrFail({ where: { id: reqModel.videoId } });
+      const video = await this.videoRepository.findOne({ where: { id: reqModel.videoId } });
+      if (!video) {
+        throw new Error('Video not found');
+      }
+
+      await transactionManager.startTransaction();
 
       // Delete video from Cloudinary
       const videoPublicId = video.videoUrl.split('/').pop()?.split('.')[0];
@@ -255,81 +264,83 @@ export class VideoService {
         }
       }
 
-      await videoRepo.delete(reqModel.videoId);
-      await this.transactionManager.commitTransaction();
+      await transactionManager.getRepository(VideoEntity).delete(reqModel.videoId);
+      await transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'Video deleted successfully');
     } catch (error) {
-      console.error('Delete video error:', error);
-      await this.transactionManager.rollbackTransaction();
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete video';
       return new CommonResponse(
         false,
-        error instanceof Error && error.message.includes('not found') ? 404 : 500,
-        'Failed to delete video'
+        errorMessage.includes('not found') ? 404 : 500,
+        errorMessage
       );
     }
   }
 
   async likeVideo(reqModel: LikeVideoModel): Promise<CommonResponse> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      await this.transactionManager.startTransaction();
-      const videoRepo = this.transactionManager.getRepository(this.videoRepository);
-      const userRepo = this.transactionManager.getRepository(this.userRepository);
-
       // Validate userId
-      const user = await userRepo.findOne({ where: { id: reqModel.userId } });
+      const user = await this.userRepository.findOne({ where: { id: reqModel.userId } });
       if (!user) {
-        await this.transactionManager.rollbackTransaction();
-        return new CommonResponse(false, 404, 'User not found');
+        throw new Error('User not found');
       }
 
-      const video = await videoRepo.findOneOrFail({ where: { id: reqModel.videoId } });
+      const video = await this.videoRepository.findOne({ where: { id: reqModel.videoId } });
+      if (!video) {
+        throw new Error('Video not found');
+      }
+
+      await transactionManager.startTransaction();
 
       // Increment likes
-      await videoRepo.update(reqModel.videoId, { likes: video.likes + 1 });
-      const updatedVideo = await videoRepo.findOneOrFail({ where: { id: reqModel.videoId } });
+      await transactionManager.getRepository(VideoEntity).update(reqModel.videoId, { likes: video.likes + 1 });
+      const updatedVideo = await transactionManager.getRepository(VideoEntity).findOneOrFail({ where: { id: reqModel.videoId } });
 
-      await this.transactionManager.commitTransaction();
+      await transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'Video liked successfully', updatedVideo);
     } catch (error) {
-      console.error('Like video error:', error);
-      await this.transactionManager.rollbackTransaction();
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Failed to like video';
       return new CommonResponse(
         false,
-        error instanceof Error && error.message.includes('not found') ? 404 : 500,
-        'Failed to like video'
+        errorMessage.includes('not found') ? 404 : 500,
+        errorMessage
       );
     }
   }
 
   async unlikeVideo(reqModel: LikeVideoModel): Promise<CommonResponse> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      await this.transactionManager.startTransaction();
-      const videoRepo = this.transactionManager.getRepository(this.videoRepository);
-      const userRepo = this.transactionManager.getRepository(this.userRepository);
-
       // Validate userId
-      const user = await userRepo.findOne({ where: { id: reqModel.userId } });
+      const user = await this.userRepository.findOne({ where: { id: reqModel.userId } });
       if (!user) {
-        await this.transactionManager.rollbackTransaction();
-        return new CommonResponse(false, 404, 'User not found');
+        throw new Error('User not found');
       }
 
-      const video = await videoRepo.findOneOrFail({ where: { id: reqModel.videoId } });
+      const video = await this.videoRepository.findOne({ where: { id: reqModel.videoId } });
+      if (!video) {
+        throw new Error('Video not found');
+      }
+
+      await transactionManager.startTransaction();
 
       // Decrement likes, ensuring it doesn't go below 0
       const newLikes = video.likes > 0 ? video.likes - 1 : 0;
-      await videoRepo.update(reqModel.videoId, { likes: newLikes });
-      const updatedVideo = await videoRepo.findOneOrFail({ where: { id: reqModel.videoId } });
+      await transactionManager.getRepository(VideoEntity).update(reqModel.videoId, { likes: newLikes });
+      const updatedVideo = await transactionManager.getRepository(VideoEntity).findOneOrFail({ where: { id: reqModel.videoId } });
 
-      await this.transactionManager.commitTransaction();
+      await transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'Video unliked successfully', updatedVideo);
     } catch (error) {
-      console.error('Unlike video error:', error);
-      await this.transactionManager.rollbackTransaction();
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Failed to unlike video';
       return new CommonResponse(
         false,
-        error instanceof Error && error.message.includes('not found') ? 404 : 500,
-        'Failed to unlike video'
+        errorMessage.includes('not found') ? 404 : 500,
+        errorMessage
       );
     }
   }

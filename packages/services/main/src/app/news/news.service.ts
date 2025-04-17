@@ -1,48 +1,51 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Like, Repository } from 'typeorm';
-import { NewsEntity } from './entities/news.entity'; // Adjust path
-import { UserEntity } from '../user/entities/user.entity'; // Adjust path
-import { CommonResponse, CreateCommentModel, CreateNewsModel, UpdateNewsModel } from '@in-one/shared-models';
+import { DataSource, Like, Repository } from 'typeorm';
+import { NewsEntity } from './entities/news.entity';
+import { UserEntity } from '../user/entities/user.entity';
+import { CommentIdRequestModel, CommonResponse, CreateCommentModel, CreateNewsModel, ErrorResponse, NewsIdRequestModel, UpdateNewsModel, UpdateViewModel } from '@in-one/shared-models';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { CommentEntity } from '../masters/common-entities/comment.entity';
 import { LikeEntity } from '../masters/common-entities/like.entity';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
+import { NewsRepository } from './repository/news.repository';
+import { InjectRepository } from '@nestjs/typeorm';
 
 @Injectable()
 export class NewsService {
   constructor(
-    @InjectRepository(NewsEntity) private readonly newsRepository: Repository<NewsEntity>,
-    @InjectRepository(CommentEntity) private readonly commentRepository: Repository<CommentEntity>,
-    @InjectRepository(LikeEntity) private readonly likeRepository: Repository<LikeEntity>,
-    @InjectRepository(UserEntity) private readonly userRepository: Repository<UserEntity>,
-    private readonly transactionManager: GenericTransactionManager,
+    private dataSource: DataSource,
+    @InjectRepository(NewsRepository)
+    private readonly newsRepo: NewsRepository,
+    @InjectRepository(CommentEntity)
+    private readonly commentRepository: Repository<CommentEntity>,
+    @InjectRepository(LikeEntity)
+    private readonly likeRepository: Repository<LikeEntity>,
+    @InjectRepository(UserEntity)
+    private readonly userRepository: Repository<UserEntity>,
   ) { }
 
-  async createNews(createNewsDto: CreateNewsModel): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
+  async createNews(reqModel: CreateNewsModel): Promise<CommonResponse> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      const newsRepo = this.transactionManager.getRepository(this.newsRepository);
-      const userRepo = this.transactionManager.getRepository(this.userRepository);
-
-      if (!createNewsDto.title || createNewsDto.title.trim() === '') {
-        throw new Error('Title is required');
-      }
-      if (!createNewsDto.authorId) {
-        throw new Error('Author ID is required');
+      if (!reqModel.title || !reqModel.authorId) {
+        const missingField = !reqModel.title ? 'Title' : 'Author ID';
+        const errorCode = !reqModel.title ? 1 : 2;
+        throw new ErrorResponse(errorCode, `${missingField} is required`);
       }
 
       // Validate authorId exists
-      const author = await userRepo.findOne({ where: { id: createNewsDto.authorId } });
+      const author = await this.userRepository.findOne({ where: { id: reqModel.authorId } });
       if (!author) {
         throw new Error('Author not found');
       }
 
-      let processedImages: string[] | undefined;
-      if (createNewsDto.images?.length) {
+      await transactionManager.startTransaction();
+
+      let processedImages: string[] = [];
+      if (reqModel.images?.length) {
         processedImages = await Promise.all(
-          createNewsDto.images.map(async (base64, index) => {
+          reqModel.images.map(async (base64, index) => {
             const matches = base64.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
             if (!matches) throw new Error('Invalid base64 image format');
             const ext = matches[1];
@@ -55,9 +58,9 @@ export class NewsService {
         );
       }
 
-      let processedThumbnail: string | undefined;
-      if (createNewsDto.thumbnail) {
-        const matches = createNewsDto.thumbnail.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
+      let processedThumbnail: string = '';
+      if (reqModel.thumbnail) {
+        const matches = reqModel.thumbnail.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
         if (!matches) throw new Error('Invalid base64 thumbnail format');
         const ext = matches[1];
         const buffer = new Uint8Array(Buffer.from(matches[2], 'base64'));
@@ -67,150 +70,49 @@ export class NewsService {
         processedThumbnail = `/uploads/${fileName}`;
       }
 
-      const newNews = newsRepo.create({
-        title: createNewsDto.title.trim(),
-        content: createNewsDto.content ?? '',
-        summary: createNewsDto.summary ?? '',
-        category: createNewsDto.category ?? 'Uncategorized',
-        tags: createNewsDto.tags ?? [],
-        images: processedImages ?? [],
-        thumbnail: processedThumbnail ?? '',
-        status: createNewsDto.status ?? 'draft',
-        visibility: createNewsDto.visibility ?? 'public',
-        isFeatured: createNewsDto.isFeatured ?? false,
-        isBreaking: createNewsDto.isBreaking ?? false,
-        publishedAt: createNewsDto.publishedAt ?? new Date(),
-        authorId: createNewsDto.authorId,
-        commentIds: [],
-      });
+      const newsEntity = new NewsEntity();
+      newsEntity.title = reqModel.title.trim();
+      newsEntity.content = reqModel.content;
+      newsEntity.summary = reqModel.summary;
+      newsEntity.category = reqModel.category;
+      newsEntity.tags = reqModel.tags;
+      newsEntity.images = processedImages;
+      newsEntity.thumbnail = processedThumbnail;
+      newsEntity.status = reqModel.status;
+      newsEntity.visibility = reqModel.visibility ?? 'public';
+      newsEntity.isFeatured = reqModel.isFeatured ?? false;
+      newsEntity.isBreaking = reqModel.isBreaking ?? false;
+      newsEntity.publishedAt = reqModel.publishedAt ?? new Date();
+      newsEntity.authorId = reqModel.authorId;
+      newsEntity.commentIds = [];
 
-      const savedNews = await newsRepo.save(newNews);
-      await this.transactionManager.commitTransaction();
-      return new CommonResponse(true, 201, 'News created successfully', savedNews);
+      const saveNews = await transactionManager.getRepository(NewsEntity).save(newsEntity)
+      await transactionManager.commitTransaction();
+      return new CommonResponse(true, 201, 'News created successfully', saveNews);
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
-      console.error('❌ Error creating news:', error);
+      await transactionManager.rollbackTransaction();
       return new CommonResponse(false, 500, 'Error creating news', error);
     }
   }
 
-  async createMultipleNews(createNewsDtos: CreateNewsModel[]): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
+  async updateNews(reqModel: UpdateNewsModel): Promise<CommonResponse> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      const newsRepo = this.transactionManager.getRepository(this.newsRepository);
-      const userRepo = this.transactionManager.getRepository(this.userRepository);
-      const results = [];
-      const errors = [];
-
-      for (const dto of createNewsDtos) {
-        try {
-          if (!dto.title || dto.title.trim() === '') {
-            throw new Error('Title is required');
-          }
-          if (!dto.authorId) {
-            throw new Error('Author ID is required');
-          }
-
-          // Validate authorId exists
-          const author = await userRepo.findOne({ where: { id: dto.authorId } });
-          if (!author) {
-            throw new Error(`Author not found for ID: ${dto.authorId}`);
-          }
-
-          let processedImages: string[] | undefined;
-          if (dto.images?.length) {
-            processedImages = await Promise.all(
-              dto.images.map(async (image, index) => {
-                const base64Match = image.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
-                if (base64Match) {
-                  const ext = base64Match[1];
-                  const buffer = new Uint8Array(Buffer.from(base64Match[2], 'base64'));
-                  const fileName = `news_${Date.now()}_${index}.${ext}`;
-                  const filePath = join(__dirname, 'Uploads', fileName);
-                  await fs.writeFile(filePath, buffer);
-                  return `/uploads/${fileName}`;
-                }
-                return image;
-              }),
-            );
-          }
-
-          let processedThumbnail: string | undefined;
-          if (dto.thumbnail) {
-            const base64Match = dto.thumbnail.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
-            if (base64Match) {
-              const ext = base64Match[1];
-              const buffer = new Uint8Array(Buffer.from(base64Match[2], 'base64'));
-              const fileName = `thumbnail_${Date.now()}.${ext}`;
-              const filePath = join(__dirname, 'Uploads', fileName);
-              await fs.writeFile(filePath, buffer);
-              processedThumbnail = `/uploads/${fileName}`;
-            } else {
-              processedThumbnail = dto.thumbnail;
-            }
-          }
-
-          const newNews = newsRepo.create({
-            title: dto.title.trim(),
-            content: dto.content ?? '',
-            summary: dto.summary ?? '',
-            category: dto.category ?? 'Uncategorized',
-            tags: dto.tags ?? [],
-            images: processedImages ?? [],
-            thumbnail: processedThumbnail ?? '',
-            status: dto.status ?? 'draft',
-            visibility: dto.visibility ?? 'public',
-            isFeatured: dto.isFeatured ?? false,
-            isBreaking: dto.isBreaking ?? false,
-            publishedAt: dto.publishedAt ?? new Date(),
-            authorId: dto.authorId,
-            commentIds: [],
-          });
-
-          const savedNews = await newsRepo.save(newNews);
-          results.push(savedNews);
-        } catch (error) {
-          console.error(`Error processing news item "${dto.title}":`, error);
-          errors.push({
-            item: dto,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
+      const existingNews = await this.newsRepo.findOne({ where: { id: reqModel.newsId } });
+      if (!existingNews) {
+        throw new ErrorResponse(3, 'News not found');
+      }
+      const author = await this.userRepository.findOne({ where: { id: reqModel.authorId } });
+      if (!author) {
+        throw new Error('Author not found');
       }
 
-      await this.transactionManager.commitTransaction();
-      if (errors.length > 0) {
-        return new CommonResponse(false, 207, 'Some news items failed to create', { successful: results, failed: errors });
-      }
-      return new CommonResponse(true, 201, 'All news items created successfully', results);
-    } catch (error) {
-      await this.transactionManager.rollbackTransaction();
-      console.error('❌ Critical error creating multiple news:', error);
-      return new CommonResponse(false, 500, 'Error creating multiple news', String(error));
-    }
-  }
-
-  async updateNews(id: string, updateNewsDto: UpdateNewsModel): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
-    try {
-      const newsRepo = this.transactionManager.getRepository(this.newsRepository);
-      const userRepo = this.transactionManager.getRepository(this.userRepository);
-
-      const existingNews = await newsRepo.findOne({ where: { id } });
-      if (!existingNews) throw new Error('News not found');
-
-      // Validate authorId if provided
-      if (id) {
-        const author = await userRepo.findOne({ where: { id: id } });
-        if (!author) {
-          throw new Error('Author not found');
-        }
-      }
+      await transactionManager.startTransaction()
 
       let processedImages: string[] | undefined;
-      if (updateNewsDto.images?.length) {
+      if (reqModel.images?.length) {
         processedImages = await Promise.all(
-          updateNewsDto.images.map(async (image, index) => {
+          reqModel.images.map(async (image, index) => {
             const base64Match = image.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
             if (base64Match) {
               const ext = base64Match[1];
@@ -226,8 +128,8 @@ export class NewsService {
       }
 
       let processedThumbnail: string | undefined;
-      if (updateNewsDto.thumbnail) {
-        const base64Match = updateNewsDto.thumbnail.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
+      if (reqModel.thumbnail) {
+        const base64Match = reqModel.thumbnail.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
         if (base64Match) {
           const ext = base64Match[1];
           const buffer = new Uint8Array(Buffer.from(base64Match[2], 'base64'));
@@ -236,152 +138,136 @@ export class NewsService {
           await fs.writeFile(filePath, buffer);
           processedThumbnail = `/uploads/${fileName}`;
         } else {
-          processedThumbnail = updateNewsDto.thumbnail;
+          processedThumbnail = reqModel.thumbnail;
         }
       }
 
-      const updatedNews = newsRepo.merge(existingNews, {
-        ...updateNewsDto,
+      const updatedNews = this.newsRepo.merge(existingNews, {
+        ...reqModel,
         images: processedImages ?? existingNews.images,
         thumbnail: processedThumbnail ?? existingNews.thumbnail,
-        authorId: id ?? existingNews.authorId,
+        authorId: reqModel.authorId ?? existingNews.authorId,
       });
 
-      const savedNews = await newsRepo.save(updatedNews);
-      await this.transactionManager.commitTransaction();
-      return new CommonResponse(true, 200, 'News updated successfully', savedNews);
+      const updateNews = await this.newsRepo.save(updatedNews);
+      await transactionManager.commitTransaction();
+      return new CommonResponse(true, 200, 'News updated successfully', updateNews);
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
-      console.error('❌ Error updating news:', error);
+      await transactionManager.rollbackTransaction();
       return new CommonResponse(false, 500, 'Error updating news', error);
     }
   }
 
-  async deleteNews(id: string): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
+  async deleteNews(reqModel: NewsIdRequestModel): Promise<CommonResponse> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      const newsRepo = this.transactionManager.getRepository(this.newsRepository);
-      const commentRepo = this.transactionManager.getRepository(this.commentRepository);
-      const likeRepo = this.transactionManager.getRepository(this.likeRepository);
+      const news = await this.newsRepo.findOne({ where: { id: reqModel.newsId } });
+      if (!news) {
+        throw new Error('News not found');
+      }
+      await transactionManager.startTransaction()
 
-      const news = await newsRepo.findOne({ where: { id } });
-      if (!news) throw new Error('News not found');
+      await this.commentRepository.delete({ newsId: reqModel.newsId });
+      await this.likeRepository.delete({ newsId: reqModel.newsId });
+      await this.newsRepo.remove(news);
 
-      await commentRepo.delete({ newsId: id });
-      await likeRepo.delete({ newsId: id });
-      await newsRepo.remove(news);
-
-      await this.transactionManager.commitTransaction();
+      await transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'News deleted successfully', null);
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
-      console.error('❌ Error deleting news:', error);
+      await transactionManager.rollbackTransaction();
       return new CommonResponse(false, 500, 'Error deleting news', error);
     }
   }
 
-  async addComment(createCommentDto: CreateCommentModel): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
+  async addComment(reqModel: CreateCommentModel): Promise<CommonResponse> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      const commentRepo = this.transactionManager.getRepository(this.commentRepository);
-      const newsRepo = this.transactionManager.getRepository(this.newsRepository);
-      const userRepo = this.transactionManager.getRepository(this.userRepository);
-
-      const news = await newsRepo.findOne({ where: { id: createCommentDto.newsId } });
-      if (!news) throw new Error('News not found');
-      if (!createCommentDto.authorId) throw new Error('Author ID is required');
-
-      // Validate authorId exists
-      const author = await userRepo.findOne({ where: { id: createCommentDto.authorId } });
-      if (!author) {
-        throw new Error('Author not found');
+      const news = await this.newsRepo.findOne({ where: { id: reqModel.newsId } });
+      if (!news) {
+        throw new ErrorResponse(4, 'News not found');
       }
 
-      const newComment = commentRepo.create({
-        content: createCommentDto.content,
-        userId: createCommentDto.authorId,
-        newsId: createCommentDto.newsId,
-      });
+      // Validate authorId exists
+      const author = await this.userRepository.findOne({ where: { id: reqModel.authorId } });
+      if (!author) {
+        throw new ErrorResponse(5, 'Author not found');
+      }
 
-      const savedComment = await commentRepo.save(newComment);
-
+      const newComment = await transactionManager.getRepository(CommentEntity).create({ content: reqModel.content, userId: reqModel.authorId, newsId: reqModel.newsId, })
+      const savedComment = await this.commentRepository.save(newComment);
       news.commentIds = [...(news.commentIds || []), savedComment.id];
-      await newsRepo.save(news);
-
-      await this.transactionManager.commitTransaction();
+      await this.newsRepo.save(news);
+      await transactionManager.commitTransaction();
       return new CommonResponse(true, 201, 'Comment added successfully', savedComment);
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
-      console.error('❌ Error adding comment:', error);
+      await transactionManager.rollbackTransaction();
       return new CommonResponse(false, 500, 'Error adding comment', error);
     }
   }
 
-  async deleteComment(id: string): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
+  async deleteComment(reqModel: CommentIdRequestModel): Promise<CommonResponse> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      const commentRepo = this.transactionManager.getRepository(this.commentRepository);
-      const newsRepo = this.transactionManager.getRepository(this.newsRepository);
 
-      const comment = await commentRepo.findOne({ where: { id } });
-      if (!comment) throw new Error('Comment not found');
-
-      const news = await newsRepo.findOne({ where: { id: comment.newsId } });
+      const comment = await this.commentRepository.findOne({ where: { id: reqModel.commentId } });
+      if (!comment) {
+        throw new ErrorResponse(5, 'Comment not found');
+      }
+      const news = await this.newsRepo.findOne({ where: { id: comment.newsId } });
       if (news) {
-        news.commentIds = (news.commentIds || []).filter((commentId) => commentId !== id);
-        await newsRepo.save(news);
+        news.commentIds = (news.commentIds || []).filter((commentId: string) => commentId !== commentId);
+        await this.newsRepo.save(news);
       }
 
-      await commentRepo.remove(comment);
-      await this.transactionManager.commitTransaction();
+      await this.commentRepository.remove(comment);
+      await transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'Comment deleted successfully', null);
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
-      console.error('❌ Error deleting comment:', error);
+      await transactionManager.rollbackTransaction();
       return new CommonResponse(false, 500, 'Error deleting comment', error);
     }
   }
 
   async toggleLikeNews(id: string, userId: string): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      const newsRepo = this.transactionManager.getRepository(this.newsRepository);
-      const likeRepo = this.transactionManager.getRepository(this.likeRepository);
-      const userRepo = this.transactionManager.getRepository(this.userRepository);
 
-      const news = await newsRepo.findOne({ where: { id } });
-      if (!news) throw new Error('News not found');
-      if (!userId) throw new Error('User ID is required');
-
-      // Validate userId exists
-      const user = await userRepo.findOne({ where: { id: userId } });
+      const news = await this.newsRepo.findOne({ where: { id } });
+      if (!news) {
+        throw new ErrorResponse(6, 'News not found');
+      }
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
+      const user = await this.userRepository.findOne({ where: { id: userId } });
       if (!user) {
         throw new Error('User not found');
       }
 
-      const existingLike = await likeRepo.findOne({ where: { newsId: id, userId } });
+      await transactionManager.startTransaction()
+
+      const existingLike = await this.likeRepository.findOne({ where: { newsId: id, userId } });
       if (existingLike) {
-        await likeRepo.remove(existingLike);
+        await this.likeRepository.remove(existingLike);
         news.likes = Math.max(0, (news.likes || 0) - 1);
       } else {
-        const newLike = likeRepo.create({ userId, newsId: id });
-        await likeRepo.save(newLike);
+        const newLike = this.likeRepository.create({ userId, newsId: id });
+        await this.likeRepository.save(newLike);
         news.likes = (news.likes || 0) + 1;
       }
 
-      const updatedNews = await newsRepo.save(news);
-      await this.transactionManager.commitTransaction();
+      const updatedNews = await this.newsRepo.save(news);
+      await transactionManager.commitTransaction();
       return new CommonResponse(true, 200, existingLike ? 'News unliked successfully' : 'News liked successfully', updatedNews);
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
-      console.error('❌ Error toggling like:', error);
+      await transactionManager.rollbackTransaction();
       return new CommonResponse(false, 500, 'Error toggling like', error);
     }
   }
 
   async searchNews(query: string): Promise<CommonResponse> {
     try {
-      const news = await this.newsRepository.find({
+      const news = await this.newsRepo.find({
         where: [{ title: Like(`%${query}%`) }, { content: Like(`%${query}%`) }],
       });
       return new CommonResponse(true, 200, 'Search results retrieved', news);
@@ -393,14 +279,14 @@ export class NewsService {
 
   async getAllNews(page: number, limit: number): Promise<CommonResponse> {
     try {
-      const [news, total] = await this.newsRepository.findAndCount({
+      const [news, total] = await this.newsRepo.findAndCount({
         skip: (page - 1) * limit,
         take: limit,
         order: { createdAt: 'DESC' },
       });
 
       const newsWithComments = await Promise.all(
-        news.map(async (newsItem) => {
+        news.map(async (newsItem: { id: any; authorId: any; }) => {
           const comments = await this.commentRepository.find({ where: { newsId: newsItem.id } });
           const author = await this.userRepository.findOne({ where: { id: newsItem.authorId } });
           return {
@@ -413,56 +299,55 @@ export class NewsService {
 
       return new CommonResponse(true, 200, 'News retrieved successfully', { news: newsWithComments, total });
     } catch (error) {
-      console.error('❌ Error retrieving news:', error);
       return new CommonResponse(false, 500, 'Error retrieving news', error);
     }
   }
 
   async toggleDislikeNews(id: string, userId: string): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      const newsRepo = this.transactionManager.getRepository(this.newsRepository);
-      const likeRepo = this.transactionManager.getRepository(this.likeRepository);
-      const userRepo = this.transactionManager.getRepository(this.userRepository);
-
-      const news = await newsRepo.findOne({ where: { id } });
-      if (!news) throw new Error('News not found');
-      if (!userId) throw new Error('User ID is required');
+      const news = await this.newsRepo.findOne({ where: { id } });
+      if (!news) {
+        throw new ErrorResponse(1, 'News not found');
+      }
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
 
       // Validate userId exists
-      const user = await userRepo.findOne({ where: { id: userId } });
+      const user = await this.userRepository.findOne({ where: { id: userId } });
       if (!user) {
         throw new Error('User not found');
       }
 
-      const existingDislike = await likeRepo.findOne({ where: { newsId: id, userId } });
+      await transactionManager.startTransaction()
+
+      const existingDislike = await this.likeRepository.findOne({ where: { newsId: id, userId } });
       if (existingDislike) {
-        await likeRepo.remove(existingDislike);
+        await this.likeRepository.remove(existingDislike);
         news.dislikes = Math.max(0, (news.dislikes || 0) - 1);
       } else {
-        const newDislike = likeRepo.create({ userId, newsId: id });
-        await likeRepo.save(newDislike);
+        const newDislike = this.likeRepository.create({ userId, newsId: id });
+        await this.likeRepository.save(newDislike);
         news.dislikes = (news.dislikes || 0) + 1;
       }
-
-      const updatedNews = await newsRepo.save(news);
-      await this.transactionManager.commitTransaction();
+      const updatedNews = await this.newsRepo.save(news);
+      await transactionManager.commitTransaction();
       return new CommonResponse(true, 200, existingDislike ? 'News undisliked successfully' : 'News disliked successfully', updatedNews);
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
-      console.error('❌ Error toggling dislike:', error);
+      await transactionManager.rollbackTransaction();
       return new CommonResponse(false, 500, 'Error toggling dislike', error);
     }
   }
 
   async shareNews(id: string, platform: string): Promise<CommonResponse> {
     try {
-      const news = await this.newsRepository.findOne({ where: { id } });
+      const news = await this.newsRepo.findOne({ where: { id } });
       if (!news) throw new Error('News not found');
 
       news.shares = (news.shares || 0) + 1;
       const shareData = { newsId: id, platform, sharedAt: new Date(), title: news.title, url: `/news/${id}` };
-      await this.newsRepository.save(news);
+      await this.newsRepo.save(news);
 
       return new CommonResponse(true, 200, `News shared successfully on ${platform}`, shareData);
     } catch (error) {
@@ -472,20 +357,38 @@ export class NewsService {
   }
 
   async markNewsAsImportant(id: string, isImportant: boolean): Promise<CommonResponse> {
-    await this.transactionManager.startTransaction();
+    const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      const newsRepo = this.transactionManager.getRepository(this.newsRepository);
-      const news = await newsRepo.findOne({ where: { id } });
-      if (!news) throw new Error('News not found');
-
+      const news = await this.newsRepo.findOne({ where: { id } });
+      if (!news) {
+        throw new Error('News not found');
+      }
+      await transactionManager.startTransaction()
       news.isImportant = isImportant;
-      const updatedNews = await newsRepo.save(news);
-      await this.transactionManager.commitTransaction();
+      const updatedNews = await this.newsRepo.save(news);
+      await transactionManager.commitTransaction();
       return new CommonResponse(true, 200, `News marked as ${isImportant ? 'important' : 'not important'} successfully`, updatedNews);
     } catch (error) {
-      await this.transactionManager.rollbackTransaction();
-      console.error('❌ Error marking news as important:', error);
+      await transactionManager.rollbackTransaction();
       return new CommonResponse(false, 500, 'Error marking news as important', error);
     }
   }
+
+  async updateView(req: UpdateViewModel): Promise<CommonResponse> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
+    try {
+      const news = await this.newsRepo.findOne({ where: { id: req.newsId } });
+      if (!news) {
+        throw new ErrorResponse(1, 'News Id Not Found');
+      }
+      await transactionManager.startTransaction();
+      const updateView = await transactionManager.getRepository(NewsEntity).update({ id: req.newsId }, { views: req.view });
+      await transactionManager.commitTransaction();
+      return new CommonResponse(true, 0, 'View Update', updateView)
+    } catch (error) {
+      await transactionManager.rollbackTransaction();
+      return new CommonResponse(false, 1, 'Error Updating View', error)
+    }
+  }
+
 }
