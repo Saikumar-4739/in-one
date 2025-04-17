@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CreateChatRoomModel, CreateMessageModel, PrivateMessegeModel, UserIdRequestModel } from '@in-one/shared-models';
-import { Button, Input, Typography, Avatar, message, Space, Select, Checkbox, Modal } from 'antd';
-import { SendOutlined, UserOutlined, SearchOutlined, PhoneOutlined, PlusOutlined, SmileOutlined, AudioOutlined, VideoCameraOutlined, CloseOutlined } from '@ant-design/icons';
+import { Button, Input, Typography, Avatar, message, Space, Select, Checkbox, Modal, Spin } from 'antd';
+import { SendOutlined, UserOutlined, SearchOutlined, PhoneOutlined, PlusOutlined, SmileOutlined, AudioOutlined, VideoCameraOutlined, CloseOutlined, VideoCameraAddOutlined, ShareAltOutlined, FullscreenExitOutlined, FullscreenOutlined, SoundOutlined } from '@ant-design/icons';
 import { ChatHelpService, UserHelpService } from '@in-one/shared-services';
 import { io, Socket } from 'socket.io-client';
 import { motion } from 'framer-motion';
@@ -67,6 +67,12 @@ const ChatPage: React.FC = () => {
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isCameraOff, setIsCameraOff] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSharingScreen, setIsSharingScreen] = useState(false);
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
 
   useEffect(() => {
     if (userId && !hasFetchedUsers) {
@@ -94,6 +100,17 @@ const ChatPage: React.FC = () => {
       fetchChatHistory();
     }
   }, [selectedUser, userId]);
+
+  useEffect(() => {
+    peerConnectionRef.current = peerConnection;
+  }, [peerConnection]);
+
+  // Update isLoading when remote stream is received
+  useEffect(() => {
+    if (remoteStream) {
+      setIsLoading(false);
+    }
+  }, [remoteStream]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -449,7 +466,7 @@ const ChatPage: React.FC = () => {
     setMessageInput('');
 
     try {
-  if (selectedRoomId) {
+      if (selectedRoomId) {
         // Existing group message
         const messagePayload: CreateMessageModel = {
           chatRoomId: selectedRoomId,
@@ -554,6 +571,90 @@ const ChatPage: React.FC = () => {
   const filteredUsers = users.filter((user) => user.username.toLowerCase().includes(searchQuery));
   const filteredRooms = chatRooms.filter((room) => room.name.toLowerCase().includes(searchQuery));
   const selectedRoom = chatRooms.find((room) => room._id === selectedRoomId);
+
+  const toggleMute = () => {
+    if (localStream) {
+      localStream.getAudioTracks().forEach((track) => (track.enabled = isMuted));
+      setIsMuted(!isMuted);
+    }
+  };
+
+  // Toggle camera
+  const toggleCamera = () => {
+    if (localStream && callType === 'video') {
+      localStream.getVideoTracks().forEach((track) => (track.enabled = isCameraOff));
+      setIsCameraOff(!isCameraOff);
+    }
+  };
+
+  // Toggle full-screen
+  const toggleFullScreen = () => {
+    if (!isFullScreen) {
+      document.documentElement.requestFullscreen().catch((err) => console.error('Fullscreen error:', err));
+    } else {
+      document.exitFullscreen().catch((err) => console.error('Exit fullscreen error:', err));
+    }
+    setIsFullScreen(!isFullScreen);
+  };
+
+  // Start/stop screen sharing
+  const toggleScreenShare = async () => {
+    if (!peerConnectionRef.current || !localStream) return;
+
+    if (!isSharingScreen) {
+      try {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const screenTrack = screenStream.getVideoTracks()[0];
+        const sender = peerConnectionRef.current
+          .getSenders()
+          .find((s) => s.track?.kind === 'video');
+
+        if (sender) {
+          await sender.replaceTrack(screenTrack);
+          setIsSharingScreen(true);
+
+          // Stop webcam video track
+          localStream.getVideoTracks().forEach((track) => track.stop());
+
+          // Update local stream to screen stream
+          setLocalStream(screenStream);
+
+          // Handle screen share ending
+          screenTrack.onended = async () => {
+            setIsSharingScreen(false);
+            // Revert to webcam
+            try {
+              const webcamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+              const webcamTrack = webcamStream.getVideoTracks()[0];
+              await sender.replaceTrack(webcamTrack);
+              setLocalStream(webcamStream);
+            } catch (error) {
+              message.error('Failed to revert to webcam: ' + error);
+            }
+          };
+        }
+      } catch (error) {
+        message.error('Failed to share screen: ' + error);
+      }
+    } else {
+      // Stop screen sharing
+      localStream.getTracks().forEach((track) => track.stop());
+      try {
+        const webcamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        const webcamTrack = webcamStream.getVideoTracks()[0];
+        const sender = peerConnectionRef.current
+          .getSenders()
+          .find((s) => s.track?.kind === 'video');
+        if (sender) {
+          await sender.replaceTrack(webcamTrack);
+        }
+        setLocalStream(webcamStream);
+        setIsSharingScreen(false);
+      } catch (error) {
+        message.error('Failed to stop screen sharing: ' + error);
+      }
+    }
+  };
 
   return (
     <div className="chat-container">
@@ -750,25 +851,84 @@ const ChatPage: React.FC = () => {
         title={callType === 'audio' ? 'Audio Call' : 'Video Call'}
         open={isCalling}
         onCancel={endCall}
-        footer={[
-          <Button key="end" danger onClick={endCall}>End Call</Button>,
-        ]}
-        width={callType === 'video' ? 800 : 400}
+        footer={
+          <Space>
+            {callType === 'video' && (
+              <>
+                <Button
+                  icon={isCameraOff ? <VideoCameraAddOutlined /> : <VideoCameraOutlined />}
+                  onClick={toggleCamera}
+                  type={isCameraOff ? 'default' : 'primary'}
+                  aria-label={isCameraOff ? 'Turn camera on' : 'Turn camera off'}
+                >
+                  {isCameraOff ? 'Camera On' : 'Camera Off'}
+                </Button>
+                <Button
+                  icon={<ShareAltOutlined />}
+                  onClick={toggleScreenShare}
+                  type={isSharingScreen ? 'primary' : 'default'}
+                  aria-label={isSharingScreen ? 'Stop sharing screen' : 'Share screen'}
+                >
+                  {isSharingScreen ? 'Stop Sharing' : 'Share Screen'}
+                </Button>
+              </>
+            )}
+            <Button
+              icon={isMuted ? <UserOutlined /> : <SoundOutlined />}
+              onClick={toggleMute}
+              type={isMuted ? 'default' : 'primary'}
+              aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'}
+            >
+              {isMuted ? 'Unmute' : 'Mute'}
+            </Button>
+            <Button
+              icon={isFullScreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+              onClick={toggleFullScreen}
+              aria-label={isFullScreen ? 'Exit full screen' : 'Enter full screen'}
+            >
+              {isFullScreen ? 'Exit Fullscreen' : 'Fullscreen'}
+            </Button>
+            <Button danger onClick={endCall} aria-label="End call">
+              End Call
+            </Button>
+          </Space>
+        }
+        width={callType === 'video' ? 900 : 400}
+        className="video-call-modal"
+        centered
       >
         <div className="call-container">
+          {isLoading && <Spin tip="Connecting..." size="large" />}
           {callType === 'audio' ? (
-            <AudioOutlined style={{ fontSize: 64, color: '#1890ff' }} />
+            <div className="audio-call-container">
+              <AudioOutlined style={{ fontSize: 64, color: '#1890ff' }} />
+              <Text className="call-status">Connected to {selectedUser?.username || 'User'}</Text>
+            </div>
           ) : (
-            <>
-              <div className="video-wrapper">
-                <video ref={localVideoRef} autoPlay muted playsInline className="local-video" />
+            <div className="video-call-container">
+              <div className="video-wrapper local-video-wrapper">
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="local-video"
+                  aria-label="Your video feed"
+                />
                 <Text className="video-label">You</Text>
+                {isCameraOff && <div className="camera-off">Camera Off</div>}
               </div>
-              <div className="video-wrapper">
-                <video ref={remoteVideoRef} autoPlay playsInline className="remote-video" />
+              <div className="video-wrapper remote-video-wrapper">
+                <video
+                  ref={remoteVideoRef}
+                  autoPlay
+                  playsInline
+                  className="remote-video"
+                  aria-label="Remote participant's video feed"
+                />
                 <Text className="video-label">{selectedUser?.username || 'Remote'}</Text>
               </div>
-            </>
+            </div>
           )}
         </div>
       </Modal>

@@ -1,19 +1,8 @@
-// src/app-layout/app-layout.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { Layout, Button, Spin, Avatar, Modal, Typography } from 'antd';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  ProjectOutlined,
-  LineChartOutlined,
-  PictureOutlined,
-  MessageOutlined,
-  FileOutlined,
-  BulbOutlined,
-  PoweroffOutlined,
-  VideoCameraOutlined,
-  UserOutlined,
-} from '@ant-design/icons';
+import { ProjectOutlined, LineChartOutlined, PictureOutlined, MessageOutlined, FileOutlined, BulbOutlined, PoweroffOutlined, VideoCameraOutlined, UserOutlined, DashboardOutlined } from '@ant-design/icons';
 import './app-layout.css';
 import { UserHelpService } from '@in-one/shared-services';
 import { UserIdRequestModel } from '@in-one/shared-models';
@@ -59,14 +48,14 @@ const AppLayout: React.FC = () => {
   }, [navigate, userService]);
 
   const navItems = [
-    { key: '1', icon: <ProjectOutlined />, label: 'Home', path: '/home' },
-    { key: '2', icon: <MessageOutlined />, label: 'Messages', path: '/chat' },
-    { key: '3', icon: <FileOutlined />, label: 'Notes', path: '/notes' },
-    { key: '4', icon: <BulbOutlined />, label: 'AI Assistant', path: '/ai-bot' },
-    { key: '5', icon: <VideoCameraOutlined />, label: 'Video Hub', path: '/videos' },
-    { key: '6', icon: <PictureOutlined />, label: 'Gallery', path: '/photos' },
-    { key: '7', icon: <LineChartOutlined />, label: 'News Feed', path: '/news' },
-    { key: '8', icon: <ProjectOutlined />, label: 'Dashboard', path: '/dashboard', adminOnly: true },
+    { key: '1', icon: <ProjectOutlined />, label: 'HomePage', path: '/home' },
+    { key: '2', icon: <DashboardOutlined />, label: 'Dashboard', path: '/dashboard', adminOnly: true },
+    { key: '3', icon: <MessageOutlined />, label: 'Messages', path: '/chat' },
+    { key: '4', icon: <FileOutlined />, label: 'Notes', path: '/notes' },
+    { key: '5', icon: <BulbOutlined />, label: 'AI Assistant', path: '/ai-bot' },
+    { key: '6', icon: <VideoCameraOutlined />, label: 'Video Hub', path: '/videos' },
+    { key: '7', icon: <PictureOutlined />, label: 'Photo Feed', path: '/photos' },
+    { key: '8', icon: <LineChartOutlined />, label: 'News Feed', path: '/news' },
   ];
 
   const navVariants = {

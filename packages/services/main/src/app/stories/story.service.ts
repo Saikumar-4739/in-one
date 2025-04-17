@@ -170,7 +170,6 @@ export class StoriesService {
         },
         skip: (page - 1) * limit,
         take: limit,
-        relations: ['user'],
         order: { createdAt: 'DESC' },
       });
       return new CommonResponse(true, 200, 'Stories retrieved successfully', { stories, total });
