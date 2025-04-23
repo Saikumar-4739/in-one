@@ -381,9 +381,9 @@ export class UserService {
 
       return new CommonResponse(true, 200, 'OTP sent successfully');
     } catch (error) {
+      console.log(error, ".........................")
       await transactionManager.rollbackTransaction();
-      const errorMessage = error instanceof Error ? error.message : 'Error sending OTP';
-      return new CommonResponse(false, errorMessage.includes('required') || errorMessage.includes('not found') ? 400 : 500, errorMessage);
+      return new CommonResponse(false, 1, 'Error Sending OTP', error);
     }
   }
 
