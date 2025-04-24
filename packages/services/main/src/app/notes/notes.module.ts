@@ -18,7 +18,6 @@ import { GenericTransactionManager } from 'src/database/trasanction-manager';
   providers: [
     NotesService,
     NotesRepository,
-    UserRepository,
     GenericTransactionManager,
   ],
   controllers: [NotesCalenderController],

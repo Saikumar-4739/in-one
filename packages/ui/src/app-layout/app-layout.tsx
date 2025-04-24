@@ -55,7 +55,7 @@ const AppLayout: React.FC = () => {
     { key: '5', icon: <BulbOutlined />, label: 'AI Assistant', path: '/ai-bot' },
     { key: '6', icon: <VideoCameraOutlined />, label: 'Video Hub', path: '/videos' },
     { key: '7', icon: <PictureOutlined />, label: 'Photo Feed', path: '/photos' },
-    // { key: '8', icon: <LineChartOutlined />, label: 'News Feed', path: '/news' },
+    { key: '8', icon: <LineChartOutlined />, label: 'News Feed', path: '/news' },
   ];
 
   const navVariants = {

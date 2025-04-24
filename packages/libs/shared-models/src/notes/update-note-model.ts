@@ -1,28 +1,28 @@
-export class UpdateNoteModel {
-    title?: string;
-    content?: string;
-    attachments?: string[];
-    isArchived?: boolean;
-    isPinned?: boolean;
-    voiceNoteUrl?: string;
-    sharedWith?: string[];
-  
-    constructor(
-      title?: string,
-      content?: string,
-      attachments?: string[],
-      isArchived?: boolean,
-      isPinned?: boolean,
-      voiceNoteUrl?: string,
-      sharedWith?: string[]
-    ) {
-      this.title = title;
-      this.content = content;
-      this.attachments = attachments;
-      this.isArchived = isArchived;
-      this.isPinned = isPinned;
-      this.voiceNoteUrl = voiceNoteUrl;
-      this.sharedWith = sharedWith;
-    }
+import { NotesIdRequestModel } from "./notes-id-request-model";
+
+export class UpdateNoteModel  extends NotesIdRequestModel {
+  userId: string
+  title: string;
+  content: string;
+  color: string;
+  tags?: string[];
+  reminderAt?: Date;
+
+  constructor(
+    noteId: string,
+    userId: string,
+    title: string,
+    content: string,
+    color: string,
+    tags?: string[],
+    reminderAt?: Date
+  ) {
+    super(noteId)
+    this.userId = userId
+    this.title = title;
+    this.content = content;
+    this.color = color;
+    this.tags = tags;
+    this.reminderAt = reminderAt
   }
-  
+}

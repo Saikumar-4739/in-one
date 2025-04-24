@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Typography, Button } from 'antd';
 import { motion } from 'framer-motion';
-import { BulbOutlined, MessageOutlined, FileTextOutlined, VideoCameraOutlined, PictureOutlined } from '@ant-design/icons';
+import { BulbOutlined, MessageOutlined, FileTextOutlined, VideoCameraOutlined, PictureOutlined, LineChartOutlined } from '@ant-design/icons';
 import FeatureCard from './features-card';
 
 const { Title, Paragraph } = Typography;
@@ -28,6 +28,7 @@ const HomePage: React.FC = () => {
 
   const features = [
     { icon: <FileTextOutlined />, name: 'Notes', color: '#ff6b6b' },
+    { icon: <LineChartOutlined />, name: 'News', color: '#4ecdc4' },
     { icon: <MessageOutlined />, name: 'Chat', color: '#45b7d1' },
     { icon: <BulbOutlined />, name: 'AI Bot', color: '#96ceb4' },
     { icon: <VideoCameraOutlined />, name: 'Videos', color: '#8a2be2' },

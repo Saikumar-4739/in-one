@@ -1,6 +1,6 @@
 import { AxiosRequestConfig } from 'axios';
 import { CommonAxiosService } from '../common-axios-service';
-import { GlobalResponseObject, CreateNoteModel, UpdateNoteModel } from '@in-one/shared-models';
+import { GlobalResponseObject, CreateNoteModel, UpdateNoteModel, GetUserNotesModel } from '@in-one/shared-models';
 
 export class NotesHelpService extends CommonAxiosService {
   
@@ -8,16 +8,16 @@ export class NotesHelpService extends CommonAxiosService {
     return `/notes-calender/${childUrl}`;
   }
 
-  async createNote(createNoteDto: CreateNoteModel, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
-    return await this.axiosPostCall(this.getURLwithMainEndPoint('createNote'), createNoteDto, config);
+  async createNote(reqModel: CreateNoteModel, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
+    return await this.axiosPostCall(this.getURLwithMainEndPoint('createNote'), reqModel, config);
   }
 
-  async updateNote(id: string, updateNoteDto: UpdateNoteModel, userId: string, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
-    return await this.axiosPostCall(this.getURLwithMainEndPoint('updateNote'), { id, userId, ...updateNoteDto }, config);
+  async updateNote(reqModel: UpdateNoteModel, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
+    return await this.axiosPostCall(this.getURLwithMainEndPoint('updateNote'), reqModel, config);
   }
 
-  async getUserNotes(userId: string, includeArchived: boolean = false, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
-    return await this.axiosPostCall(this.getURLwithMainEndPoint('getUserNotes'), { userId, includeArchived }, config);
+  async getUserNotes(reqModel: GetUserNotesModel, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
+    return await this.axiosPostCall(this.getURLwithMainEndPoint('getUserNotes'), reqModel, config);
   }
 
   async togglePin(id: string, userId: string, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
