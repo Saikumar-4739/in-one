@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Typography, Button } from 'antd';
 import { motion } from 'framer-motion';
-import { BulbOutlined, MessageOutlined, FileTextOutlined, VideoCameraOutlined, LineChartOutlined, PictureOutlined } from '@ant-design/icons';
+import { BulbOutlined, MessageOutlined, FileTextOutlined, VideoCameraOutlined, PictureOutlined } from '@ant-design/icons';
 import FeatureCard from './features-card';
 
 const { Title, Paragraph } = Typography;
@@ -28,7 +28,6 @@ const HomePage: React.FC = () => {
 
   const features = [
     { icon: <FileTextOutlined />, name: 'Notes', color: '#ff6b6b' },
-    { icon: <LineChartOutlined />, name: 'News', color: '#4ecdc4' },
     { icon: <MessageOutlined />, name: 'Chat', color: '#45b7d1' },
     { icon: <BulbOutlined />, name: 'AI Bot', color: '#96ceb4' },
     { icon: <VideoCameraOutlined />, name: 'Videos', color: '#8a2be2' },
@@ -36,43 +35,167 @@ const HomePage: React.FC = () => {
   ];
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', width: '100%', maxWidth: '100vw', overflowX: 'hidden' }}>
-      <div style={{ position: 'relative', height: '60vh', width: '100%', flexShrink: 0 }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        width: '100%',
+        overflowX: 'hidden',
+        backgroundColor: '#f7f7f7', 
+        fontFamily: "'Poppins', sans-serif", 
+      }}
+    >
+      {/* Hero Section */}
+      <div
+        style={{
+          position: 'relative',
+          minHeight: '60vh',
+          width: '100%',
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'linear-gradient(135deg, #8a2be2, #45b7d1)', 
+          color: '#fff',
+          borderRadius: '0 0 40% 40%',
+        }}
+      >
         <motion.div
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, padding: 'clamp(10px, 3vw, 20px)', textAlign: 'center', color: '#000', background: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}
+          style={{
+            padding: 'clamp(16px, 4vw, 32px)',
+            textAlign: 'center',
+            maxWidth: '1200px',
+            width: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
           <motion.div variants={textVariants}>
-            <Title style={{ color: '#000', fontSize: 'clamp(20px, 5vw, 48px)', marginBottom: 'clamp(5px, 2vw, 10px)', lineHeight: 1.2 }}>
-              Welcome to Your <span style={{ color: '#8a2be2', fontWeight: 'bold' }}>IN</span>-One
+            <Title
+              style={{
+                color: '#fff',
+                fontSize: 'clamp(36px, 8vw, 60px)',
+                marginBottom: 'clamp(16px, 3vw, 32px)',
+                fontWeight: 700,
+                lineHeight: 1.2,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexWrap: 'wrap',
+                gap: 'clamp(8px, 2vw, 12px)',
+              }}
+            >
+              Welcome to Your
+              <span
+                style={{
+                  width: 'clamp(50px, 15vw, 80px)',
+                  height: 'clamp(50px, 15vw, 80px)',
+                  background: '#ffd700', 
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#000',
+                  fontWeight: 'bold',
+                  fontSize: 'clamp(40px, 5vw, 30px)',
+                }}
+              >
+                IN
+              </span>
+              One
             </Title>
-            <Paragraph style={{
-              color: '#000',
-              fontSize: 'clamp(12px, 2.5vw, 18px)',
-              maxWidth: '90%',
-              margin: '0 auto',
-            }}>
+            <Paragraph
+              style={{
+                color: '#fff',
+                fontSize: 'clamp(14px, 3vw, 18px)',
+                maxWidth: '800px',
+                margin: '0 auto',
+                lineHeight: 1.5,
+              }}
+            >
               Discover a seamless experience with powerful features designed to boost productivity and creativity.
             </Paragraph>
           </motion.div>
-          <motion.div variants={textVariants} style={{ marginTop: 'clamp(10px, 3vw, 20px)' }}>
+          <motion.div
+            variants={textVariants}
+            style={{ marginTop: 'clamp(16px, 4vw, 24px)' }}
+          >
             <Link to="/chat">
-              <Button size="large" style={{ padding: '0 clamp(15px, 4vw, 30px)', backgroundColor: '#8a2be2', borderColor: '#ffd700', fontSize: 'clamp(12px, 2vw, 16px)' }}>
+              <Button
+                size="large"
+                style={{
+                  padding: '0 clamp(20px, 5vw, 32px)',
+                  height: 'clamp(40px, 10vw, 48px)',
+                  backgroundColor: '#ffd700', // Gold button
+                  borderColor: '#ffd700',
+                  color: '#000',
+                  fontSize: 'clamp(14px, 3vw, 16px)',
+                  fontWeight: 600,
+                  transition: 'background-color 0.3s ease',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ff8c00'} // Hover effect
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffd700'}
+              >
                 Get Started
               </Button>
             </Link>
           </motion.div>
         </motion.div>
       </div>
-      <div style={{ flexGrow: 1, width: '100%', padding: 'clamp(5px, 2vw, 10px)', backgroundColor: '#fff', textAlign: 'center' }}>
-        <Title level={2} style={{ marginBottom: 'clamp(20px, 5vw, 40px)', fontSize: 'clamp(18px, 4vw, 32px)' }}>
+
+      {/* Features Section */}
+      <div
+        style={{
+          flexGrow: 1,
+          width: '100%',
+          padding: 'clamp(24px, 6vw, 48px) clamp(16px, 4vw, 32px)',
+          textAlign: 'center',
+        }}
+      >
+        <Title
+          level={2}
+          style={{
+            marginBottom: 'clamp(24px, 6vw, 40px)',
+            fontSize: 'clamp(20px, 5vw, 32px)',
+            color: '#333', // Dark text for features
+            fontWeight: 600,
+          }}
+        >
           Explore Our Features
         </Title>
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 'clamp(10px, 3vw, 30px)', padding: '0 10px', width: '100%', maxWidth: '1200px', margin: '0 auto' }}>
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            gap: 'clamp(16px, 4vw, 24px)',
+            width: '100%',
+            maxWidth: '1200px',
+            margin: '0 auto',
+          }}
+        >
           {features.map((feature, index) => (
-            <FeatureCard key={index} feature={feature} index={index} />
+            <motion.div
+              key={index}
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+              }}
+              initial="hidden"
+              animate="visible"
+              style={{
+                maxWidth: '280px',
+                transition: 'transform 0.3s ease',
+              }}
+            >
+              <FeatureCard feature={feature} index={index} />
+            </motion.div>
           ))}
         </div>
       </div>
