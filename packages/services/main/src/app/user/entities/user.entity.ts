@@ -1,4 +1,4 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, DeleteDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { UserRole } from '@in-one/shared-models';
 
 @Entity('users')
@@ -27,8 +27,29 @@ export class UserEntity {
   @Column({ type: 'timestamp', nullable: true })
   lastSeen: Date;
 
+  @DeleteDateColumn({ nullable: true })
+  deletedAt?: Date;
+
+  @Column({ default: true })
+  isActive: boolean;
+
   @Column({ nullable: true })
-  resetPasswordOtp: string;
+  bio: string;
+
+  @Column({ nullable: true })
+  phoneNumber: string;
+
+  @Column({ nullable: true })
+  address: string;
+
+  @Column({ nullable: true })
+  dateOfBirth: Date;
+
+  @Column({ type: 'varchar', nullable: true })
+  verificationToken?: string;
+
+  @Column({ type: 'boolean', default: false })
+  isEmailVerified: boolean;
 
   @Column({ type: 'timestamp', nullable: true })
   resetPasswordExpires: Date;

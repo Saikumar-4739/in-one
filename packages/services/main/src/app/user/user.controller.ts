@@ -1,20 +1,15 @@
-import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Body } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CommonResponse, CreateUserModel, EmailRequestModel, ExceptionHandler, ResetPassowordModel, UpdateUserModel, UserIdRequestModel, UserLoginModel } from '@in-one/shared-models';
-import { ApiBody, ApiTags } from '@nestjs/swagger';
-
-export interface ScreenPreferencesModel {
-  userId: string;
-  preferences: { [key: string]: boolean };
-}
-
+import { ApiBody, ApiTags, ApiOperation } from '@nestjs/swagger';
 
 @ApiTags('Users')
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) { }
+  constructor(private readonly userService: UserService) {}
 
   @Post('createUser')
+  @ApiOperation({ summary: 'Create a new user' })
   @ApiBody({ type: CreateUserModel })
   async createUser(@Body() reqModel: CreateUserModel): Promise<CommonResponse> {
     try {
@@ -25,6 +20,7 @@ export class UserController {
   }
 
   @Post('loginUser')
+  @ApiOperation({ summary: 'Log in a user' })
   @ApiBody({ type: UserLoginModel })
   async loginUser(@Body() userLoginDto: UserLoginModel): Promise<CommonResponse> {
     try {
@@ -34,7 +30,19 @@ export class UserController {
     }
   }
 
+  @Post('verifyEmail')
+  @ApiOperation({ summary: 'Verify user email with token' })
+  @ApiBody({ schema: { properties: { token: { type: 'string' } } } })
+  async verifyEmail(@Body('token') token: string): Promise<CommonResponse> {
+    try {
+      return await this.userService.verifyEmail(token);
+    } catch (error) {
+      return ExceptionHandler.handleError(error, 'Error verifying email');
+    }
+  }
+
   @Post('getUserById')
+  @ApiOperation({ summary: 'Get user by ID' })
   @ApiBody({ type: UserIdRequestModel })
   async getUserById(@Body() reqModel: UserIdRequestModel): Promise<CommonResponse> {
     try {
@@ -45,8 +53,9 @@ export class UserController {
   }
 
   @Post('updateUser')
+  @ApiOperation({ summary: 'Update user details' })
   @ApiBody({ type: UpdateUserModel })
-  async updateUser(@Body('userId') reqModel: UpdateUserModel): Promise<CommonResponse> {
+  async updateUser(@Body() reqModel: UpdateUserModel): Promise<CommonResponse> {
     try {
       return await this.userService.updateUser(reqModel);
     } catch (error) {
@@ -55,8 +64,9 @@ export class UserController {
   }
 
   @Post('deleteUser')
+  @ApiOperation({ summary: 'Delete a user' })
   @ApiBody({ type: UserIdRequestModel })
-  async deleteUser(@Body('userId') reqModel: UserIdRequestModel): Promise<CommonResponse> {
+  async deleteUser(@Body() reqModel: UserIdRequestModel): Promise<CommonResponse> {
     try {
       return await this.userService.deleteUser(reqModel);
     } catch (error) {
@@ -65,6 +75,7 @@ export class UserController {
   }
 
   @Post('logoutUser')
+  @ApiOperation({ summary: 'Log out a user' })
   @ApiBody({ schema: { properties: { userId: { type: 'string' } } } })
   async logoutUser(@Body('userId') userId: string): Promise<CommonResponse> {
     try {
@@ -75,8 +86,9 @@ export class UserController {
   }
 
   @Post('status')
+  @ApiOperation({ summary: 'Check user online status' })
   @ApiBody({ type: UserIdRequestModel })
-  async checkUserStatus(@Body('userId') reqModel: UserIdRequestModel): Promise<CommonResponse> {
+  async checkUserStatus(@Body() reqModel: UserIdRequestModel): Promise<CommonResponse> {
     try {
       return await this.userService.checkUserStatus(reqModel);
     } catch (error) {
@@ -85,16 +97,29 @@ export class UserController {
   }
 
   @Post('getUserActivityStatus')
+  @ApiOperation({ summary: 'Get user activity status' })
   @ApiBody({ type: UserIdRequestModel })
-  async getUserActivityStatus(@Body('userId') reqModel: UserIdRequestModel): Promise<CommonResponse> {
+  async getUserActivityStatus(@Body() reqModel: UserIdRequestModel): Promise<CommonResponse> {
     try {
       return await this.userService.getUserActivityStatus(reqModel);
     } catch (error) {
-      return ExceptionHandler.handleError(error, 'Error fetching user status');
+      return ExceptionHandler.handleError(error, 'Error fetching user activity status');
+    }
+  }
+
+  @Post('forgotPassword')
+  @ApiOperation({ summary: 'Send password reset email' })
+  @ApiBody({ type: EmailRequestModel })
+  async forgotPassword(@Body() reqModel: EmailRequestModel): Promise<CommonResponse> {
+    try {
+      return await this.userService.sendResetPasswordEmail(reqModel);
+    } catch (error) {
+      return ExceptionHandler.handleError(error, 'Error sending password reset email');
     }
   }
 
   @Post('resetPassword')
+  @ApiOperation({ summary: 'Reset user password with token' })
   @ApiBody({ type: ResetPassowordModel })
   async resetPassword(@Body() reqModel: ResetPassowordModel): Promise<CommonResponse> {
     try {
@@ -103,15 +128,4 @@ export class UserController {
       return ExceptionHandler.handleError(error, 'Error resetting password');
     }
   }
-
-  @Post('forgotPassword')
-  @ApiBody({ type: EmailRequestModel })
-  async forgotPassword(@Body() reqModel: EmailRequestModel): Promise<CommonResponse> {
-    try {
-      return await this.userService.sendResetPasswordEmail(reqModel);
-    } catch (error) {
-      return ExceptionHandler.handleError(error, 'Error sending OTP');
-    }
-  }
 }
-

@@ -1,5 +1,5 @@
 export * from './responses';
-export * from './authentication';
+export * from './user';
 export * from './chat';
 export * from './notes';
 export * from './news';

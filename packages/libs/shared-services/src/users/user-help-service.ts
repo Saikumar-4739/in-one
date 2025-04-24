@@ -1,9 +1,9 @@
 import { AxiosRequestConfig } from 'axios';
 import { CommonAxiosService } from '../common-axios-service';
-import { CreateUserModel, UpdateUserModel, UserLoginModel, CommonResponse, UserIdRequestModel, EmailRequestModel, ResetPassowordModel, ScreenPreferencesModel } from '@in-one/shared-models';
+import { CreateUserModel, UpdateUserModel, UserLoginModel, CommonResponse, UserIdRequestModel, EmailRequestModel, ResetPassowordModel} from '@in-one/shared-models';
+
 
 export class UserHelpService extends CommonAxiosService {
-
   private getURLwithMainEndPoint(childUrl: string): string {
     return `/users/${childUrl}`;
   }
@@ -14,6 +14,10 @@ export class UserHelpService extends CommonAxiosService {
 
   async loginUser(reqModel: UserLoginModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
     return await this.axiosPostCall(this.getURLwithMainEndPoint('loginUser'), reqModel, config);
+  }
+
+  async verifyEmail(token: string, config?: AxiosRequestConfig): Promise<CommonResponse> {
+    return await this.axiosPostCall(this.getURLwithMainEndPoint('verifyEmail'), { token }, config);
   }
 
   async getUserById(reqModel: UserIdRequestModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
@@ -35,6 +39,7 @@ export class UserHelpService extends CommonAxiosService {
   async checkUserStatus(reqModel: UserIdRequestModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
     return await this.axiosPostCall(this.getURLwithMainEndPoint('status'), reqModel, config);
   }
+
   async getUserActivityStatus(reqModel: UserIdRequestModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
     return await this.axiosPostCall(this.getURLwithMainEndPoint('getUserActivityStatus'), reqModel, config);
   }
@@ -45,17 +50,5 @@ export class UserHelpService extends CommonAxiosService {
 
   async resetPassword(reqModel: ResetPassowordModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
     return await this.axiosPostCall(this.getURLwithMainEndPoint('resetPassword'), reqModel, config);
-  }
-
-  async setScreenPreferences(reqModel: ScreenPreferencesModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
-    return await this.axiosPostCall(this.getURLwithMainEndPoint('screen-preferences'), reqModel, config);
-  }
-
-  async getScreenPreferences(config?: AxiosRequestConfig): Promise<CommonResponse> {
-    return await this.axiosPostCall(this.getURLwithMainEndPoint('screen-preferences'), config);
-  }
-
-  async accessDashboard(reqModel: UserIdRequestModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
-    return await this.axiosPostCall(this.getURLwithMainEndPoint('dashboard'), reqModel, config);
   }
 }

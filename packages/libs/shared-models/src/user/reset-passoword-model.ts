@@ -1,10 +1,10 @@
 export class ResetPassowordModel{
     email: string
-    otp: string
+    token: string;
     newPassword: string
-    constructor(email: string, otp: string, newPassword: string){
+    constructor(email: string, token: string, newPassword: string){
         this.email = email
-        this.otp = otp
+        this.token = token
         this.newPassword = newPassword
     }
 }

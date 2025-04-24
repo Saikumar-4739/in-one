@@ -1,4 +1,4 @@
-import { UserIdRequestModel } from "../authentication/userid-request-model";
+import { UserIdRequestModel } from "../user/userid-request-model";
 
 export class CreateReelModel extends UserIdRequestModel {
     reelUrl: string;
