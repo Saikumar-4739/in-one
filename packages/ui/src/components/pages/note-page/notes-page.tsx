@@ -132,24 +132,19 @@ const NotesPage: React.FC = () => {
   };
 
   const handleDelete = async (noteId: string) => {
-    try{
+    try {
       const req = new NotesIdRequestModel(noteId)
       const response = await notesService.deleteNote(req)
-      if(response.status === true){
+      if (response.status === true) {
         message.success('Notes Deleted SuccessFully')
         fetchNotes()
-      }else{
+      } else {
         message.error(response.internalMessage)
       }
-    }catch(error: any){
+    } catch (error: any) {
       message.error(error)
     }
   }
-
-  const handleShare = (note: any) => {
-    message.info(`Note "${note.title}" shared to chat!`);
-    console.log('Shared note:', note);
-  };
 
   const filteredNotes = notes.filter(
     (note) =>
@@ -185,123 +180,42 @@ const NotesPage: React.FC = () => {
         </div>
 
         <div style={{ padding: '16px' }}>
-  <motion.div
-    layout
-    style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(4, 1fr)', // Fixed to 4 columns per row
-      gridGap: '8px', // Consistent small gap between cards
-      gridAutoRows: '200px', // Fixed row height for uniform card sizes
-    }}
-  >
-    <AnimatePresence>
-      {filteredNotes.map((note) => (
-        <motion.div
-          key={note.id}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
-          transition={{ duration: 0.3 }}
-          style={{ cursor: 'pointer' }}
-          onClick={() => setPreviewNote(note)}
-        >
-          <Card
-            style={{
-              backgroundColor: note.color || '#ffffff',
-              borderRadius: '10px',
-              transition: 'box-shadow 0.3s ease',
-              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-              height: '200px', // Fixed height for all cards
-              display: 'flex',
-              flexDirection: 'column',
-              overflow: 'hidden', // Handle overflow content
-            }}
-            bodyStyle={{
-              padding: '16px',
-              flex: 1, // Allow body to fill available space
-              overflow: 'hidden', // Prevent content from overflowing
-            }}
-            title={
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span
-                  style={{
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {note.title}
-                </span>
-                {note.isPinned && <Badge dot color="#ffd700" />}
-              </div>
-            }
-            actions={[
-              <PushpinOutlined
-                key="pin"
-                style={{ color: note.isPinned ? '#ffd700' : 'inherit' }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handlePinToggle(note.id);
-                }}
-              />,
-              <EditOutlined
-                key="edit"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleEdit(note);
-                }}
-              />,
-              <FolderOutlined
-                key="archive"
-                style={{ color: note.isArchived ? '#aaa' : 'inherit' }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleArchiveToggle(note.id);
-                }}
-              />,
-              <DeleteOutlined
-                key="delete"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDelete(note.id);
-                }}
-              />,
-            ]}
-          >
-            <p
-              style={{
-                margin: '0',
-                wordWrap: 'break-word',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                display: '-webkit-box',
-                WebkitLineClamp: 3, // Limit to 3 lines of text
-                WebkitBoxOrient: 'vertical',
-              }}
-            >
-              {note.content.length > 100
-                ? `${note.content.substring(0, 100)}...`
-                : note.content}
-            </p>
-          </Card>
-        </motion.div>
-      ))}
-    </AnimatePresence>
-  </motion.div>
-</div>
-
-
+          <motion.div layout style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gridGap: '8px', gridAutoRows: '200px' }}>
+            <AnimatePresence>
+              {filteredNotes.map((note) => (
+                <motion.div key={note.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} transition={{ duration: 0.3 }} style={{ cursor: 'pointer' }} onClick={() => setPreviewNote(note)}>
+                  <Card
+                    style={{ backgroundColor: note.color || '#ffffff', borderRadius: '10px', transition: 'box-shadow 0.3s ease', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', height: '200px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+                    bodyStyle={{ padding: '16px', flex: 1, overflow: 'hidden', }}
+                    title={
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{note.title}</span>
+                        {note.isPinned && <Badge dot color="#ffd700" />}
+                      </div>
+                    }
+                    actions={[
+                      <PushpinOutlined key="pin" style={{ color: note.isPinned ? '#ffd700' : 'inherit' }} onClick={(e) => { e.stopPropagation(); handlePinToggle(note.id); }} />,
+                      <EditOutlined key="edit" onClick={(e) => { e.stopPropagation(); handleEdit(note); }} />,
+                      <FolderOutlined key="archive" style={{ color: note.isArchived ? '#aaa' : 'inherit' }} onClick={(e) => { e.stopPropagation(); handleArchiveToggle(note.id); }} />,
+                      <DeleteOutlined key="delete" onClick={(e) => { e.stopPropagation(); handleDelete(note.id); }} />,
+                    ]}
+                  >
+                    <p style={{ margin: '0', wordWrap: 'break-word', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' }}>
+                      {note.content.length > 100
+                        ? `${note.content.substring(0, 100)}...`
+                        : note.content}
+                    </p>
+                  </Card>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
+        </div>
 
         <Modal
           title={editingNoteId ? 'Edit Note' : 'New Note'}
           open={isFormModalVisible}
-          onCancel={() => {
-            setIsFormModalVisible(false);
-            setEditingNoteId(null);
-            form.resetFields();
-            setSelectedColor('#f5f5f5'); // use a soft gray instead of pure white
-            setContentLength(0);
-          }}
+          onCancel={() => { setIsFormModalVisible(false); setEditingNoteId(null); form.resetFields(); setSelectedColor('#f5f5f5'); setContentLength(0); }}
           footer={null}
           className="form-modal"
           style={{ borderRadius: '12px', backgroundColor: '#fff' }}
@@ -311,102 +225,35 @@ const NotesPage: React.FC = () => {
             onFinish={handleCreateOrUpdate}
             layout="vertical"
             className="form-container"
-            style={{
-              backgroundColor: selectedColor !== '#ffffff' ? selectedColor : '#ffffff',
-              padding: '16px',
-              borderRadius: '8px',
-            }}
+            style={{ backgroundColor: selectedColor !== '#ffffff' ? selectedColor : '#ffffff', padding: '16px', borderRadius: '8px' }}
           >
-            <Form.Item
-              name="title"
-              label="Title"
-              rules={[{ required: true, message: 'Please enter a title' }]}
-            >
-              <Input
-                placeholder="Note Title"
-                style={{
-                  borderRadius: '6px',
-                  padding: '8px',
-                  border: '1px solid #d9d9d9',
-                }}
-              />
+            <Form.Item name="title" label="Title" rules={[{ required: true, message: 'Please enter a title' }]}>
+              <Input placeholder="Note Title" style={{ borderRadius: '6px', padding: '8px', border: '1px solid #d9d9d9' }} />
             </Form.Item>
 
-            <Form.Item
-              name="content"
-              label="Content"
-              rules={[{ required: true, message: 'Please enter content' }]}
-            >
-              <TextArea
-                rows={6}
-                placeholder="Write your note..."
-                maxLength={1000}
-                onChange={(e) => setContentLength(e.target.value.length)}
-                showCount
-                style={{
-                  borderRadius: '6px',
-                  padding: '8px',
-                  border: '1px solid #d9d9d9',
-                }}
-              />
+            <Form.Item name="content" label="Content" rules={[{ required: true, message: 'Please enter content' }]}>
+              <TextArea rows={6} placeholder="Write your note..." maxLength={1000} onChange={(e) => setContentLength(e.target.value.length)} showCount style={{ borderRadius: '6px', padding: '8px', border: '1px solid #d9d9d9' }} />
             </Form.Item>
 
             <Form.Item name="color" label="Background Color">
-              <Select
-                value={selectedColor}
-                onChange={setSelectedColor}
-                style={{ borderRadius: '6px' }}
-                dropdownStyle={{ borderRadius: '6px' }}
-              >
+              <Select value={selectedColor} onChange={setSelectedColor} style={{ borderRadius: '6px' }} dropdownStyle={{ borderRadius: '6px' }}>
                 {colors.map((color) => (
                   <Option key={color.value} value={color.value}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span
-                        style={{
-                          display: 'inline-block',
-                          width: '16px',
-                          height: '16px',
-                          backgroundColor: color.value,
-                          borderRadius: '50%',
-                          border: '1px solid #ccc',
-                        }}
-                      />
+                      <span style={{ display: 'inline-block', width: '16px', height: '16px', backgroundColor: color.value, borderRadius: '50%', border: '1px solid #ccc' }} />
                       {color.name}
                     </div>
                   </Option>
                 ))}
               </Select>
             </Form.Item>
+
             <Form.Item>
               <Space style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Button type="primary" htmlType="submit" style={{ borderRadius: '6px', padding: '0 16px', backgroundColor: '#1890ff', borderColor: '#1890ff' }}>{editingNoteId ? 'Update' : 'Create'}</Button>
                 <Button
-                  type="primary"
-                  htmlType="submit"
-                  style={{
-                    borderRadius: '6px',
-                    padding: '0 16px',
-                    backgroundColor: '#1890ff',
-                    borderColor: '#1890ff',
-                  }}
-                >
-                  {editingNoteId ? 'Update' : 'Create'}
-                </Button>
-                <Button
-                  onClick={() => {
-                    setIsFormModalVisible(false);
-                    setEditingNoteId(null);
-                    form.resetFields();
-                    setSelectedColor('#f5f5f5');
-                    setContentLength(0);
-                  }}
-                  style={{
-                    borderRadius: '6px',
-                    padding: '0 16px',
-                    backgroundColor: '#f0f0f0',
-                    borderColor: '#d9d9d9',
-                    color: '#000',
-                  }}
-                >
+                  onClick={() => { setIsFormModalVisible(false); setEditingNoteId(null); form.resetFields(); setSelectedColor('#f5f5f5'); setContentLength(0); }}
+                  style={{ borderRadius: '6px', padding: '0 16px', backgroundColor: '#f0f0f0', borderColor: '#d9d9d9', color: '#000' }}>
                   Cancel
                 </Button>
               </Space>
@@ -419,35 +266,38 @@ const NotesPage: React.FC = () => {
           title={previewNote?.title || 'Note Preview'}
           open={!!previewNote}
           onCancel={() => setPreviewNote(null)}
-          footer={[
-            <Button
-              key="edit"
-              type="primary"
-              icon={<EditOutlined />}
-              onClick={() => {
-                handleEdit(previewNote);
-                setPreviewNote(null);
-              }}
-              className="edit-btn"
-            >
-              Edit
-            </Button>,
-            <Button
-              key="close"
-              onClick={() => setPreviewNote(null)}
-              className="close-btn"
-            >
-              Close
-            </Button>,
-          ]}
           className="preview-modal"
+          footer={null} // No footer buttons
+          bodyStyle={{ padding: '24px 24px 24px 24px', paddingTop: 16 }} // top, right, bottom, left
+          centered
         >
           {previewNote && (
-            <div className="preview-container" style={{ backgroundColor: previewNote.color }}>
-              <p className="preview-content">{previewNote.content}</p>
+            <div
+              className="preview-container"
+              style={{
+                backgroundColor: previewNote.color || '#f5f5f5',
+                padding: '20px',
+                borderRadius: '10px',
+                minHeight: '120px',
+              }}
+            >
+              <p
+                className="preview-content"
+                style={{
+                  margin: 0,
+                  whiteSpace: 'pre-wrap',
+                  fontSize: '16px',
+                  lineHeight: '1.6',
+                }}
+              >
+                {previewNote.content}
+              </p>
             </div>
           )}
         </Modal>
+
+
+
       </div>
     </div>
   );
