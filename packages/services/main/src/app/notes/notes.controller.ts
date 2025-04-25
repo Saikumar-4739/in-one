@@ -1,6 +1,6 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { NotesService } from './notes.service';
-import { CommonResponse, CreateNoteModel, GetUserNotesModel, UpdateNoteModel } from '@in-one/shared-models';
+import { CommonResponse, CreateNoteModel, GetUserNotesModel, NotesIdRequestModel, UpdateNoteModel } from '@in-one/shared-models';
 
 @Controller('notes-calender')
 export class NotesCalenderController {
@@ -73,6 +73,15 @@ export class NotesCalenderController {
     try {
       const response = await this.notesService.countUserNotes(body.userId);
       return response;
+    } catch (error) {
+      return new CommonResponse(false, 500, 'Error counting notes', error);
+    }
+  }
+
+  @Post('deleteNote')
+  async deleteNote(@Body() reqModel: NotesIdRequestModel): Promise<CommonResponse> {
+    try {
+      return await this.notesService.deleteNote(reqModel);
     } catch (error) {
       return new CommonResponse(false, 500, 'Error counting notes', error);
     }

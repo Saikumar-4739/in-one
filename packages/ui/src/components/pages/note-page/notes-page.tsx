@@ -1,18 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { CreateNoteModel, UpdateNoteModel } from '@in-one/shared-models';
 import { Button, Card, Input, Form, Space, Typography, Badge, message, Select, Modal } from 'antd';
-import {
-  PlusOutlined,
-  EditOutlined,
-  PushpinOutlined,
-  FolderOutlined,
-  SearchOutlined,
-  ShareAltOutlined,
-  DeleteOutlined,
-} from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, PushpinOutlined, FolderOutlined, SearchOutlined, ShareAltOutlined } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import './notes-page.css';
 import { NotesHelpService } from '@in-one/shared-services';
+import { CreateNoteModel, UpdateNoteModel, GetUserNotesModel } from '@in-one/shared-models';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -21,23 +13,30 @@ const { Option } = Select;
 const NotesPage: React.FC = () => {
   const [notes, setNotes] = useState<any[]>([]);
   const [form] = Form.useForm();
-  const [isFormVisible, setIsFormVisible] = useState(false);
+  const [isFormModalVisible, setIsFormModalVisible] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedColor, setSelectedColor] = useState<string>('#ffffff');
   const [previewNote, setPreviewNote] = useState<any | null>(null);
-  const [isClearModalVisible, setIsClearModalVisible] = useState(false);
   const [contentLength, setContentLength] = useState(0);
   const [userId] = useState<string | null>(() => localStorage.getItem('userId') || null);
   const notesService = new NotesHelpService();
 
   const colors = [
     { name: 'White', value: '#ffffff' },
-    { name: 'Yellow', value: '#fff9b1' },
-    { name: 'Orange', value: '#ffcc99' },
-    { name: 'Green', value: '#ccffcc' },
-    { name: 'Blue', value: '#cce5ff' },
+    { name: 'Yellow', value: '#fefcbf' },
+    { name: 'Pink', value: '#fed7e2' },
+    { name: 'Blue', value: '#bee3f8' },
+    { name: 'Green', value: '#c6f6d5' },
+    { name: 'Red', value: '#feb2b2' },
+    { name: 'Purple', value: '#e9d8fd' },
+    { name: 'Orange', value: '#fbd38d' },
+    { name: 'Teal', value: '#b2f5ea' },
+    { name: 'Gray', value: '#e2e8f0' },
+    { name: 'Brown', value: '#e4cbb3' },
+    { name: 'Indigo', value: '#c3dafe' },
   ];
+
 
   useEffect(() => {
     if (userId) {
@@ -48,99 +47,87 @@ const NotesPage: React.FC = () => {
   const fetchNotes = async () => {
     if (!userId) return;
     try {
-      const response = await notesService.getUserNotes(userId);
+      const reqModel = new GetUserNotesModel(userId, true);
+      const response = await notesService.getUserNotes(reqModel);
       if (response.status === true) {
         setNotes(response.data);
       } else {
-        message.error('Failed to fetch notes');
+        message.error(response.internalMessage);
       }
-    } catch (error) {
-      console.error('Error fetching notes:', error);
-      message.error('An error occurred while fetching notes');
+    } catch (error: any) {
+      message.error(error);
     }
   };
 
-  const handleCreateOrUpdate = async (values: {
-    title: string;
-    content: string;
-    color?: string;
-  }) => {
+  const handleCreateOrUpdate = async (values: { title: string; content: string; color?: string }) => {
     if (!userId) return;
     try {
       if (editingNoteId) {
-        const updateNote: UpdateNoteModel = values;
-        const response = await notesService.updateNote(editingNoteId, updateNote, userId);
+        const updateNote = new UpdateNoteModel(editingNoteId, userId, values.title, values.content, values.color || '#ffffff');
+        const response = await notesService.updateNote(updateNote);
         if (response.status === true) {
           setEditingNoteId(null);
           form.resetFields();
-          setIsFormVisible(false);
+          setIsFormModalVisible(false);
+          setSelectedColor('#ffffff');
           fetchNotes();
-          message.success('Note updated successfully');
+          message.success(response.internalMessage);
         } else {
-          message.error(response.internalMessage || 'Failed to update note');
+          message.error(response.internalMessage);
         }
       } else {
-        const newNote = new CreateNoteModel(
-          values.title,
-          values.content,
-          userId,
-          [],
-          false,
-          false,
-          undefined,
-          []
-        );
-        (newNote as any).color = values.color || '#ffffff';
+        const newNote = new CreateNoteModel(values.title, values.content, userId, values.color || '#ffffff');
         const response = await notesService.createNote(newNote);
         if (response.status === true) {
           form.resetFields();
-          setIsFormVisible(false);
+          setIsFormModalVisible(false);
           setSelectedColor('#ffffff');
           fetchNotes();
-          message.success('Note created successfully');
+          message.success(response.internalMessage);
         } else {
-          message.error(response.internalMessage || 'Failed to create note');
+          message.error(response.internalMessage);
         }
       }
     } catch (error: any) {
-      console.error('Error creating/updating note:', error);
-      message.error('An error occurred while saving the note');
+      message.error(error);
     }
   };
 
   const handleEdit = (note: any) => {
     setEditingNoteId(note.id);
-    setIsFormVisible(true);
-    form.setFieldsValue({
-      title: note.title,
-      content: note.content,
-      color: note.color || '#ffffff',
-    });
-    setSelectedColor(note.color || '#ffffff');
+    setIsFormModalVisible(true);
+    form.setFieldsValue({ title: note.title, content: note.content, color: note.color });
+    setSelectedColor(note.color);
     setContentLength(note.content.length);
   };
 
-  const handlePinToggle = async (id: string) => {
+  const handlePinToggle = async (noteId: string) => {
     if (!userId) return;
     try {
-      await notesService.togglePin(id, userId);
-      fetchNotes();
-      message.success('Pin status updated');
-    } catch (error) {
-      console.error('Error toggling pin:', error);
-      message.error('Failed to toggle pin');
+      const response = await notesService.togglePin(noteId, userId);
+      if (response.status === true) {
+        fetchNotes();
+        message.success(response.internalMessage);
+      } else {
+        message.error(response.internalMessage);
+      }
+    } catch (error: any) {
+      message.error(error);
     }
   };
 
-  const handleArchiveToggle = async (id: string) => {
+  const handleArchiveToggle = async (noteId: string) => {
     if (!userId) return;
     try {
-      await notesService.toggleArchive(id, userId);
-      fetchNotes();
-      message.success('Archive status updated');
-    } catch (error) {
-      console.error('Error toggling archive:', error);
-      message.error('Failed to toggle archive');
+      const response = await notesService.toggleArchive(noteId, userId);
+      if (response.status === true) {
+        fetchNotes();
+        message.success(response.internalMessage);
+      } else {
+        message.error(response.internalMessage);
+      }
+    } catch (error: any) {
+      message.error(error);
     }
   };
 
@@ -148,24 +135,6 @@ const NotesPage: React.FC = () => {
     message.info(`Note "${note.title}" shared to chat!`);
     console.log('Shared note:', note);
   };
-
-  const handlePreview = (note: any) => {
-    setPreviewNote(note);
-  };
-
-  // const handleClearAllNotes = async () => {
-  //   if (!userId) return;
-  //   try {
-  //     // Assuming NotesHelpService has a method to clear all notes
-  //     await notesService.clearAllNotes(userId);
-  //     setNotes([]);
-  //     fetchNotes();
-  //     message.success('All notes cleared successfully');
-  //   } catch (error) {
-  //     console.error('Error clearing notes:', error);
-  //     message.error('Failed to clear all notes');
-  //   }
-  // };
 
   const filteredNotes = notes.filter(
     (note) =>
@@ -176,7 +145,9 @@ const NotesPage: React.FC = () => {
   if (!userId) {
     return (
       <div className="login-prompt">
-        <Title level={3}>Please log in to view your notes</Title>
+        <Title level={3} className="login-title">
+          Please log in to view your notes
+        </Title>
       </div>
     );
   }
@@ -184,65 +155,205 @@ const NotesPage: React.FC = () => {
   return (
     <div className="notes-page">
       <div className="notes-container">
-        {/* Header */}
+
         <div className="notes-header">
-          <Space>
-            <Input
-              prefix={<SearchOutlined />}
-              placeholder="Search notes..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="search-input"
-            />
-            <Button
-              type="default"
-              icon={<DeleteOutlined />}
-              onClick={() => setIsClearModalVisible(true)}
-              className="clear-all-btn"
-              disabled={notes.length === 0}
-            >
-              Clear All
-            </Button>
+          <Space className="header-space">
+            <Input prefix={<SearchOutlined />} placeholder="Search notes..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="search-input" />
+            <Badge count={filteredNotes.length} showZero className="notes-count" />
+            <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} transition={{ duration: 0.2 }}>
+              <Button style={{ marginLeft: '650px' }} type="primary" icon={<PlusOutlined />} onClick={() => {
+                setEditingNoteId(null); form.resetFields(); setIsFormModalVisible(true);
+                setContentLength(0); setSelectedColor('#ffffff');
+              }} className="add-note-btn">New Note</Button>
+            </motion.div>
           </Space>
         </div>
 
-        {/* Note Creation Form */}
+        <div style={{ padding: '16px' }}>
+  <motion.div
+    layout
+    style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(4, 1fr)', // Fixed to 4 columns per row
+      gridGap: '8px', // Consistent small gap between cards
+      gridAutoRows: '200px', // Fixed row height for uniform card sizes
+    }}
+  >
+    <AnimatePresence>
+      {filteredNotes.map((note) => (
         <motion.div
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: isFormVisible ? 'auto' : 0, opacity: isFormVisible ? 1 : 0 }}
+          key={note.id}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
           transition={{ duration: 0.3 }}
-          className="form-container"
-          style={{ backgroundColor: selectedColor }}
+          style={{ cursor: 'pointer' }}
+          onClick={() => setPreviewNote(note)}
         >
-          <Form form={form} onFinish={handleCreateOrUpdate}>
-            <Form.Item name="title" rules={[{ required: true, message: 'Please enter a title' }]}>
-              <Input placeholder="Title" className="form-title" />
+          <Card
+            style={{
+              backgroundColor: note.color || '#ffffff',
+              borderRadius: '10px',
+              transition: 'box-shadow 0.3s ease',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+              height: '200px', // Fixed height for all cards
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden', // Handle overflow content
+            }}
+            bodyStyle={{
+              padding: '16px',
+              flex: 1, // Allow body to fill available space
+              overflow: 'hidden', // Prevent content from overflowing
+            }}
+            title={
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span
+                  style={{
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {note.title}
+                </span>
+                {note.isPinned && <Badge dot color="#ffd700" />}
+              </div>
+            }
+            actions={[
+              <PushpinOutlined
+                key="pin"
+                style={{ color: note.isPinned ? '#ffd700' : 'inherit' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePinToggle(note.id);
+                }}
+              />,
+              <EditOutlined
+                key="edit"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEdit(note);
+                }}
+              />,
+              <FolderOutlined
+                key="archive"
+                style={{ color: note.isArchived ? '#aaa' : 'inherit' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleArchiveToggle(note.id);
+                }}
+              />,
+              <ShareAltOutlined
+                key="share"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleShare(note);
+                }}
+              />,
+            ]}
+          >
+            <p
+              style={{
+                margin: '0',
+                wordWrap: 'break-word',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                display: '-webkit-box',
+                WebkitLineClamp: 3, // Limit to 3 lines of text
+                WebkitBoxOrient: 'vertical',
+              }}
+            >
+              {note.content.length > 100
+                ? `${note.content.substring(0, 100)}...`
+                : note.content}
+            </p>
+          </Card>
+        </motion.div>
+      ))}
+    </AnimatePresence>
+  </motion.div>
+</div>
+
+
+
+        <Modal
+          title={editingNoteId ? 'Edit Note' : 'New Note'}
+          open={isFormModalVisible}
+          onCancel={() => {
+            setIsFormModalVisible(false);
+            setEditingNoteId(null);
+            form.resetFields();
+            setSelectedColor('#f5f5f5'); // use a soft gray instead of pure white
+            setContentLength(0);
+          }}
+          footer={null}
+          className="form-modal"
+          style={{ borderRadius: '12px', backgroundColor: '#fff' }}
+        >
+          <Form
+            form={form}
+            onFinish={handleCreateOrUpdate}
+            layout="vertical"
+            className="form-container"
+            style={{
+              backgroundColor: selectedColor !== '#ffffff' ? selectedColor : '#ffffff',
+              padding: '16px',
+              borderRadius: '8px',
+            }}
+          >
+            <Form.Item
+              name="title"
+              label="Title"
+              rules={[{ required: true, message: 'Please enter a title' }]}
+            >
+              <Input
+                placeholder="Note Title"
+                style={{
+                  borderRadius: '6px',
+                  padding: '8px',
+                  border: '1px solid #d9d9d9',
+                }}
+              />
             </Form.Item>
+
             <Form.Item
               name="content"
+              label="Content"
               rules={[{ required: true, message: 'Please enter content' }]}
             >
               <TextArea
-                rows={4}
-                placeholder="Take a note..."
-                className="form-content"
-                maxLength={500}
+                rows={6}
+                placeholder="Write your note..."
+                maxLength={1000}
                 onChange={(e) => setContentLength(e.target.value.length)}
+                showCount
+                style={{
+                  borderRadius: '6px',
+                  padding: '8px',
+                  border: '1px solid #d9d9d9',
+                }}
               />
             </Form.Item>
-            <div className="content-counter">{contentLength}/500</div>
-            <Form.Item name="color" label="Color">
-              <Select value={selectedColor} onChange={setSelectedColor}>
+
+            <Form.Item name="color" label="Background Color">
+              <Select
+                value={selectedColor}
+                onChange={setSelectedColor}
+                style={{ borderRadius: '6px' }}
+                dropdownStyle={{ borderRadius: '6px' }}
+              >
                 {colors.map((color) => (
                   <Option key={color.value} value={color.value}>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <div
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span
                         style={{
+                          display: 'inline-block',
                           width: '16px',
                           height: '16px',
                           backgroundColor: color.value,
-                          marginRight: '8px',
-                          border: '1px solid #d9d9d9',
+                          borderRadius: '50%',
+                          border: '1px solid #ccc',
                         }}
                       />
                       {color.name}
@@ -252,165 +363,75 @@ const NotesPage: React.FC = () => {
               </Select>
             </Form.Item>
             <Form.Item>
-              <Space>
-                <Button type="primary" htmlType="submit" className="action-btn save-btn">
-                  {editingNoteId ? 'Update' : 'Save'}
+              <Space style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  style={{
+                    borderRadius: '6px',
+                    padding: '0 16px',
+                    backgroundColor: '#1890ff',
+                    borderColor: '#1890ff',
+                  }}
+                >
+                  {editingNoteId ? 'Update' : 'Create'}
                 </Button>
                 <Button
                   onClick={() => {
-                    setIsFormVisible(false);
+                    setIsFormModalVisible(false);
                     setEditingNoteId(null);
                     form.resetFields();
-                    setSelectedColor('#ffffff');
+                    setSelectedColor('#f5f5f5');
                     setContentLength(0);
                   }}
-                  className="action-btn cancel-btn"
+                  style={{
+                    borderRadius: '6px',
+                    padding: '0 16px',
+                    backgroundColor: '#f0f0f0',
+                    borderColor: '#d9d9d9',
+                    color: '#000',
+                  }}
                 >
                   Cancel
                 </Button>
               </Space>
             </Form.Item>
           </Form>
-        </motion.div>
+        </Modal>
 
-        {/* Add Note Button */}
-        {!isFormVisible && (
-          <motion.div
-            initial={{ scale: 0.95 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.2 }}
-            className="add-note-btn-container"
-          >
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => {
-                setEditingNoteId(null);
-                form.resetFields();
-                setIsFormVisible(true);
-                setContentLength(0);
-              }}
-              className="action-btn add-note-btn"
-            >
-              Add Note
-            </Button>
-          </motion.div>
-        )}
 
-        {/* Notes Grid */}
-        <motion.div layout className="notes-grid">
-          <AnimatePresence>
-            {filteredNotes.map((note) => (
-              <motion.div
-                key={note.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.3 }}
-                onClick={() => handlePreview(note)}
-              >
-                <Card
-                  className={`note-card ${note.isPinned ? 'pinned' : ''} ${note.isArchived ? 'archived' : ''}`}
-                  style={{ backgroundColor: note.color || '#ffffff' }}
-                  title={
-                    <div className="card-title">
-                      <span>{note.title}</span>
-                      <Badge dot={note.isPinned} color="yellow" />
-                    </div>
-                  }
-                  actions={[
-                    <PushpinOutlined
-                      key="pin"
-                      className={note.isPinned ? 'pinned-icon' : ''}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handlePinToggle(note.id);
-                      }}
-                    />,
-                    <EditOutlined
-                      key="edit"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEdit(note);
-                      }}
-                    />,
-                    <FolderOutlined
-                      key="archive"
-                      className={note.isArchived ? 'archived-icon' : ''}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleArchiveToggle(note.id);
-                      }}
-                    />,
-                    <ShareAltOutlined
-                      key="share"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleShare(note);
-                      }}
-                    />,
-                  ]}
-                >
-                  <p>{note.content.length > 100 ? `${note.content.substring(0, 100)}...` : note.content}</p>
-                </Card>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </motion.div>
-
-        {/* Notes Count */}
-        <div className="notes-count">
-          <Badge count={filteredNotes.length} showZero>
-            <span>Total Notes</span>
-          </Badge>
-        </div>
-
-        {/* Preview Modal */}
         <Modal
-          title={previewNote?.title}
+          title={previewNote?.title || 'Note Preview'}
           open={!!previewNote}
           onCancel={() => setPreviewNote(null)}
           footer={[
-            <Button key="close" onClick={() => setPreviewNote(null)} className="action-btn">
+            <Button
+              key="edit"
+              type="primary"
+              icon={<EditOutlined />}
+              onClick={() => {
+                handleEdit(previewNote);
+                setPreviewNote(null);
+              }}
+              className="edit-btn"
+            >
+              Edit
+            </Button>,
+            <Button
+              key="close"
+              onClick={() => setPreviewNote(null)}
+              className="close-btn"
+            >
               Close
             </Button>,
           ]}
           className="preview-modal"
         >
-          <div style={{ backgroundColor: previewNote?.color || '#ffffff', padding: '16px', borderRadius: '8px' }}>
-            <p style={{ margin: 0, fontSize: '16px', color: '#333' }}>{previewNote?.content}</p>
-            {previewNote?.attachments && previewNote.attachments.length > 0 && (
-              <div className="attachments" style={{ marginTop: '16px' }}>
-                <p style={{ fontSize: '14px', color: '#888' }}>Attachments:</p>
-                <ul>
-                  {previewNote.attachments.map((url: string, index: number) => (
-                    <li key={index}>
-                      <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: '#6200ea' }}>
-                        Attachment {index + 1}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </Modal>
-
-        {/* Clear All Confirmation Modal */}
-        <Modal
-          title="Clear All Notes"
-          open={isClearModalVisible}
-          onOk={() => {
-            // handleClearAllNotes();
-            setIsClearModalVisible(false);
-          }}
-          onCancel={() => setIsClearModalVisible(false)}
-          okText="Confirm"
-          cancelText="Cancel"
-          okButtonProps={{ className: 'action-btn save-btn' }}
-          cancelButtonProps={{ className: 'action-btn cancel-btn' }}
-        >
-          <p>Are you sure you want to delete all your notes? This action cannot be undone.</p>
+          {previewNote && (
+            <div className="preview-container" style={{ backgroundColor: previewNote.color }}>
+              <p className="preview-content">{previewNote.content}</p>
+            </div>
+          )}
         </Modal>
       </div>
     </div>

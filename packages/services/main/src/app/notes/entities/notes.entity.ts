@@ -27,7 +27,7 @@ export class NoteEntity {
   @Column({ type: 'boolean', default: false, nullable: false })
   isPinned: boolean;
 
-  @Column({ type: 'json', nullable: false})
+  @Column({ type: 'json', nullable: true})
   sharedWith: string[];
 
   @Column({ type: 'json', nullable: true})
