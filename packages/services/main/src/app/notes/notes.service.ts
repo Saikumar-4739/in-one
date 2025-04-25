@@ -1,8 +1,8 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Like, DataSource, Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import { NotesRepository } from './repository/notes.repository';
-import { CommonResponse, CreateNoteModel, GetUserNotesModel, NewsIdRequestModel, NotesIdRequestModel, UpdateNoteModel } from '@in-one/shared-models';
+import { CommonResponse, CreateNoteModel, GetUserNotesModel, NotesIdRequestModel, UpdateNoteModel } from '@in-one/shared-models';
 import { NoteEntity } from './entities/notes.entity';
 import { UserEntity } from 'src/app/user/entities/user.entity';
 
@@ -41,8 +41,7 @@ export class NotesService {
 
       return new CommonResponse(true, 0, 'Note created successfully', savedNote);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error occurred';
-      return new CommonResponse(false, message.includes('required') ? 400 : 500, message, null);
+      return new CommonResponse(true, 0, 'Note created failed', error);
     }
   }
 
@@ -76,8 +75,7 @@ export class NotesService {
 
       return new CommonResponse(true, 200, 'Note updated successfully', savedNote);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Note Update Failed';
-      return new CommonResponse(false, 1, message, error);
+      return new CommonResponse(true, 0, 'Note Update failed', error);
     }
   }
 
@@ -231,7 +229,7 @@ export class NotesService {
       if (deleteResult.affected === 0) {
         throw new Error('Failed to delete note');
       }
-      return new CommonResponse(true, HttpStatus.OK, 'Note deleted successfully');
+      return new CommonResponse(true, 0, 'Note deleted successfully');
     } catch (error) {
       return new CommonResponse(false, 1, 'Note Delete Failed')
     }

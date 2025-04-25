@@ -1,8 +1,8 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { NotesService } from './notes.service';
-import { CommonResponse, CreateNoteModel, GetUserNotesModel, NotesIdRequestModel, UpdateNoteModel } from '@in-one/shared-models';
+import { CommonResponse, CreateNoteModel, ExceptionHandler, GetUserNotesModel, NotesIdRequestModel, UpdateNoteModel } from '@in-one/shared-models';
 
-@Controller('notes-calender')
+@Controller('notes')
 export class NotesCalenderController {
   constructor(
     private readonly notesService: NotesService,
@@ -11,30 +11,27 @@ export class NotesCalenderController {
   @Post('createNote')
   async createNote(@Body() reqModel: CreateNoteModel): Promise<CommonResponse> {
     try {
-      const response = await this.notesService.createNote(reqModel);
-      return response;
+      return await this.notesService.createNote(reqModel);
     } catch (error) {
-      return new CommonResponse(false, 500, 'Error creating note', error);
+      return ExceptionHandler.handleError(error, 'Error creating Note');
     }
   }
 
   @Post('updateNote')
   async updateNote(@Body() reqModel: UpdateNoteModel ): Promise<CommonResponse> {
     try {
-      const response = await this.notesService.updateNote(reqModel);
-      return response;
+      return await this.notesService.updateNote(reqModel);
     } catch (error) {
-      return new CommonResponse(false, 500, 'Error updating note', error);
+      return ExceptionHandler.handleError(error, 'Error updating note');
     }
   }
 
   @Post('getUserNotes')
   async getUserNotes(@Body() reqModel: GetUserNotesModel): Promise<CommonResponse> {
     try {
-      const response = await this.notesService.getUserNotes(reqModel);
-      return response;
+      return await this.notesService.getUserNotes(reqModel);
     } catch (error) {
-      return new CommonResponse(false, 500, 'Error retrieving notes', error);
+      return ExceptionHandler.handleError(error, 'Error retrieving notes')
     }
   }
 
@@ -44,7 +41,7 @@ export class NotesCalenderController {
       const response = await this.notesService.togglePin(body.id, body.userId);
       return response;
     } catch (error) {
-      return new CommonResponse(false, 500, 'Error toggling pin', error);
+      return ExceptionHandler.handleError(error, 'Error toggling pin')
     }
   }
 
@@ -54,7 +51,7 @@ export class NotesCalenderController {
       const response = await this.notesService.toggleArchive(body.id, body.userId);
       return response;
     } catch (error) {
-      return new CommonResponse(false, 500, 'Error toggling archive', error);
+      return ExceptionHandler.handleError(error, 'Error toggling archive')
     }
   }
 
@@ -64,7 +61,7 @@ export class NotesCalenderController {
       const response = await this.notesService.searchNote(body.userId, body.query);
       return response;
     } catch (error) {
-      return new CommonResponse(false, 500, 'Error searching notes', error);
+      return ExceptionHandler.handleError(error, 'Error searching notes')
     }
   }
 
@@ -74,7 +71,7 @@ export class NotesCalenderController {
       const response = await this.notesService.countUserNotes(body.userId);
       return response;
     } catch (error) {
-      return new CommonResponse(false, 500, 'Error counting notes', error);
+      return ExceptionHandler.handleError(error, 'Error counting notes')
     }
   }
 
@@ -83,7 +80,7 @@ export class NotesCalenderController {
     try {
       return await this.notesService.deleteNote(reqModel);
     } catch (error) {
-      return new CommonResponse(false, 500, 'Error counting notes', error);
+      return ExceptionHandler.handleError(error, 'Error delete notes')
     }
   }
 }

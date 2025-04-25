@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Button, Card, Input, Form, Space, Typography, Badge, message, Select, Modal } from 'antd';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Button, Card, Input, Form, Space, Typography, Badge, message, Select, Modal, Tooltip } from 'antd';
 import { PlusOutlined, EditOutlined, PushpinOutlined, FolderOutlined, SearchOutlined, ShareAltOutlined, DeleteOutlined } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import './notes-page.css';
@@ -36,6 +36,8 @@ const NotesPage: React.FC = () => {
     { name: 'Brown', value: '#e4cbb3' },
     { name: 'Indigo', value: '#c3dafe' },
   ];
+
+  const DEFAULT_COLOR = '#ffffff';
 
 
   useEffect(() => {
@@ -146,11 +148,16 @@ const NotesPage: React.FC = () => {
     }
   }
 
-  const filteredNotes = notes.filter(
-    (note) =>
-      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.content.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+
+
+  const filteredNotes = useMemo(() => {
+    return notes.filter(
+      (note) =>
+        note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        note.content.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [searchQuery, notes]);
+
 
   if (!userId) {
     return (
@@ -169,27 +176,28 @@ const NotesPage: React.FC = () => {
         <div className="notes-header">
           <Space className="header-space">
             <Input prefix={<SearchOutlined />} placeholder="Search notes..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="search-input" />
-            <Badge count={filteredNotes.length} showZero className="notes-count" />
+            <div className="notes-count-container">
+              {/* Notes Count: <Badge count={filteredNotes.length} showZero className="notes-count" /> */}
+            </div>
             <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} transition={{ duration: 0.2 }}>
-              <Button style={{ marginLeft: '650px' }} type="primary" icon={<PlusOutlined />} onClick={() => {
-                setEditingNoteId(null); form.resetFields(); setIsFormModalVisible(true);
-                setContentLength(0); setSelectedColor('#ffffff');
-              }} className="add-note-btn">New Note</Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingNoteId(null); form.resetFields(); setIsFormModalVisible(true); setContentLength(0); setSelectedColor('#ffffff'); }} className="add-note-btn">New Note</Button>
             </motion.div>
           </Space>
         </div>
 
-        <div style={{ padding: '16px' }}>
-          <motion.div layout style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gridGap: '8px', gridAutoRows: '200px' }}>
+        <div style={{ padding: '16px' }} className="notes-grid-container">
+          <motion.div layout className="notes-grid">
             <AnimatePresence>
               {filteredNotes.map((note) => (
                 <motion.div key={note.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} transition={{ duration: 0.3 }} style={{ cursor: 'pointer' }} onClick={() => setPreviewNote(note)}>
                   <Card
                     style={{ backgroundColor: note.color || '#ffffff', borderRadius: '10px', transition: 'box-shadow 0.3s ease', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)', height: '200px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
-                    bodyStyle={{ padding: '16px', flex: 1, overflow: 'hidden', }}
+                    bodyStyle={{ padding: '16px', flex: 1, overflow: 'hidden' }}
                     title={
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{note.title}</span>
+                        <Tooltip title={note.title}>
+                          <span className="note-title">{note.title}</span>
+                        </Tooltip>
                         {note.isPinned && <Badge dot color="#ffd700" />}
                       </div>
                     }
@@ -261,43 +269,24 @@ const NotesPage: React.FC = () => {
           </Form>
         </Modal>
 
-
-        <Modal
-          title={previewNote?.title || 'Note Preview'}
-          open={!!previewNote}
-          onCancel={() => setPreviewNote(null)}
-          className="preview-modal"
-          footer={null} // No footer buttons
-          bodyStyle={{ padding: '24px 24px 24px 24px', paddingTop: 16 }} // top, right, bottom, left
-          centered
-        >
-          {previewNote && (
+        {previewNote && (
+          <Modal
+            open={!!previewNote}
+            onCancel={() => setPreviewNote(null)}
+            className="preview-modal"
+            footer={null}
+            styles={{ body: { padding: '24px', paddingTop: 16, margin: '20px', backgroundColor: previewNote.color || '#f5f5f5', border: previewNote.color, overflow: 'auto', msOverflowStyle: 'none', scrollbarWidth: 'none' } }}
+            centered
+          >
+            <h3 style={{ marginBottom: '12px' }}>{previewNote?.title || 'Note Preview'}</h3>
             <div
               className="preview-container"
-              style={{
-                backgroundColor: previewNote.color || '#f5f5f5',
-                padding: '20px',
-                borderRadius: '10px',
-                minHeight: '120px',
-              }}
+              style={{ padding: '20px', borderRadius: '10px', minHeight: '120px', marginBottom: '16px', overflow: 'auto', msOverflowStyle: 'none', scrollbarWidth: 'none' }}
             >
-              <p
-                className="preview-content"
-                style={{
-                  margin: 0,
-                  whiteSpace: 'pre-wrap',
-                  fontSize: '16px',
-                  lineHeight: '1.6',
-                }}
-              >
-                {previewNote.content}
-              </p>
+              <p className="preview-content" style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: '16px', lineHeight: '1.6' }}>{previewNote.content}</p>
             </div>
-          )}
-        </Modal>
-
-
-
+          </Modal>
+        )}
       </div>
     </div>
   );

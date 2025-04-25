@@ -5,7 +5,7 @@ import { GlobalResponseObject, CreateNoteModel, UpdateNoteModel, GetUserNotesMod
 export class NotesHelpService extends CommonAxiosService {
   
   private getURLwithMainEndPoint(childUrl: string): string {
-    return `/notes-calender/${childUrl}`;
+    return `/notes/${childUrl}`;
   }
 
   async createNote(reqModel: CreateNoteModel, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
