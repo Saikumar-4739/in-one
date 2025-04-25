@@ -15,16 +15,22 @@ export class VideoEntity {
   videoUrl: string;
 
   @Column({ nullable: true })
-  thumbnailUrl?: string; // For video preview images
+  thumbnailUrl?: string;
 
   @Column({ type: 'varchar', nullable: false })
-  userId: string; // Stores the ID of the user who uploaded the video
+  userId: string;
+
+  @Column({ nullable: true })
+  username?: string;
+
+  @Column({ nullable: true })
+  userAvatar?: string;
 
   @Column({ type: 'int', default: 0 })
   views: number;
 
   @Column({ type: 'int', default: 0 })
-  likes: number; // Tracks total likes for the video
+  likes: number;
 
   @Column({ type: 'int', default: 0 })
   dislikes: number;
@@ -36,14 +42,37 @@ export class VideoEntity {
   visibility: 'public' | 'private' | 'unlisted';
 
   @Column({ type: 'int', nullable: true })
-  duration?: number; // Video duration in seconds
+  duration?: number;
 
-  @Column({
-    type: 'enum',
-    enum: ['processing', 'ready', 'failed'],
-    default: 'processing',
-  })
-  status: 'processing' | 'ready' | 'failed'; // Tracks video processing status
+  @Column({ type: 'enum', enum: ['processing', 'ready', 'failed'], default: 'processing', })
+  status: 'processing' | 'ready' | 'failed';
+
+  @Column('simple-array', { nullable: true })
+  tags?: string[];
+
+  @Column({ type: 'varchar', nullable: true })
+  category?: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  language?: string;
+
+  @Column({ type: 'int', default: 0 })
+  commentCount: number;
+
+  @Column({ type: 'int', default: 0 })
+  shareCount: number;
+
+  @Column({ type: 'int', default: 0 })
+  reportCount: number;
+
+  @Column({ type: 'boolean', default: false })
+  allowComments: boolean;
+
+  @Column({ type: 'boolean', default: true })
+  allowEmbedding: boolean;
+
+  @Column({ default: false })
+  isDeleted: boolean;
 
   @CreateDateColumn()
   createdAt: Date;

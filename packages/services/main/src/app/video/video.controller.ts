@@ -1,46 +1,28 @@
-import { Controller, Post, Body, UseInterceptors, UploadedFile } from '@nestjs/common';
-import { CreateVideoModel, UpdateVideoModel, CommonResponse, ExceptionHandler, VideoIdRequestModel, LikeVideoModel } from '@in-one/shared-models';
-import { ApiTags, ApiBody, ApiConsumes, ApiOperation } from '@nestjs/swagger';
+import { Controller, Post, Body, UseInterceptors, UploadedFile, Query } from '@nestjs/common';
+import { CreateVideoModel, UpdateVideoModel, CommonResponse, ExceptionHandler, VideoIdRequestModel, LikeVideoModel, UserIdRequestModel, TogglelikeModel } from '@in-one/shared-models';
+import { ApiTags, ApiBody, ApiConsumes } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { VideoService } from './video.service';
 import { multerOptions } from './multer.config';
-import { GetVideoByIdModel } from './models/get-video-by-id.model';
-
-interface GetVideoByIdDto {
-  videoId: string;
-}
 
 @ApiTags('Videos')
 @Controller('videos')
 export class VideoController {
-  constructor(private readonly videoService: VideoService) {}
+  constructor(private readonly videoService: VideoService) { }
 
   @Post('uploadVideo')
-@UseInterceptors(FileInterceptor('file', multerOptions))
-@ApiConsumes('multipart/form-data')
-@ApiBody({
-  schema: {
-    type: 'object',
-    properties: {
-      file: { type: 'string', format: 'binary' },
-      userId: { type: 'string' },
-    },
-  },
-})
-async uploadVideo(
-  @UploadedFile() file: Express.Multer.File,
-  @Body() reqModel: CreateVideoModel,
-): Promise<CommonResponse> {
-  console.log('Received file in controller:', file); // Debug log
-  if (!file) {
-    return new CommonResponse(false, 400, 'Empty file');
+  @UseInterceptors(FileInterceptor('file', multerOptions))
+  @ApiConsumes('multipart/form-data')
+  async uploadVideo(@UploadedFile() file: Express.Multer.File, @Body() reqModel: CreateVideoModel): Promise<CommonResponse> {
+    if (!file) {
+      return new CommonResponse(false, 400, 'Empty file');
+    }
+    try {
+      return await this.videoService.createVideo(reqModel, file);
+    } catch (error) {
+      return ExceptionHandler.handleError(error, 'Error uploading video');
+    }
   }
-  try {
-    return await this.videoService.createVideo(reqModel, file);
-  } catch (error) {
-    return ExceptionHandler.handleError(error, 'Error uploading video');
-  }
-}
 
   @Post('getAllVideos')
   async getAllVideos(): Promise<CommonResponse> {
@@ -52,8 +34,8 @@ async uploadVideo(
   }
 
   @Post('getVideoById')
-  @ApiBody({ type: GetVideoByIdModel })
-  async getVideoById(@Body() reqModel: GetVideoByIdDto): Promise<CommonResponse> {
+  @ApiBody({ type: VideoIdRequestModel})
+  async getVideoById(@Body() reqModel: VideoIdRequestModel): Promise<CommonResponse> {
     try {
       return await this.videoService.getVideoById(reqModel);
     } catch (error) {
@@ -72,7 +54,7 @@ async uploadVideo(
   }
 
   @Post('deleteVideo')
-  @ApiBody({ type: VideoIdRequestModel})
+  @ApiBody({ type: VideoIdRequestModel })
   async deleteVideo(@Body() reqModel: VideoIdRequestModel): Promise<CommonResponse> {
     try {
       return await this.videoService.deleteVideo(reqModel);
@@ -81,23 +63,76 @@ async uploadVideo(
     }
   }
 
-  @Post('likeVideo')
-  @ApiBody({ type: LikeVideoModel })
-  async likeVideo(@Body() reqModel: LikeVideoModel): Promise<CommonResponse> {
+  @Post('getFeaturedVideos')
+  async getFeaturedVideos(): Promise<CommonResponse> {
     try {
-      return await this.videoService.likeVideo(reqModel);
+      return await this.videoService.getFeaturedVideos();
     } catch (error) {
-      return ExceptionHandler.handleError(error, 'Error liking video');
+      return ExceptionHandler.handleError(error, 'Error getting videos');
     }
   }
 
-  @Post('unlikeVideo')
-  @ApiBody({type : LikeVideoModel})
-  async unlikeVideo(@Body() reqModel: LikeVideoModel): Promise<CommonResponse> {
+  @Post('incrementViews')
+  async incrementViews(@Body() reqModel: VideoIdRequestModel): Promise<CommonResponse> {
     try {
-      return await this.videoService.unlikeVideo(reqModel);
+      return await this.videoService.incrementViews(reqModel);
     } catch (error) {
-      return ExceptionHandler.handleError(error, 'Error unliking video');
+      return ExceptionHandler.handleError(error, 'Error getting videos');
+    }
+  }
+
+  @Post('searchVideos')
+  async searchVideos(@Query() query: string): Promise<CommonResponse> {
+    try {
+      return await this.videoService.searchVideos(query);
+    } catch (error) {
+      return ExceptionHandler.handleError(error, 'Error getting videos');
+    }
+  }
+
+  @Post('markAsFeatured')
+  async markAsFeatured(@Body() reqModel: VideoIdRequestModel): Promise<CommonResponse> {
+    try {
+      return await this.videoService.markAsFeatured(reqModel);
+    } catch (error) {
+      return ExceptionHandler.handleError(error, 'Error getting videos');
+    }
+  }
+
+  @Post('getVideosByUser')
+  async getVideosByUser(@Body() reqModel: UserIdRequestModel): Promise<CommonResponse> {
+    try {
+      return await this.videoService.getVideosByUser(reqModel);
+    } catch (error) {
+      return ExceptionHandler.handleError(error, 'Error getting videos');
+    }
+  }
+
+  @Post('toggleLike')
+  async toggleLike(@Body() reqModel: TogglelikeModel): Promise<CommonResponse> {
+    try {
+      return await this.videoService.toggleLike(reqModel);
+    } catch (error) {
+      return ExceptionHandler.handleError(error, 'Error getting videos');
+    }
+  }
+
+  @Post('getLikesCount')
+  async getLikesCount(@Body() reqModel: VideoIdRequestModel): Promise<CommonResponse> {
+    try {
+      return await this.videoService.getLikesCount(reqModel);
+    } catch (error) {
+      return ExceptionHandler.handleError(error, 'Error getting videos');
+    }
+  }
+
+
+  @Post('getLikedVideosByUser')
+  async getLikedVideosByUser(@Body() reqModel: VideoIdRequestModel): Promise<CommonResponse> {
+    try {
+      return await this.videoService.markAsFeatured(reqModel);
+    } catch (error) {
+      return ExceptionHandler.handleError(error, 'Error getting videos');
     }
   }
 }

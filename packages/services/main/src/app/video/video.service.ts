@@ -1,14 +1,13 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
-import { CommonResponse, CreateVideoModel, LikeVideoModel, UpdateVideoModel, VideoIdRequestModel } from '@in-one/shared-models';
+import { Repository, DataSource, Not, IsNull, In } from 'typeorm';
+import { CommonResponse, CreateVideoModel, LikeVideoModel, TogglelikeModel, UpdateVideoModel, UserIdRequestModel, VideoIdRequestModel } from '@in-one/shared-models';
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 import { Readable } from 'stream';
 import * as fs from 'fs';
 import { UserEntity } from '../user/entities/user.entity';
 import { VideoEntity } from './enitities/video.entity';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
-import { GetVideoByIdModel } from './models/get-video-by-id.model';
 import { CommentEntity } from '../masters/common-entities/comment.entity';
 import { LikeEntity } from '../masters/common-entities/like.entity';
 import { VideoRepository } from './repository/video.repository';
@@ -138,7 +137,7 @@ export class VideoService {
     }
   }
 
-  async getVideoById(reqModel: GetVideoByIdModel): Promise<CommonResponse> {
+  async getVideoById(reqModel: VideoIdRequestModel): Promise<CommonResponse> {
     const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
       await transactionManager.startTransaction();
@@ -278,70 +277,117 @@ export class VideoService {
     }
   }
 
-  async likeVideo(reqModel: LikeVideoModel): Promise<CommonResponse> {
-    const transactionManager = new GenericTransactionManager(this.dataSource);
+  async getFeaturedVideos(): Promise<CommonResponse> {
     try {
-      // Validate userId
-      const user = await this.userRepository.findOne({ where: { id: reqModel.userId } });
-      if (!user) {
-        throw new Error('User not found');
-      }
-
-      const video = await this.videoRepository.findOne({ where: { id: reqModel.videoId } });
-      if (!video) {
-        throw new Error('Video not found');
-      }
-
-      await transactionManager.startTransaction();
-
-      // Increment likes
-      await transactionManager.getRepository(VideoEntity).update(reqModel.videoId, { likes: video.likes + 1 });
-      const updatedVideo = await transactionManager.getRepository(VideoEntity).findOneOrFail({ where: { id: reqModel.videoId } });
-
-      await transactionManager.commitTransaction();
-      return new CommonResponse(true, 200, 'Video liked successfully', updatedVideo);
+      const featuredVideos = await this.videoRepository.find({ where: { isFeatured: true } });
+      return new CommonResponse(true, 200, 'Featured videos fetched successfully', featuredVideos);
     } catch (error) {
-      await transactionManager.rollbackTransaction();
-      const errorMessage = error instanceof Error ? error.message : 'Failed to like video';
-      return new CommonResponse(
-        false,
-        errorMessage.includes('not found') ? 404 : 500,
-        errorMessage
-      );
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch featured videos';
+      return new CommonResponse(false, 500, errorMessage);
     }
   }
 
-  async unlikeVideo(reqModel: LikeVideoModel): Promise<CommonResponse> {
+  async incrementViews(reqModel: VideoIdRequestModel): Promise<CommonResponse> {
     const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      // Validate userId
-      const user = await this.userRepository.findOne({ where: { id: reqModel.userId } });
-      if (!user) {
-        throw new Error('User not found');
-      }
-
       const video = await this.videoRepository.findOne({ where: { id: reqModel.videoId } });
       if (!video) {
         throw new Error('Video not found');
       }
 
       await transactionManager.startTransaction();
-
-      // Decrement likes, ensuring it doesn't go below 0
-      const newLikes = video.likes > 0 ? video.likes - 1 : 0;
-      await transactionManager.getRepository(VideoEntity).update(reqModel.videoId, { likes: newLikes });
+      await transactionManager.getRepository(VideoEntity).update(reqModel.videoId, { views: video.views + 1 });
       const updatedVideo = await transactionManager.getRepository(VideoEntity).findOneOrFail({ where: { id: reqModel.videoId } });
-
       await transactionManager.commitTransaction();
-      return new CommonResponse(true, 200, 'Video unliked successfully', updatedVideo);
+
+      return new CommonResponse(true, 200, 'Video views incremented', updatedVideo);
     } catch (error) {
       await transactionManager.rollbackTransaction();
-      const errorMessage = error instanceof Error ? error.message : 'Failed to unlike video';
-      return new CommonResponse(
-        false,
-        errorMessage.includes('not found') ? 404 : 500,
-        errorMessage
-      );
+      const errorMessage = error instanceof Error ? error.message : 'Failed to increment views';
+      return new CommonResponse(false, errorMessage.includes('not found') ? 404 : 500, errorMessage);
+    }
+  }
+
+  async searchVideos(query: string): Promise<CommonResponse> {
+    try {
+      const videos = await this.videoRepository
+        .createQueryBuilder('video')
+        .where('video.title LIKE :query OR video.description LIKE :query', { query: `%${query}%` })
+        .getMany();
+
+      return new CommonResponse(true, 200, 'Search results fetched', videos);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to search videos';
+      return new CommonResponse(false, 500, errorMessage);
+    }
+  }
+
+  async markAsFeatured(reqModel: VideoIdRequestModel): Promise<CommonResponse> {
+    try {
+      await this.videoRepository.update(reqModel.videoId, { isFeatured: true });
+      return new CommonResponse(true, 200, 'Video marked as featured');
+    } catch (error) {
+      return new CommonResponse(false, 500, 'Failed to mark video as featured');
+    }
+  }
+
+  async getVideosByUser(reqModel: UserIdRequestModel): Promise<CommonResponse> {
+    try {
+      const videos = await this.videoRepository.find({ where: { userId: reqModel.userId } });
+      return new CommonResponse(true, 200, 'Videos fetched by user', videos);
+    } catch (error) {
+      return new CommonResponse(false, 500, 'Failed to fetch videos by user');
+    }
+  }
+
+  async toggleLike(reqModel: TogglelikeModel): Promise<CommonResponse> {
+    try {
+      const existing = await this.likeRepository.findOne({
+        where: { videoId: reqModel.videoId, userId: reqModel.userId },
+      });
+
+      if (existing) {
+        await this.likeRepository.remove(existing);
+        return new CommonResponse(true, 200, 'Video unliked');
+      } else {
+        const like = this.likeRepository.create({ videoId: reqModel.videoId, userId: reqModel.userId });
+        await this.likeRepository.save(like);
+        return new CommonResponse(true, 200, 'Video liked');
+      }
+    } catch (error) {
+      return new CommonResponse(false, 500, 'Failed to toggle like');
+    }
+  }
+
+  async getLikesCount(reqModel: VideoIdRequestModel): Promise<CommonResponse> {
+    try {
+      const count = await this.likeRepository.count({ where: { videoId: reqModel.videoId } });
+      return new CommonResponse(true, 200, 'Likes count fetched', { videoId: reqModel.videoId, count });
+    } catch (error) {
+      return new CommonResponse(false, 500, 'Failed to count likes');
+    }
+  }
+
+  async getLikedVideosByUser(reqModel: UserIdRequestModel): Promise<CommonResponse> {
+    try {
+      const likedVideoIds = await this.likeRepository.find({
+        where: { userId: reqModel.userId, videoId: Not(IsNull()) },
+        select: ['videoId'],
+      });
+
+      const videoIds = likedVideoIds.map(like => like.videoId);
+
+      if (videoIds.length === 0) {
+        return new CommonResponse(true, 200, 'No liked videos', []);
+      }
+
+      const videos = await this.videoRepository.find({
+        where: { id: In(videoIds), isDeleted: false },
+      });
+
+      return new CommonResponse(true, 200, 'Liked videos fetched', videos);
+    } catch (error) {
+      return new CommonResponse(false, 500, 'Failed to get liked videos');
     }
   }
 }

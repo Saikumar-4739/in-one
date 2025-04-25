@@ -7,3 +7,4 @@ export * from './entertainment';
 export * from './news';
 export * from './notes';
 export * from './stories';
+export * from './videos'

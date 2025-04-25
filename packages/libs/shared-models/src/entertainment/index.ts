@@ -15,3 +15,4 @@ export * from './like-reel-model';
 export * from './video-id-request-model';
 export * from './like-video-model';
 export * from './get-video-by-id.model';
+export * from './toggle-like-model';
