@@ -37,6 +37,6 @@ export class NotesHelpService extends CommonAxiosService {
   }
 
   async deleteNote(reqModel: NotesIdRequestModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
-    return await this.axiosPostCall(this.getURLwithMainEndPoint('countUserNotes'), reqModel, config);
+    return await this.axiosPostCall(this.getURLwithMainEndPoint('deleteNote'), reqModel, config);
   }
 }

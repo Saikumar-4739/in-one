@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Card, Input, Form, Space, Typography, Badge, message, Select, Modal } from 'antd';
-import { PlusOutlined, EditOutlined, PushpinOutlined, FolderOutlined, SearchOutlined, ShareAltOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, PushpinOutlined, FolderOutlined, SearchOutlined, ShareAltOutlined, DeleteOutlined } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import './notes-page.css';
 import { NotesHelpService } from '@in-one/shared-services';
-import { CreateNoteModel, UpdateNoteModel, GetUserNotesModel } from '@in-one/shared-models';
+import { CreateNoteModel, UpdateNoteModel, GetUserNotesModel, NewsIdRequestModel, NotesIdRequestModel } from '@in-one/shared-models';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -131,6 +131,21 @@ const NotesPage: React.FC = () => {
     }
   };
 
+  const handleDelete = async (noteId: string) => {
+    try{
+      const req = new NotesIdRequestModel(noteId)
+      const response = await notesService.deleteNote(req)
+      if(response.status === true){
+        message.success('Notes Deleted SuccessFully')
+        fetchNotes()
+      }else{
+        message.error(response.internalMessage)
+      }
+    }catch(error: any){
+      message.error(error)
+    }
+  }
+
   const handleShare = (note: any) => {
     message.info(`Note "${note.title}" shared to chat!`);
     console.log('Shared note:', note);
@@ -244,11 +259,11 @@ const NotesPage: React.FC = () => {
                   handleArchiveToggle(note.id);
                 }}
               />,
-              <ShareAltOutlined
-                key="share"
+              <DeleteOutlined
+                key="delete"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleShare(note);
+                  handleDelete(note.id);
                 }}
               />,
             ]}
