@@ -4,3 +4,5 @@ export * from './photo-response-mode';
 export * from './update-photo-model';
 export * from './photo-id-request-model';
 export * from './like-request-model';
+export * from './photo-like-model';
+export * from './photo-comment-model'

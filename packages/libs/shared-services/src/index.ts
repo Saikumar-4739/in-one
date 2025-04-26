@@ -3,7 +3,7 @@ export * from './common-axios-service';
 export * from './config';
 export * from './users'
 export * from './chat';
-export * from './entertainment';
+export * from './photo';
 export * from './news';
 export * from './notes';
 export * from './stories';

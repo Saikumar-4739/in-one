@@ -1,4 +1,3 @@
-// multer.config.ts
 import { memoryStorage } from 'multer';
 import { extname } from 'path';
 

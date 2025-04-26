@@ -9,16 +9,13 @@ export class LikeEntity {
   userId: string;
 
   @Column()
-  entityId: string; // videoId, newsId, or photoId
+  entityId: string; 
 
   @Column({ type: 'enum', enum: ['video', 'news', 'photo'] })
   entityType: 'video' | 'news' | 'photo';
 
   @Column({ type: 'varchar', nullable: true })
   newsId?: string;
-
-  @Column({ type: 'varchar', nullable: true })
-  photoId?: string;
 
   @CreateDateColumn()
   createdAt: Date;

@@ -1,29 +1,9 @@
 import { Controller, Post, Body, UseInterceptors, UploadedFile } from '@nestjs/common';
-import { CommonResponse, CreatePhotoModel, LikeRequestModel, PhotoIdRequestModel, UpdatePhotoModel } from '@in-one/shared-models';
-import { ApiTags, ApiBody, ApiConsumes, ApiOperation } from '@nestjs/swagger';
+import { CommentIdRequestModel, CommonResponse, CreatePhotoModel, ExceptionHandler, PhotoCommentModel, PhotoIdRequestModel, PhotoTogglelikeModel, UpdatePhotoModel, VideoUpdateCommentModel } from '@in-one/shared-models';
+import { ApiTags, ApiBody, ApiConsumes } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PhotoService } from './photo.service';
 import { photMulterOptions } from './photo.multer.config';
-
-// Define comment-related request models
-interface CreateCommentModel {
-  photoId: string;
-  userId: string;
-  content: string;
-}
-
-interface CommentIdRequestModel {
-  commentId: string;
-}
-
-interface UpdateCommentModel {
-  commentId: string;
-  content: string;
-}
-
-interface PhotoCommentsRequestModel {
-  photoId: string;
-}
 
 @ApiTags('Photos')
 @Controller('photos')
@@ -34,109 +14,86 @@ export class PhotoController {
   @ApiBody({})
   @UseInterceptors(FileInterceptor('file', photMulterOptions))
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Upload a new photo' })
-  async uploadPhoto(
-    @UploadedFile() file: Express.Multer.File,
-    @Body() reqModel: CreatePhotoModel & { userId: string }
-  ): Promise<CommonResponse> {
+  async uploadPhoto( @UploadedFile() file: Express.Multer.File, @Body() reqModel: CreatePhotoModel & { userId: string }): Promise<CommonResponse> {
     try {
       return await this.photoService.createPhoto(reqModel, file);
     } catch (error) {
-      return new CommonResponse(false, 500, `Error uploading photo: ${error}`);
+      return ExceptionHandler.handleError(error, 'Error uploading photo');
     }
   }
 
-  @Post('all')
-  @ApiOperation({ summary: 'Get all photos' })
+  @Post('getAllPhotos')
   async getAllPhotos(): Promise<CommonResponse> {
     try {
       return await this.photoService.getAllPhotos();
     } catch (error) {
-      return new CommonResponse(false, 500, `Error fetching photos: ${error}`);
+      return ExceptionHandler.handleError(error, 'Error fetching photos');
     }
   }
 
-  @Post('update')
+  @Post('updatePhoto')
   @ApiBody({ type: UpdatePhotoModel })
-  @ApiOperation({ summary: 'Update a photo' })
   async updatePhoto(@Body() reqModel: UpdatePhotoModel): Promise<CommonResponse> {
     try {
       return await this.photoService.updatePhoto(reqModel);
     } catch (error) {
-      return new CommonResponse(false, 500, `Error updating photo: ${error}`);
+      return ExceptionHandler.handleError(error, 'Error updating photo');
     }
   }
 
-  @Post('delete')
+  @Post('deletePhoto')
   @ApiBody({ type: PhotoIdRequestModel })
-  @ApiOperation({ summary: 'Delete a photo' })
   async deletePhoto(@Body() reqModel: PhotoIdRequestModel): Promise<CommonResponse> {
     try {
       return await this.photoService.deletePhoto(reqModel);
     } catch (error) {
-      return new CommonResponse(false, 500, `Error deleting photo: ${error}`);
+      return ExceptionHandler.handleError(error, 'Error deleting photo');
     }
   }
 
-  @Post('like')
-  @ApiBody({ type: LikeRequestModel })
-  @ApiOperation({ summary: 'Like a photo' })
-  async likePhoto(@Body() reqModel: LikeRequestModel): Promise<CommonResponse> {
+  @Post('toggleLike')
+  @ApiBody({ type: PhotoTogglelikeModel })
+  async toggleLike(@Body() reqModel: PhotoTogglelikeModel): Promise<CommonResponse> {
     try {
-      return await this.photoService.likePhoto(reqModel);
+      return await this.photoService.toggleLike(reqModel);
     } catch (error) {
-      return new CommonResponse(false, 500, `Error liking photo: ${error}`);
+      return ExceptionHandler.handleError(error, 'Error liking photo');
     }
   }
 
-  @Post('unlike')
-  @ApiBody({ type: LikeRequestModel })
-  @ApiOperation({ summary: 'Unlike a photo' })
-  async unlikePhoto(@Body() reqModel: LikeRequestModel): Promise<CommonResponse> {
-    try {
-      return await this.photoService.unlikePhoto(reqModel);
-    } catch (error) {
-      return new CommonResponse(false, 500, `Error unliking photo: ${error}`);
-    }
-  }
-
-  @Post('comment')
-  @ApiOperation({ summary: 'Add a comment to a photo' })
-  async createComment(@Body() reqModel: CreateCommentModel): Promise<CommonResponse> {
+  @Post('createComment')
+  async createComment(@Body() reqModel: PhotoCommentModel): Promise<CommonResponse> {
     try {
       return await this.photoService.createComment(reqModel);
     } catch (error) {
-      return new CommonResponse(false, 500, `Error creating comment: ${error}`);
+      return ExceptionHandler.handleError(error, 'Error creating comment');
     }
   }
 
-  @Post('comments')
-  @ApiOperation({ summary: 'Get all comments for a photo' })
-  async getPhotoComments(@Body() reqModel: PhotoCommentsRequestModel): Promise<CommonResponse> {
+  @Post('getPhotocomments')
+  async getPhotoComments(@Body() reqModel: PhotoIdRequestModel): Promise<CommonResponse> {
     try {
-      return await this.photoService.getPhotoComments(reqModel.photoId);
+      return await this.photoService.getPhotoComments(reqModel);
     } catch (error) {
-      return new CommonResponse(false, 500, `Error fetching comments: ${error}`);
+      return ExceptionHandler.handleError(error, 'Error fetching comments');
     }
   }
 
-  @Post('comment/update')
-  @ApiOperation({ summary: 'Update a comment' })
-  async updateComment(@Body() reqModel: UpdateCommentModel): Promise<CommonResponse> {
+  @Post('updateComment')
+  async updateComment(@Body() reqModel: VideoUpdateCommentModel): Promise<CommonResponse> {
     try {
-      return await this.photoService.updateComment(reqModel.commentId, reqModel.content);
+      return await this.photoService.updateComment(reqModel);
     } catch (error) {
-      return new CommonResponse(false, 500, `Error updating comment: ${error}`);
+      return ExceptionHandler.handleError(error, 'Error updating comment');
     }
   }
 
-  @Post('comment/delete')
-  @ApiOperation({ summary: 'Delete a comment' })
+  @Post('deleteComment')
   async deleteComment(@Body() reqModel: CommentIdRequestModel): Promise<CommonResponse> {
     try {
       return await this.photoService.deleteComment(reqModel);
     } catch (error) {
-      return new CommonResponse(false, 500, `Error deleting comment: ${error}`);
+      return ExceptionHandler.handleError(error, 'Error updating comment');
     }
   }
 }

@@ -3,7 +3,8 @@ import {
   CreatePhotoModel,
   UpdatePhotoModel,
   PhotoIdRequestModel,
-  LikeRequestModel,
+  PhotoTogglelikeModel,
+  PhotoCommentModel,
 } from '@in-one/shared-models';
 import {
   Button,
@@ -27,13 +28,13 @@ import {
   DislikeOutlined,
   LoadingOutlined,
   CommentOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
 import { PhotoHelpService } from '@in-one/shared-services';
 import { motion, AnimatePresence } from 'framer-motion';
 import './photos-page.css';
-import Stories from './stories';
 
-const { Text } = Typography; // Removed Title since it's not used anymore
+const { Text } = Typography;
 const { TextArea } = Input;
 
 interface CommentModel {
@@ -48,9 +49,7 @@ interface PhotoCommentsRequestModel {
 
 const PhotosPage: React.FC = () => {
   const [photos, setPhotos] = useState<any[]>([]);
-  const [userId] = useState<string | null>(
-    () => localStorage.getItem('userId') || null
-  );
+  const [userId] = useState<string | null>(() => localStorage.getItem('userId') || null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isPreviewVisible, setIsPreviewVisible] = useState(false);
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
@@ -66,7 +65,7 @@ const PhotosPage: React.FC = () => {
   const photoService = new PhotoHelpService();
 
   const cardVariants = {
-    hidden: { opacity: 0, y: 20 }, // Adjusted for fadeInUp animation
+    hidden: { opacity: 0, y: 20 },
     visible: {
       opacity: 1,
       y: 0,
@@ -75,9 +74,23 @@ const PhotosPage: React.FC = () => {
     exit: { opacity: 0, y: -10, transition: { duration: 0.3 } },
   };
 
+  const previewVariants = {
+    hidden: { x: '100%', opacity: 0 },
+    visible: {
+      x: 0,
+      opacity: 1,
+      transition: { duration: 0.4, ease: 'easeOut' },
+    },
+    exit: {
+      x: '100%',
+      opacity: 0,
+      transition: { duration: 0.3, ease: 'easeIn' },
+    },
+  };
+
   const buttonVariants = {
-    hover: { scale: 1.1 }, // Slightly reduced scale for subtler effect
-    tap: { scale: 0.95 }, // Smoother tap animation
+    hover: { scale: 1.05 },
+    tap: { scale: 0.95 },
   };
 
   useEffect(() => {
@@ -87,13 +100,7 @@ const PhotosPage: React.FC = () => {
   }, [userId]);
 
   const fetchPhotos = async (append = false) => {
-    if (
-      !userId ||
-      !hasMore ||
-      loading ||
-      (append && offset === lastOffset.current)
-    )
-      return;
+    if (!userId || !hasMore || loading || (append && offset === lastOffset.current)) return;
     setLoading(true);
     try {
       const limit = 9;
@@ -175,7 +182,7 @@ const PhotosPage: React.FC = () => {
   const handleUpload = async (file: File) => {
     if (!userId) {
       message.error('Please login to upload photos');
-      return false; // Prevent upload
+      return false;
     }
     setLoading(true);
     const createModel: CreatePhotoModel = {
@@ -200,13 +207,10 @@ const PhotosPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-    return false; // Prevent default upload behavior
+    return false;
   };
 
-  const handleUpdate = async (values: {
-    caption?: string;
-    visibility?: 'public' | 'private';
-  }) => {
+  const handleUpdate = async (values: { caption?: string; visibility?: 'public' | 'private' }) => {
     if (!userId || !editingPhotoId) return;
     const updateModel: UpdatePhotoModel = {
       photoId: editingPhotoId,
@@ -255,11 +259,9 @@ const PhotosPage: React.FC = () => {
 
   const handleLike = async (photoId: string, isLiked: boolean) => {
     if (!userId) return;
-    const reqModel: LikeRequestModel = { photoId, userId };
+    const reqModel: PhotoTogglelikeModel = { photoId, userId };
     try {
-      const response = isLiked
-        ? await photoService.unlikePhoto(reqModel)
-        : await photoService.likePhoto(reqModel);
+      const response = await photoService.toggleLike(reqModel);
       if (response.status === true) {
         await fetchPhotos();
         if (selectedPhoto?.photoId === photoId) {
@@ -271,22 +273,17 @@ const PhotosPage: React.FC = () => {
         }
         message.success(`Photo ${isLiked ? 'unliked' : 'liked'} successfully`);
       } else {
-        message.error(
-          response.internalMessage ||
-            `Failed to ${isLiked ? 'unlike' : 'like'} photo`
-        );
+        message.error(response.internalMessage || `Failed to ${isLiked ? 'unlike' : 'like'} photo`);
       }
     } catch (error) {
       console.error(`Error ${isLiked ? 'unliking' : 'liking'} photo:`, error);
-      message.error(
-        `An error occurred while ${isLiked ? 'unliking' : 'liking'} the photo`
-      );
+      message.error(`An error occurred while ${isLiked ? 'unliking' : 'liking'} the photo`);
     }
   };
 
   const handleComment = async (photoId: string) => {
     if (!userId || !newComment.trim()) return;
-    const commentModel: CommentModel = { photoId, userId, content: newComment };
+    const commentModel: PhotoCommentModel = { photoId, userId, content: newComment };
     try {
       const response = await photoService.createComment(commentModel);
       if (response.status === true) {
@@ -315,6 +312,12 @@ const PhotosPage: React.FC = () => {
     setSelectedPhoto(photo);
     setIsPreviewVisible(true);
     fetchComments(photo.photoId);
+  };
+
+  const handleClosePreview = () => {
+    setIsPreviewVisible(false);
+    setSelectedPhoto(null);
+    setComments([]);
   };
 
   if (!userId) {
@@ -357,122 +360,217 @@ const PhotosPage: React.FC = () => {
         </Upload>
       </motion.div>
 
-      <div className="content-wrapper" ref={contentRef}>
-        <Stories />
-        {loading && !photos.length ? (
-          <div className="loading">
-            <LoadingOutlined style={{ fontSize: 32 }} spin />
-          </div>
-        ) : photos.length === 0 ? (
-          <div className="no-photos">
-            <Text strong style={{ fontSize: 16 }}>
-              No photos to display
-            </Text>
-          </div>
-        ) : (
-          <AnimatePresence>
-            <div className="photo-grid">
-              {photos.map((photo) => (
-                <motion.div
-                  key={photo.photoId}
-                  variants={cardVariants}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                >
-                  <Card
-                    className="photo-card"
-                    bodyStyle={{ padding: 0 }}
-                    hoverable
-                    onClick={() => handlePreview(photo)}
-                  >
-                    <img
-                      src={photo.url}
-                      alt={photo.caption || 'Photo'}
-                      className="photo-img"
-                    />
-                    <div className="photo-details">
-                      <Space className="photo-actions">
-                        <motion.div
-                          variants={buttonVariants}
-                          whileHover="hover"
-                          whileTap="tap"
-                        >
-                          <Button
-                            type="text"
-                            icon={
-                              photo.isLiked ? (
-                                <DislikeOutlined />
-                              ) : (
-                                <LikeOutlined />
-                              )
-                            }
-                            onClick={(e: React.MouseEvent) => {
-                              e.stopPropagation();
-                              handleLike(photo.photoId, photo.isLiked);
-                            }}
-                            className={photo.isLiked ? 'liked' : ''}
-                          >
-                            {photo.likes || 0}
-                          </Button>
-                        </motion.div>
-                        <motion.div
-                          variants={buttonVariants}
-                          whileHover="hover"
-                          whileTap="tap"
-                        >
-                          <Button
-                            type="text"
-                            icon={<CommentOutlined />}
-                            onClick={(e: React.MouseEvent) => {
-                              e.stopPropagation();
-                              handlePreview(photo);
-                            }}
-                          />
-                        </motion.div>
-                        <motion.div
-                          variants={buttonVariants}
-                          whileHover="hover"
-                          whileTap="tap"
-                        >
-                          <Button
-                            type="text"
-                            icon={<EditOutlined />}
-                            onClick={(e: React.MouseEvent) => {
-                              e.stopPropagation();
-                              handleEdit(photo);
-                            }}
-                          />
-                        </motion.div>
-                        <motion.div
-                          variants={buttonVariants}
-                          whileHover="hover"
-                          whileTap="tap"
-                        >
-                          <Button
-                            type="text"
-                            icon={<DeleteOutlined />}
-                            danger
-                            onClick={(e: React.MouseEvent) => {
-                              e.stopPropagation();
-                              handleDelete(photo.photoId);
-                            }}
-                          />
-                        </motion.div>
-                      </Space>
-                      <Text className="caption">{photo.caption || ''}</Text>
-                    </div>
-                  </Card>
-                </motion.div>
-              ))}
+      <div className="main-container">
+        <motion.div
+          className="content-wrapper"
+          ref={contentRef}
+          animate={{
+            width: isPreviewVisible ? '50%' : '100%',
+            x: isPreviewVisible ? '-25%' : 0,
+          }}
+          transition={{ duration: 0.4, ease: 'easeOut' }}
+        >
+          {loading && !photos.length ? (
+            <div className="loading">
+              <LoadingOutlined style={{ fontSize: 32 }} spin />
             </div>
-            {loading && hasMore && (
-              <div className="loader">
-                <LoadingOutlined style={{ fontSize: 24 }} spin />
+          ) : photos.length === 0 ? (
+            <div className="no-photos">
+              <Text strong style={{ fontSize: 16 }}>
+                No photos to display
+              </Text>
+            </div>
+          ) : (
+            <div className="photo-grid">
+              <AnimatePresence>
+                {photos.map((photo) => (
+                  <motion.div
+                    key={photo.photoId}
+                    variants={cardVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                  >
+                    <Card
+                      className="photo-card"
+                      bodyStyle={{ padding: 0 }}
+                      hoverable
+                      onClick={() => handlePreview(photo)}
+                    >
+                      <img
+                        src={photo.url}
+                        alt={photo.caption || 'Photo'}
+                        className="photo-img"
+                      />
+                      <div className="photo-details">
+                        <Space className="photo-actions">
+                          <motion.div
+                            variants={buttonVariants}
+                            whileHover="hover"
+                            whileTap="tap"
+                          >
+                            <Button
+                              type="text"
+                              icon={
+                                photo.isLiked ? (
+                                  <DislikeOutlined />
+                                ) : (
+                                  <LikeOutlined />
+                                )
+                              }
+                              onClick={(e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                handleLike(photo.photoId, photo.isLiked);
+                              }}
+                              className={photo.isLiked ? 'liked' : ''}
+                            >
+                              {photo.likes || 0}
+                            </Button>
+                          </motion.div>
+                          <motion.div
+                            variants={buttonVariants}
+                            whileHover="hover"
+                            whileTap="tap"
+                          >
+                            <Button
+                              type="text"
+                              icon={<CommentOutlined />}
+                              onClick={(e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                handlePreview(photo);
+                              }}
+                            />
+                          </motion.div>
+                          <motion.div
+                            variants={buttonVariants}
+                            whileHover="hover"
+                            whileTap="tap"
+                          >
+                            <Button
+                              type="text"
+                              icon={<EditOutlined />}
+                              onClick={(e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                handleEdit(photo);
+                              }}
+                            />
+                          </motion.div>
+                          <motion.div
+                            variants={buttonVariants}
+                            whileHover="hover"
+                            whileTap="tap"
+                          >
+                            <Button
+                              type="text"
+                              icon={<DeleteOutlined />}
+                              danger
+                              onClick={(e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                handleDelete(photo.photoId);
+                              }}
+                            />
+                          </motion.div>
+                        </Space>
+                        <Text className="caption">{photo.caption || ''}</Text>
+                      </div>
+                    </Card>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+          {loading && hasMore && (
+            <div className="loader">
+              <LoadingOutlined style={{ fontSize: 24 }} spin />
+            </div>
+          )}
+        </motion.div>
+
+        <AnimatePresence>
+          {isPreviewVisible && selectedPhoto && (
+            <motion.div
+              className="preview-container"
+              variants={previewVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+            >
+              <Button
+                type="text"
+                icon={<CloseOutlined />}
+                className="close-preview"
+                onClick={handleClosePreview}
+              />
+              <img
+                src={selectedPhoto.url}
+                alt={selectedPhoto.caption || 'Photo'}
+                className="preview-image"
+              />
+              <div className="preview-details">
+                <Space className="preview-actions">
+                  <Button
+                    type="text"
+                    icon={
+                      selectedPhoto.isLiked ? (
+                        <DislikeOutlined />
+                      ) : (
+                        <LikeOutlined />
+                      )
+                    }
+                    onClick={() =>
+                      handleLike(selectedPhoto.photoId, selectedPhoto.isLiked)
+                    }
+                    className={selectedPhoto.isLiked ? 'liked' : ''}
+                  >
+                    {selectedPhoto.likes || 0} Likes
+                  </Button>
+                  <Button type="text" icon={<CommentOutlined />}>
+                    {comments.length} Comments
+                  </Button>
+                </Space>
+                <Text className="preview-caption">
+                  {selectedPhoto.caption || ''}
+                </Text>
+                <List
+                  className="comment-list"
+                  dataSource={comments}
+                  renderItem={(item: any) => (
+                    <List.Item className="custom-comment">
+                      <Space>
+                        <Avatar>{item.author?.username?.[0] || 'U'}</Avatar>
+                        <div>
+                          <Text strong>{item.author?.username || 'User'}</Text>
+                          <Text style={{ marginLeft: 8 }}>{item.content}</Text>
+                          <Text
+                            type="secondary"
+                            style={{ display: 'block', fontSize: 12 }}
+                          >
+                            {new Date(item.createdAt).toLocaleString()}
+                          </Text>
+                        </div>
+                      </Space>
+                    </List.Item>
+                  )}
+                />
+                <div className="comment-input">
+                  <TextArea
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Add a comment..."
+                    autoSize={{ minRows: 1, maxRows: 3 }}
+                  />
+                  <Button
+                    type="link"
+                    onClick={() => handleComment(selectedPhoto.photoId)}
+                    disabled={!newComment.trim()}
+                  >
+                    Post
+                  </Button>
+                </div>
               </div>
-            )}
-          </AnimatePresence>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <Modal
@@ -502,87 +600,6 @@ const PhotosPage: React.FC = () => {
             </Button>
           </Form.Item>
         </Form>
-      </Modal>
-
-      <Modal
-        open={isPreviewVisible}
-        footer={null}
-        onCancel={() => setIsPreviewVisible(false)}
-        width={600}
-        className="preview-modal"
-        bodyStyle={{ padding: 0 }}
-      >
-        {selectedPhoto && (
-          <div className="preview-container">
-            <img
-              src={selectedPhoto.url}
-              alt={selectedPhoto.caption || 'Photo'}
-              className="preview-image"
-            />
-            <div className="preview-details">
-              <Space className="preview-actions">
-                <Button
-                  type="text"
-                  icon={
-                    selectedPhoto.isLiked ? (
-                      <DislikeOutlined />
-                    ) : (
-                      <LikeOutlined />
-                    )
-                  }
-                  onClick={() =>
-                    handleLike(selectedPhoto.photoId, selectedPhoto.isLiked)
-                  }
-                  className={selectedPhoto.isLiked ? 'liked' : ''}
-                >
-                  {selectedPhoto.likes || 0} Likes
-                </Button>
-                <Button type="text" icon={<CommentOutlined />}>
-                  {comments.length} Comments
-                </Button>
-              </Space>
-              <Text className="preview-caption">
-                {selectedPhoto.caption || ''}
-              </Text>
-              <List
-                className="comment-list"
-                dataSource={comments}
-                renderItem={(item: any) => (
-                  <List.Item className="custom-comment">
-                    <Space>
-                      <Avatar>{item.author?.username?.[0] || 'U'}</Avatar>
-                      <div>
-                        <Text strong>{item.author?.username || 'User'}</Text>
-                        <Text style={{ marginLeft: 8 }}>{item.content}</Text>
-                        <Text
-                          type="secondary"
-                          style={{ display: 'block', fontSize: 12 }}
-                        >
-                          {new Date(item.createdAt).toLocaleString()}
-                        </Text>
-                      </div>
-                    </Space>
-                  </List.Item>
-                )}
-              />
-              <div className="comment-input">
-                <TextArea
-                  value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
-                  placeholder="Add a comment..."
-                  autoSize={{ minRows: 1, maxRows: 3 }}
-                />
-                <Button
-                  type="link"
-                  onClick={() => handleComment(selectedPhoto.photoId)}
-                  disabled={!newComment.trim()}
-                >
-                  Post
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
       </Modal>
     </div>
   );

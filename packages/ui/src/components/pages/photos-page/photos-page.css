@@ -5,32 +5,30 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  padding-top: 100px;
 }
 
 .j-header {
   width: 100%;
-  max-width: 935px; /* Consistent max-width with content */
+  max-width: 935px;
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  padding: 8px 5px; /* Decreased left/right padding */
   background: #fff;
   margin: 0 auto;
-  position: fixed; /* Fixed header */
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
   z-index: 10;
-  height: 50px; /* Constant height */
-  margin-top: 5rem;
-  margin-bottom: 5rem;
+  height: 60px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .upload-btn {
   background: #0095f6;
   border: none;
   border-radius: 12px;
-  padding: 6px 16px;
   height: auto;
   font-weight: 600;
   color: #fff !important;
@@ -42,32 +40,22 @@
   transform: scale(1.05);
 }
 
-.stories-container {
-  width: 100%;
+.main-container {
+  flex: 1;
+  display: flex;
   max-width: 935px;
-  padding: 8px 5px; /* Decreased left/right padding */
-  background: #fff;
-  border-bottom: 1px solid #dbdbdb;
-  position: fixed; /* Fixed stories section */
-  top: 50px; /* Below header */
-  left: 0;
-  right: 0;
-  z-index: 9;
-  height: 80px; /* Constant height for stories */
-  margin: 0 auto;
-  margin-top: 5rem;
-  margin-bottom: 30px;
+  margin: 60px auto 0;
+  width: 100%;
+  padding: 0 5px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .content-wrapper {
   flex: 1;
   overflow-y: auto;
-  max-width: 935px;
-  margin: 130px auto 0; /* Offset for fixed header (50px) + stories (80px) */
-  width: 100%;
-  padding: 5px; /* Further decreased padding on all sides */
-  box-sizing: border-box;
   scrollbar-width: none;
+  transition: width 0.4s ease-out, transform 0.4s ease-out;
 }
 
 .content-wrapper::-webkit-scrollbar {
@@ -94,6 +82,11 @@
   box-sizing: border-box; /* Ensure padding/border doesn't affect width */
 }
 
+.photo-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
 .photo-img {
   width: 100%; /* Ensure image fills the card */
   height: auto; /* Maintain aspect ratio */
@@ -101,35 +94,12 @@
   margin: 0; /* No extra margins */
 }
 
-.photo-details {
-  padding: 10px; /* Padding inside the card for content */
-  margin: 0; /* No extra margins */
-}
-
-/* Override Ant Design Card padding */
-.photo-card .ant-card-body {
-  padding: 0 !important;
-}
-
-.photo-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.photo-img {
-  width: 100%;
-  height: auto; /* Height adjusts to actual image size */
-  object-fit: contain; /* Maintains aspect ratio without cropping */
-  display: block;
-  transition: opacity 0.3s ease;
-}
-
 .photo-img:hover {
   opacity: 0.9;
 }
 
 .photo-details {
-  padding: 8px 10px;
+  padding: 10px;
 }
 
 .photo-actions {
@@ -176,10 +146,6 @@
   background: #fafafa;
 }
 
-.login-prompt h3 {
-  color: #262626;
-}
-
 .edit-modal .ant-modal-title {
   font-weight: 600;
   color: #262626;
@@ -198,40 +164,47 @@
   background: #1877f2;
 }
 
-.preview-modal .ant-modal-content {
-  padding: 0;
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-}
-
 .preview-container {
+  width: 60%;
+  background: #fff;
+  border-left: 1px solid #dbdbdb;
   display: flex;
   flex-direction: column;
-  max-height: 80vh;
+  position: relative;
+  overflow-y: auto;
+}
+
+.close-preview {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  font-size: 20px;
+  color: #262626;
 }
 
 .preview-image {
   width: 100%;
   max-height: 60vh;
   object-fit: cover;
+  border-bottom: 1px solid #dbdbdb;
 }
 
 .preview-details {
-  padding: 10px;
-  background: #fff;
+  padding: 16px;
   flex: 1;
   overflow-y: auto;
+  background: #fff;
 }
 
 .preview-actions {
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .preview-actions .ant-btn {
   color: #262626;
-  padding: 0 8px;
-  font-size: 14px;
+  padding: 0 12px;
+  font-size: 16px;
 }
 
 .preview-actions .liked {
@@ -239,20 +212,21 @@
 }
 
 .preview-caption {
-  margin: 8px 0;
+  margin: 12px 0;
   color: #262626;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.5;
 }
 
 .comment-list {
-  margin: 8px 0;
+  margin: 12px 0;
   max-height: 30vh;
   overflow-y: auto;
 }
 
 .custom-comment {
-  padding: 6px 0;
+  padding: 8px 0;
   border-bottom: none;
 }
 
@@ -262,15 +236,15 @@
 
 .custom-comment .ant-avatar {
   flex-shrink: 0;
-  margin-right: 8px;
+  margin-right: 10px;
 }
 
 .comment-input {
   display: flex;
   align-items: center;
-  margin-top: 8px;
+  margin-top: 12px;
   border-top: 1px solid #dbdbdb;
-  padding-top: 8px;
+  padding-top: 12px;
 }
 
 .comment-input .ant-input-textarea {
@@ -290,7 +264,7 @@
   color: #b3dffc;
 }
 
-/* Animation for photo grid items */
+/* Animations */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -304,4 +278,48 @@
 
 .photo-grid .photo-card {
   animation: fadeInUp 0.5s ease-out forwards;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .content-wrapper {
+    width: 100% !important;
+    transform: translateX(0) !important;
+  }
+
+  .preview-container {
+    width: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 100;
+  }
+}
+
+@media (max-width: 768px) {
+  .photo-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px;
+  }
+
+  .j-header,
+  .main-container {
+    padding: 8px;
+  }
+
+  .photo-img {
+    height: 250px;
+  }
+}
+
+@media (max-width: 480px) {
+  .photo-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .photo-img {
+    height: 200px;
+  }
 }

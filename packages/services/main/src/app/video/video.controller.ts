@@ -127,7 +127,6 @@ export class VideoController {
   }
 
   @Post('updateComment')
-  @ApiOperation({ summary: 'Update a comment' })
   async updateComment(@Body() reqModel: VideoUpdateCommentModel): Promise<CommonResponse> {
     try {
       return await this.videoService.updateComment(reqModel);
@@ -137,7 +136,6 @@ export class VideoController {
   }
 
   @Post('deleteComment')
-  @ApiOperation({ summary: 'Delete a comment' })
   async deleteComment(@Body() reqModel: CommentIdRequestModel): Promise<CommonResponse> {
     try {
       return await this.videoService.deleteComment(reqModel);
@@ -147,7 +145,6 @@ export class VideoController {
   }
 
   @Post('createComment')
-  @ApiOperation({ summary: 'create a comment' })
   async createComment(@Body() reqModel: VideoCommentModel): Promise<CommonResponse> {
     try {
       return await this.videoService.createComment(reqModel);

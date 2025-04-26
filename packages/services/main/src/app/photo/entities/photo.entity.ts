@@ -18,8 +18,8 @@ export class PhotoEntity {
   commentsCount: number;
 
   @Column({ type: 'varchar', nullable: false })
-  userId: string; // Plain column replacing author relation
-
+  userId: string;
+  
   @Column({ type: 'enum', enum: ['public', 'private'], default: 'public' })
   visibility: 'public' | 'private';
 
