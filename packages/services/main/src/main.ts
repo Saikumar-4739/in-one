@@ -20,8 +20,7 @@ async function bootstrap() {
 
     const configService = app.get(ConfigService);
 
-    // Get configuration service
-
+    // Enable CORS
     app.enableCors({
       origin: configService.get<string>('CORS_ORIGIN', '*'),
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -31,32 +30,31 @@ async function bootstrap() {
       maxAge: 3600,
     });
 
+    // Global Middlewares
     const reflector = app.get(Reflector);
-    app.use(bodyParser.urlencoded({ limit: configService.get('maxPayloadSize'), extended: true }));
-    app.use(bodyParser.json({ limit: configService.get('maxPayloadSize') }));
+    app.use(bodyParser.urlencoded({ limit: configService.get<string>('maxPayloadSize', '10mb'), extended: true }));
+    app.use(bodyParser.json({ limit: configService.get<string>('maxPayloadSize', '10mb') }));
     app.useGlobalPipes(new ValidationPipe({ validationError: { target: false }, transform: true, forbidUnknownValues: false }));
     app.useGlobalInterceptors(new ClassSerializerInterceptor(reflector));
 
-
-    // Static Files Serving
+    // Serve Static Files
     const uploadsPath = join(__dirname, '..', 'uploads');
-    app.use('/uploads', express.static(uploadsPath, {
-      maxAge: '1d',
-      etag: true,
-    }));
+    app.use('/uploads', express.static(uploadsPath, { maxAge: '1d', etag: true }));
 
-    // Rate Limiting Configuration
-    app.use(rateLimit({
-      windowMs: configService.get<number>('RATE_LIMIT_WINDOW', 15 * 60 * 1000),
-      max: configService.get<number>('RATE_LIMIT_MAX', 100),
-      message: {
-        status: 429,
-        message: 'Too many requests from this IP, please try again later.',
-      },
-      headers: true,
-    }));
+    // Rate Limiting
+    app.use(
+      rateLimit({
+        windowMs: configService.get<number>('RATE_LIMIT_WINDOW', 15 * 60 * 1000),
+        max: configService.get<number>('RATE_LIMIT_MAX', 100),
+        message: {
+          status: 429,
+          message: 'Too many requests from this IP, please try again later.',
+        },
+        headers: true,
+      }),
+    );
 
-    // Swagger Configuration
+    // Swagger Setup
     const swaggerConfig = new DocumentBuilder()
       .setTitle('In One API')
       .setDescription('API Documentation for In One App')
@@ -74,12 +72,14 @@ async function bootstrap() {
       },
     });
 
-    // Start the server
-    const port = process.env.PORT || 3005;
-    await app.listen(3005);
+    // Start Server
+    const port = process.env.PORT || configService.get<number>('PORT', 3005);
+    await app.listen(port);
 
-    logger.log(`🚀 Server running on: http://localhost:${port}`);
-    logger.log(`📖 API Documentation available at: http://localhost:${port}/docs`);
+    const baseUrl = process.env.BASE_URL || `http://localhost:${port}`;
+
+    logger.log(`🚀 Server running on: ${baseUrl}`);
+    logger.log(`📖 API Documentation available at: ${baseUrl}/docs`);
 
   } catch (error) {
     logger.error('Failed to bootstrap the application:', error);
