@@ -8,22 +8,6 @@
   padding-top: 100px;
 }
 
-.j-header {
-  width: 100%;
-  max-width: 935px;
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  background: #fff;
-  margin: 0 auto;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 10;
-  height: 60px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
 
 .upload-btn {
   background: #0095f6;
@@ -66,7 +50,7 @@
   column-count: 2; /* Always two columns */
   column-gap: 10px; /* 10px gap between columns */
   column-fill: balance; /* Distribute items evenly across columns */
-  margin-top: 10rem;
+  /* margin-top: 1rem; */
   width: 100%; /* Ensure the grid takes the full width */
 }
 
@@ -301,11 +285,6 @@
   .photo-grid {
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 8px;
-  }
-
-  .j-header,
-  .main-container {
-    padding: 8px;
   }
 
   .photo-img {

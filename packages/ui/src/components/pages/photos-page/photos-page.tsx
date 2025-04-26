@@ -29,6 +29,7 @@ import {
   LoadingOutlined,
   CommentOutlined,
   CloseOutlined,
+  PictureOutlined,
 } from '@ant-design/icons';
 import { PhotoHelpService } from '@in-one/shared-services';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -342,6 +343,7 @@ const PhotosPage: React.FC = () => {
         transition={{ duration: 0.3 }}
         className="j-header"
       >
+        <PictureOutlined style={{ fontSize: 24, color: '#4A90E2', marginRight: 10 }}  />
         <Upload
           beforeUpload={handleUpload}
           showUploadList={false}

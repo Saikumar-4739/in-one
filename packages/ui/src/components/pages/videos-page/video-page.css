@@ -19,10 +19,14 @@
   background-color: #fff;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  width: 100%;
+  width: 80%;
   max-width: 1280px;
+  /* margin-top: 5rem; */
   margin-bottom: 24px;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  margin-left: auto;
+  margin-right: auto;
+  align-self: center;
 }
 
 .j-header:hover {
@@ -518,7 +522,7 @@
   }
 
   .j-header {
-    flex-direction: column;
+    flex-direction: row;
     gap: 16px;
     padding: 16px;
   }
