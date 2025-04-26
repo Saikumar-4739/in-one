@@ -1,6 +1,6 @@
 import { Controller, Post, Body, UseInterceptors, UploadedFile, Query } from '@nestjs/common';
-import { CreateVideoModel, UpdateVideoModel, CommonResponse, ExceptionHandler, VideoIdRequestModel, LikeVideoModel, UserIdRequestModel, TogglelikeModel } from '@in-one/shared-models';
-import { ApiTags, ApiBody, ApiConsumes } from '@nestjs/swagger';
+import { CreateVideoModel, UpdateVideoModel, CommonResponse, ExceptionHandler, VideoIdRequestModel, LikeVideoModel, UserIdRequestModel, TogglelikeModel, VideoCommentModel, VideoUpdateCommentModel, CommentIdRequestModel } from '@in-one/shared-models';
+import { ApiTags, ApiBody, ApiConsumes, ApiOperation } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { VideoService } from './video.service';
 import { multerOptions } from './multer.config';
@@ -34,7 +34,7 @@ export class VideoController {
   }
 
   @Post('getVideoById')
-  @ApiBody({ type: VideoIdRequestModel})
+  @ApiBody({ type: VideoIdRequestModel })
   async getVideoById(@Body() reqModel: VideoIdRequestModel): Promise<CommonResponse> {
     try {
       return await this.videoService.getVideoById(reqModel);
@@ -117,22 +117,43 @@ export class VideoController {
     }
   }
 
-  @Post('getLikesCount')
-  async getLikesCount(@Body() reqModel: VideoIdRequestModel): Promise<CommonResponse> {
+  @Post('getVideoComments')
+  async getVideoComments(@Body() reqModel: VideoIdRequestModel): Promise<CommonResponse> {
     try {
-      return await this.videoService.getLikesCount(reqModel);
+      return await this.videoService.getVideoComments(reqModel);
     } catch (error) {
-      return ExceptionHandler.handleError(error, 'Error getting videos');
+      return ExceptionHandler.handleError(error, 'Error fetching comments');
     }
   }
 
-
-  @Post('getLikedVideosByUser')
-  async getLikedVideosByUser(@Body() reqModel: VideoIdRequestModel): Promise<CommonResponse> {
+  @Post('updateComment')
+  @ApiOperation({ summary: 'Update a comment' })
+  async updateComment(@Body() reqModel: VideoUpdateCommentModel): Promise<CommonResponse> {
     try {
-      return await this.videoService.markAsFeatured(reqModel);
+      return await this.videoService.updateComment(reqModel);
     } catch (error) {
-      return ExceptionHandler.handleError(error, 'Error getting videos');
+      return ExceptionHandler.handleError(error, 'Error updating comment');
     }
   }
+
+  @Post('deleteComment')
+  @ApiOperation({ summary: 'Delete a comment' })
+  async deleteComment(@Body() reqModel: CommentIdRequestModel): Promise<CommonResponse> {
+    try {
+      return await this.videoService.deleteComment(reqModel);
+    } catch (error) {
+      return ExceptionHandler.handleError(error, 'Error deleting comment');
+    }
+  }
+
+  @Post('createComment')
+  @ApiOperation({ summary: 'create a comment' })
+  async createComment(@Body() reqModel: VideoCommentModel): Promise<CommonResponse> {
+    try {
+      return await this.videoService.createComment(reqModel);
+    } catch (error) {
+      return ExceptionHandler.handleError(error, 'Error cretae comment');
+    }
+  }
+
 }

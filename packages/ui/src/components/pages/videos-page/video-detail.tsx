@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Typography, Avatar, Button, List, message } from 'antd';
+import { Typography, Avatar, Button, List, message, Spin, Input } from 'antd';
 import { useParams, useNavigate } from 'react-router-dom';
-import { DeleteOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { DeleteOutlined, ArrowLeftOutlined, LikeOutlined, LikeFilled, EditOutlined } from '@ant-design/icons';
 import './video-page.css';
-import { GetVideoByIdModel } from '@in-one/shared-models';
+import { VideoIdRequestModel, TogglelikeModel, VideoCommentModel, CommentIdRequestModel, VideoUpdateCommentModel } from '@in-one/shared-models';
+import { VideoHelpService } from '@in-one/shared-services';
 
 const { Title, Text } = Typography;
+const { TextArea } = Input;
 
 interface User {
   id: string;
@@ -26,52 +28,11 @@ interface Video {
   title: string;
   description?: string;
   createdAt: string;
-  views?: number;
-  likes?: { user: { id: string } }[];
-  author?: User;
-  comments?: CommentType[];
-}
-
-// VideoHelpService configured for POST request
-const BASE_URL = 'http://localhost:3005'; // Backend base URL
-class VideoHelpService {
-  async getVideoById(model: GetVideoByIdModel) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
-    try {
-      console.log(`Fetching video from: ${BASE_URL}/videos/getVideoById`); // Debug log
-      const response = await fetch(`${BASE_URL}/videos/getVideoById`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: '*/*',
-        },
-        body: JSON.stringify({ videoId: model.videoId }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}, StatusText: ${response.statusText}`);
-      }
-      const result = await response.json();
-      console.log('Raw API response:', result); // Debug log
-      return {
-        status: result.status,
-        data: result.data, // Extract the video object from response.data
-      };
-    } catch (error: any) {
-      clearTimeout(timeoutId);
-      console.error('Fetch error details:', {
-        message: error.message,
-        name: error.name,
-        cause: error.cause,
-      }); // Detailed error logging
-      if (error.name === 'AbortError') {
-        throw new Error('Request timed out after 10 seconds');
-      }
-      throw new Error(`Failed to fetch video: ${error.message}`);
-    }
-  }
+  views: number;
+  likes: { user: { id: string } }[];
+  likeCount: number;
+  author: User;
+  comments: CommentType[];
 }
 
 const formatTimeAgo = (date: string): string => {
@@ -96,7 +57,13 @@ const VideoDetail: React.FC = () => {
   const navigate = useNavigate();
   const [video, setVideo] = useState<Video | null>(null);
   const [loading, setLoading] = useState(true);
-  const videoHelpService = new VideoHelpService();
+  const [userId] = useState<string | null>(() => localStorage.getItem('userId'));
+  const [newComment, setNewComment] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const videoService = new VideoHelpService();
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState<string>('');
+
 
   useEffect(() => {
     let isMounted = true;
@@ -104,16 +71,15 @@ const VideoDetail: React.FC = () => {
     const fetchVideo = async () => {
       try {
         setLoading(true);
-        if (!id) {
-          throw new Error('Invalid video ID');
-        }
-        console.log('Extracted id:', id); // Debug log
-        const requestModel: GetVideoByIdModel = { videoId: id };
-        const response = await videoHelpService.getVideoById(requestModel);
-        console.log('Processed API response:', response); // Debug log
+        if (!id) throw new Error('Invalid video ID');
+        const requestModel = new VideoIdRequestModel(id);
+        const response = await videoService.getVideoById(requestModel);
 
         if (isMounted && response.status && response.data) {
-          setVideo(response.data);
+          setVideo({
+            ...response.data,
+            likeCount: response.data.likes.length,
+          });
         } else if (isMounted) {
           message.error('Failed to fetch video details');
           setVideo(null);
@@ -121,40 +87,155 @@ const VideoDetail: React.FC = () => {
       } catch (error: any) {
         if (isMounted) {
           message.error('Error fetching video details');
-          console.error('Error fetching video:', error.message, error.stack);
           setVideo(null);
         }
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     };
 
     if (id) {
-      console.log('Fetching video with ID:', id); // Debug log
       fetchVideo();
     } else {
-      console.error('No video ID provided in URL'); // Debug log
       message.error('No video ID provided');
       setLoading(false);
     }
 
     return () => {
-      isMounted = false; // Cleanup on unmount
+      isMounted = false;
     };
   }, [id]);
 
-  // Handle loading state
+  const refreshComments = async (videoId: string) => {
+    const response = await videoService.getVideoComments(new VideoIdRequestModel(videoId));
+    if (response.status && response.data) {
+      setVideo((prev) => prev ? { ...prev, comments: response.data } : prev);
+    }
+  };
+
+  const handleLike = async (videoId: string, isLiked: boolean): Promise<void> => {
+    if (!userId) {
+      message.error('User not logged in');
+      return;
+    }
+
+    if (!video) {
+      message.error('Video not loaded');
+      return;
+    }
+
+    const originalVideo = { ...video };
+    setVideo({
+      ...video,
+      likes: isLiked
+        ? video.likes.filter((l) => l.user.id !== userId)
+        : [...video.likes, { user: { id: userId } }],
+      likeCount: isLiked ? video.likeCount - 1 : video.likeCount + 1,
+    });
+
+    try {
+      const response = await videoService.toggleLike(new TogglelikeModel(videoId, userId));
+      if (!response.status) {
+        setVideo(originalVideo);
+        message.error(response.internalMessage || 'Failed to toggle like');
+      }
+    } catch (error) {
+      setVideo(originalVideo);
+      message.error('Error toggling like');
+    }
+  };
+
+
+  const handleAddComment = async (): Promise<void> => {
+    if (!userId || !video) {
+      message.error('User not logged in or video not found');
+      return;
+    }
+
+    if (!newComment.trim()) {
+      message.warning('Comment cannot be empty');
+      return;
+    }
+
+    setSubmitting(true);
+    const commentModel = new VideoCommentModel(newComment.trim(), video.id, userId);
+
+    try {
+      const response = await videoService.createComment(commentModel);
+      if (response.status) {
+        message.success(response.internalMessage);
+        setNewComment('');
+        await refreshComments(video.id);
+      } else {
+        message.error(response.internalMessage);
+      }
+    } catch (error) {
+      message.error('Error adding comment');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      const response = await videoService.deleteComment(new CommentIdRequestModel(commentId));
+      if (response.status) {
+        message.success('Comment deleted');
+        setVideo((prev) =>
+          prev ? { ...prev, comments: prev.comments.filter((c) => c.id !== commentId) } : prev
+        );
+      } else {
+        message.error(response.internalMessage);
+      }
+    } catch (error: any) {
+      message.error(error);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="video-detail-page">
-        <Text>Loading...</Text>
+      <div className="video-detail-page" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <Spin
+          tip="Loading video..."
+          size="large"
+          style={{ display: 'inline-flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}
+        />
       </div>
     );
   }
 
-  // Check if video or video.author is missing
+
+  const handleEditComment = (comment: CommentType) => {
+    setEditingCommentId(comment.id);
+    setEditingContent(comment.content);
+  };
+
+  const handleUpdateComment = async () => {
+    if (!editingContent.trim() || !editingCommentId) {
+      message.warning('Comment cannot be empty');
+      return;
+    }
+
+    try {
+      const updateModel = new VideoUpdateCommentModel(editingCommentId, editingContent.trim());
+      const response = await videoService.updateComment(updateModel);
+
+      if (response.status) {
+        message.success('Comment updated');
+        setEditingCommentId(null);
+        setEditingContent('');
+        if (video) {
+          await refreshComments(video.id);
+        }
+      } else {
+        message.error(response.internalMessage);
+      }
+    } catch (error: any) {
+      message.error(error);
+    }
+  };
+
+
   if (!video || !video.author) {
     return (
       <div className="video-detail-page">
@@ -163,45 +244,27 @@ const VideoDetail: React.FC = () => {
     );
   }
 
-  const handleDeleteComment = (commentId: string) => {
-    console.log(`Delete comment with id: ${commentId}`);
-    // Implement your delete logic here
-  };
+  const isLiked = video.likes.some((l) => l.user.id === userId);
 
   return (
     <div className="video-detail-page">
       <div className="video-detail-container">
-        {/* Back Button */}
-        <Button
-          type="text"
-          icon={<ArrowLeftOutlined />}
-          onClick={() => navigate(-1)}
-          style={{ marginBottom: '16px' }}
-        >
-          Back
-        </Button>
+        <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)} style={{ marginBottom: 16 }}>Back</Button>
 
-        <div className="video-player-section" style={{ marginTop: '24px' }}>
-          <video
-            src={video.videoUrl}
-            controls
-            autoPlay
-            className="detail-video-player"
-          />
+        <div className="video-player-section">
+          <video src={video.videoUrl} controls autoPlay className="detail-video-player" />
           <div className="video-info">
             <Title level={3}>{video.title}</Title>
-            <Text type="secondary">
-              {formatTimeAgo(video.createdAt)} • {video.views || 0} views
-            </Text>
+            <Text type="secondary"> {formatTimeAgo(video.createdAt)} • {video.likeCount} likes</Text>
+            <Button type="text" icon={isLiked ? <LikeFilled /> : <LikeOutlined />} onClick={() => handleLike(video.id, isLiked)} style={{ marginLeft: 8 }}>
+              {isLiked ? 'Unlike' : 'Like'}
+            </Button>
           </div>
         </div>
+
         <div className="video-details-section">
-          <div className="author-section" style={{ marginTop: '16px' }}>
-            <Avatar
-              src={video.author.avatarUrl}
-              size={40}
-              style={{ marginRight: '12px' }}
-            >
+          <div className="author-section">
+            <Avatar src={video.author.avatarUrl} size={48} style={{ marginRight: 12 }}>
               {video.author.avatarUrl
                 ? null
                 : video.author.username[0]?.toUpperCase() || '?'}
@@ -210,55 +273,61 @@ const VideoDetail: React.FC = () => {
               <Text strong>{video.author.username}</Text>
             </div>
           </div>
-          <Text className="j-video-description">
-            Description :- {video.description || 'No description'}
-          </Text>
 
-          {/* Comments Section */}
-          <div className="comments-section" style={{ marginTop: '24px' }}>
+          <div>
+            <label>Description: </label>
+            <Text className="j-video-description">  {video.description || 'No description'} </Text>
+          </div>
+
+          <div className="comments-section">
             <Title level={4}>Comments</Title>
+            <TextArea rows={3} placeholder="Write your comment..." value={newComment} onChange={(e) => setNewComment(e.target.value)} />
+            <Button type="primary" loading={submitting} onClick={handleAddComment} style={{ marginTop: 8 }}>
+              Post Comment
+            </Button>
+
             <List
               dataSource={video.comments || []}
-              renderItem={(comment: CommentType) => (
-                <div className="comment-item">
-                  <div className="comment-header">
-                    <Avatar
-                      src={comment.author?.avatarUrl}
-                      size={32}
-                      style={{ marginRight: '8px' }}
-                    >
-                      {comment.author?.avatarUrl
-                        ? null
-                        : comment.author?.username[0]?.toUpperCase() || '?'}
-                    </Avatar>
-                    <div className="comment-meta">
-                      <Text strong>{comment.author?.username || 'Unknown'}</Text>
-                      <Text type="secondary" style={{ marginLeft: '8px' }}>
-                        {formatTimeAgo(comment.createdAt)}
-                      </Text>
+              renderItem={(comment: CommentType) => {
+                const isAuthor = comment.author?.id === userId;
+                const isEditing = editingCommentId === comment.id;
+
+                return (
+                  <div className="comment-item" style={{ backgroundColor: '#ffffff', padding: '12px', borderRadius: '8px', marginBottom: '12px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
+                    <div className="comment-header" style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                      <Avatar src={comment.author?.avatarUrl} size={32} style={{ marginRight: 8 }} >
+                        {comment.author?.avatarUrl
+                          ? null
+                          : comment.author?.username[0]?.toUpperCase() || '?'}
+                      </Avatar>
+                      <div className="comment-meta" style={{ flex: 1 }}>
+                        <Text strong>{comment.author?.username || 'Unknown'}</Text>
+                        <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}> {formatTimeAgo(comment.createdAt)}</Text>
+                      </div>
+                      {isAuthor && !isEditing && (
+                        <div className="comment-actions" style={{ display: 'flex', gap: '8px' }}>
+                          <Button type="text" size="small" icon={<EditOutlined />} onClick={() => handleEditComment(comment)} />
+                          <Button type="text" size="small" icon={<DeleteOutlined />} onClick={() => handleDeleteComment(comment.id)} danger />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="comment-content">
+                      {isEditing ? (
+                        <>
+                          <TextArea rows={2} value={editingContent} onChange={(e) => setEditingContent(e.target.value)} style={{ marginBottom: 8 }} />
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <Button type="primary" size="small" onClick={handleUpdateComment}>Save</Button>
+                            <Button size="small" onClick={() => { setEditingCommentId(null); setEditingContent(''); }}>Cancel</Button>
+                          </div>
+                        </>
+                      ) : (
+                        <Text>{comment.content}</Text>
+                      )}
                     </div>
                   </div>
-                  <div
-                    className="comment-content"
-                    style={{ marginLeft: '40px' }}
-                  >
-                    <Text>{comment.content}</Text>
-                  </div>
-                  <div
-                    className="comment-actions"
-                    style={{ marginLeft: '40px' }}
-                  >
-                    <Button
-                      type="text"
-                      icon={<DeleteOutlined />}
-                      onClick={() => handleDeleteComment(comment.id)}
-                      danger
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              )}
+                );
+              }}
             />
           </div>
         </div>

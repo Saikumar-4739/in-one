@@ -1,21 +1,24 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('likes')
 export class LikeEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', nullable: false })
-  userId: string; // Plain column for user
+  @Column()
+  userId: string;
+
+  @Column()
+  entityId: string; // videoId, newsId, or photoId
+
+  @Column({ type: 'enum', enum: ['video', 'news', 'photo'] })
+  entityType: 'video' | 'news' | 'photo';
 
   @Column({ type: 'varchar', nullable: true })
-  newsId?: string; // Added for news likes
+  newsId?: string;
 
   @Column({ type: 'varchar', nullable: true })
-  videoId?: string; // Optional, for video likes
-
-  @Column({ type: 'varchar', nullable: true })
-  photoId?: string; // Optional, for photo likes
+  photoId?: string;
 
   @CreateDateColumn()
   createdAt: Date;

@@ -1,29 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import {
-  UpdateVideoModel,
-  VideoIdRequestModel,
-  LikeVideoModel,
-} from '@in-one/shared-models';
-import {
-  Button,
-  Card,
-  Upload,
-  message,
-  Typography,
-  Modal,
-  Form,
-  Progress,
-  Input,
-} from 'antd';
-import {
-  UploadOutlined,
-  EditOutlined,
-  DeleteOutlined,
-  LikeOutlined,
-  DislikeOutlined,
-  PlayCircleOutlined,
-  EyeOutlined,
-} from '@ant-design/icons';
+import { UpdateVideoModel } from '@in-one/shared-models';
+import { Button, Upload, message, Typography, Modal, Form, Progress, Input, Tag } from 'antd';
+import { UploadOutlined, PlayCircleOutlined, VideoCameraOutlined } from '@ant-design/icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { VideoHelpService } from '@in-one/shared-services';
 import { AxiosProgressEvent } from 'axios';
@@ -41,21 +19,21 @@ interface Video {
   description?: string;
   createdAt: string;
   views?: number;
-  likes?: { user: { id: string } }[];
+  likes: { user: { id: string } }[];
+  likeCount: number;
 }
 
-// Function to calculate relative time
 const getRelativeTime = (dateString: string): string => {
   const now = new Date();
   const pastDate = new Date(dateString);
   const diffInMs = now.getTime() - pastDate.getTime();
-  
+
   const seconds = Math.floor(diffInMs / 1000);
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
   const months = Math.floor(days / 30);
-  
+
   if (months >= 1) return `${months} month${months > 1 ? 's' : ''} ago`;
   if (days >= 1) return `${days} day${days > 1 ? 's' : ''} ago`;
   if (hours >= 1) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
@@ -65,9 +43,7 @@ const getRelativeTime = (dateString: string): string => {
 
 const VideosPage: React.FC = () => {
   const [videos, setVideos] = useState<Video[]>([]);
-  const [userId] = useState<string | null>(() =>
-    localStorage.getItem('userId')
-  );
+  const [userId] = useState<string | null>(() => localStorage.getItem('userId'));
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isUploadModalVisible, setIsUploadModalVisible] = useState(false);
   const [editingVideo, setEditingVideo] = useState<Video | null>(null);
@@ -76,20 +52,26 @@ const VideosPage: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const videoService = new VideoHelpService();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (userId) fetchVideos();
-  }, [userId]);
+    if (userId) {
+      fetchVideos();
+    }
+  }, [userId, searchQuery]);
 
   const fetchVideos = async () => {
     try {
       const response = await videoService.getAllVideos();
-      if (response.status) setVideos(response.data);
-      else message.error('Failed to fetch videos');
-    } catch (error) {
-      message.error('Error fetching videos');
+      if (response.status) {
+        setVideos(response.data);
+      } else {
+        message.error(response.internalMessage);
+      }
+    } catch (error: any) {
+      message.error(error);
     }
   };
 
@@ -101,10 +83,7 @@ const VideosPage: React.FC = () => {
     }
   };
 
-  const handleUpload = async (values: {
-    title: string;
-    description?: string;
-  }) => {
+  const handleUpload = async (values: { title: string; description?: string }) => {
     if (!userId || !selectedFile) {
       message.error('Please select a file and log in');
       return;
@@ -134,7 +113,7 @@ const VideosPage: React.FC = () => {
         uploadForm.resetFields();
         setSelectedFile(null);
       } else {
-        message.error(response.internalMessage || 'Upload failed');
+        message.error(response.internalMessage);
       }
     } catch (error) {
       message.error('Upload error occurred');
@@ -144,10 +123,7 @@ const VideosPage: React.FC = () => {
     }
   };
 
-  const handleUpdate = async (values: {
-    title?: string;
-    description?: string;
-  }) => {
+  const handleUpdate = async (values: { title?: string; description?: string }) => {
     if (!userId || !editingVideo) return;
 
     const updateModel: UpdateVideoModel = {
@@ -169,45 +145,6 @@ const VideosPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (videoId: string) => {
-    const reqModel: VideoIdRequestModel = { videoId };
-    try {
-      const response = await videoService.deleteVideo(reqModel);
-      if (response.status) {
-        fetchVideos();
-        message.success('Video deleted');
-      }
-    } catch (error) {
-      message.error('Delete failed');
-    }
-  };
-
-  const handleLike = async (videoId: string, isLiked: boolean) => {
-    if (!userId) {
-      message.error('User not logged in');
-      return;
-    }
-
-    const reqModel: LikeVideoModel = { videoId, userId };
-    try {
-      const response = isLiked
-        ? await videoService.unlikeVideo(reqModel)
-        : await videoService.likeVideo(reqModel);
-      if (response.status) {
-        fetchVideos();
-        message.success(`Video ${isLiked ? 'unliked' : 'liked'}`);
-      }
-    } catch (error) {
-      message.error('Like action failed');
-    }
-  };
-
-  const handleEdit = (video: Video) => {
-    setEditingVideo(video);
-    setIsModalVisible(true);
-    form.setFieldsValue({ title: video.title, description: video.description });
-  };
-
   const handleVideoClick = (video: Video) => {
     navigate(`/video/${video.id}`, { state: { video } });
   };
@@ -226,121 +163,72 @@ const VideosPage: React.FC = () => {
 
   return (
     <div className="video-page">
-      <motion.div
-        initial={{ y: -50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        className="j-header"
-      >
-        <Upload
-          beforeUpload={() => false}
-          onChange={handleFileChange}
-          showUploadList={false}
-          disabled={isUploading}
-        >
-          <Button
-            className="get-started-btn"
-            style={{
-              padding: '0 clamp(15px, 4vw, 30px)',
-              backgroundColor: '#ffd700',
-              borderColor: '#ffd700',
-              borderRadius: '4px',
-              fontSize: 'clamp(12px, 2vw, 16px)',
-            }}
-            type="primary"
-            icon={<UploadOutlined />}
-            loading={isUploading}
-          >
-            Upload
-          </Button>
-        </Upload>
+
+      <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.5 }} className="j-header">
+        <div
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0px 25px', flexWrap: 'wrap', width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <VideoCameraOutlined style={{ fontSize: 24, color: '#4A90E2', marginRight: 10 }} />
+            <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#333' }}></Text>
+          </div>
+          <Upload beforeUpload={() => false} onChange={handleFileChange} showUploadList={false} disabled={isUploading}>
+            <Button className="get-started-btn" type="primary" icon={<UploadOutlined />} loading={isUploading}>Upload</Button>
+          </Upload>
+        </div>
       </motion.div>
+
+
       <div className="container">
+
         {isUploading && (
-          <Progress percent={uploadProgress} className="upload-progress" />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.5 }}
+            style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 9999, background: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 8px 24px rgba(0, 0, 0, 0.2)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}
+          >
+            <Typography.Title level={4} style={{ margin: 0 }}>Uploading...</Typography.Title>
+            <Progress type="circle" percent={uploadProgress} strokeColor="#1890ff" />
+          </motion.div>
         )}
 
         <AnimatePresence>
-          <div className="video-grid">
-            {videos.map((video) => {
-              const isLiked = Array.isArray(video.likes)
-                ? video.likes.some((l) => l.user?.id === userId)
-                : false;
-              return (
-                <motion.div
-                  key={video.id}
-                  layout
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  whileHover={{ scale: 1.02 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <Card
-                    hoverable
-                    cover={
-                      <div
-                        className="video-container"
-                        onClick={() => handleVideoClick(video)}
-                      >
-                        {video.videoUrl.endsWith('.mp4') ? (
-                          <video 
-                            src={video.videoUrl}
-                            preload="metadata"
-                            className="video-player"
-                          />
-                        ) : (
-                          <img
-                            src={video.videoUrl}
-                            alt={video.title}
-                            className="image-player"
-                          />
-                        )}
-                        <PlayCircleOutlined className="play-icon" />
-                      </div>
-                    }
-                    actions={[
-                      <EditOutlined
-                        key="edit"
-                        onClick={() => handleEdit(video)}
-                        title="Edit"
-                      />,
-                      <span
-                        onClick={() => handleLike(video.id, isLiked)}
-                        className="like-action"
-                        title={isLiked ? 'Unlike' : 'Like'}
-                      >
-                        {isLiked ? <DislikeOutlined /> : <LikeOutlined />}
-                        <Text>{video.likes?.length || 0}</Text>
-                      </span>,
-                      <DeleteOutlined
-                        key="delete"
-                        onClick={() => handleDelete(video.id)}
-                        title="Delete"
-                      />,
-                      <EyeOutlined key="views" title="Views" />,
-                      <Text>{video.views || 0}</Text>,
-                    ]}
-                    style={{ border: 'none' }}
-                  >
-                    <Card.Meta
-                      title={<Text strong>{video.title}</Text>}
-                      description={
-                        <div>
-                          <Text ellipsis={{ tooltip: video.description }}>
-                            {video.description || 'No description'}
-                          </Text>
-                          <Text type="secondary" className="views-text">
-                            {getRelativeTime(video.createdAt)} •{' '}
-                            {video.views || 0} views
-                          </Text>
-                        </div>
-                      }
-                    />
-                  </Card>
-                </motion.div>
-              );
-            })}
+          <div
+            className="video-grid"
+            style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px', overflowY: 'auto', scrollbarWidth: 'none', maxHeight: '100vh', paddingRight: 10 }}>
+            {videos.map((video) => (
+              <motion.div
+                key={video.id}
+                layout
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.3 }}
+                className="video-item"
+                style={{ background: '#fff', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflow: 'auto', scrollbarWidth: 'none' }}>
+                <div className="video-content" onClick={() => handleVideoClick(video)}>
+                  <div className="video-thumbnail">
+                    {video.videoUrl.endsWith('.mp4') ? (
+                      <video src={video.videoUrl} preload="metadata" className="thumbnail-video" muted style={{ width: '100%' }} />
+                    ) : (
+                      <img src={video.videoUrl} alt={video.title} className="thumbnail-image" style={{ width: '100%' }} />
+                    )}
+                    <PlayCircleOutlined className="play-icon" />
+                  </div>
+                  <div className="video-details" style={{ padding: '8px' }}>
+                    <Text strong className="video-title">{video.title}</Text>
+                    <Text ellipsis={{ tooltip: video.description }} className="video-description">
+                      {video.description || 'No description'}
+                    </Text>
+                    <div className="video-meta">
+                      <Tag color="red">{getRelativeTime(video.createdAt)}</Tag>
+                      <Tag color="blue">{video.views || 0} views</Tag>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </AnimatePresence>
 
@@ -351,32 +239,20 @@ const VideosPage: React.FC = () => {
           footer={null}
           centered
           width={800}
+          className="edit-modal"
         >
           <div className="edit-modal-content">
-            {editingVideo && (
-              <video
-                src={editingVideo.videoUrl}
-                controls
-                autoPlay
-                className="modal-video-player"
-              />
-            )}
-            <Form
-              form={form}
-              onFinish={handleUpdate}
-              layout="vertical"
-              className="edit-form"
-            >
-              <Form.Item
-                name="title"
-                label="Title"
-                rules={[{ required: true }]}
-              >
+            {editingVideo && (<video src={editingVideo.videoUrl} controls className="modal-video-player" />)}
+            <Form form={form} onFinish={handleUpdate} layout="vertical" className="edit-form">
+
+              <Form.Item name="title" label="Title" rules={[{ required: true, message: 'Please enter a title' }]}>
                 <Input placeholder="Video Title" />
               </Form.Item>
+
               <Form.Item name="description" label="Description">
                 <Input.TextArea rows={4} placeholder="Video Description" />
               </Form.Item>
+
               <Form.Item>
                 <Button type="primary" htmlType="submit">
                   Update
@@ -389,29 +265,24 @@ const VideosPage: React.FC = () => {
         <Modal
           title="Upload New Video"
           open={isUploadModalVisible}
-          onCancel={() => {
-            setIsUploadModalVisible(false);
-            setSelectedFile(null);
-            uploadForm.resetFields();
-          }}
+          onCancel={() => { setIsUploadModalVisible(false); setSelectedFile(null); uploadForm.resetFields(); }}
           footer={null}
           centered
+          className="upload-modal"
         >
           <Form form={uploadForm} onFinish={handleUpload} layout="vertical">
-            <Form.Item
-              name="title"
-              label="Title"
-              rules={[{ required: true, message: 'Please enter a title' }]}
-              initialValue={selectedFile?.name || 'Untitled Video'}
-            >
+            <Form.Item name="title" label="Title" rules={[{ required: true, message: 'Please enter a title' }]} initialValue={selectedFile?.name || 'Untitled Video'}>
               <Input placeholder="Video Title" />
             </Form.Item>
+
             <Form.Item name="description" label="Description">
               <Input.TextArea rows={4} placeholder="Video Description" />
             </Form.Item>
+
             <Form.Item label="Selected File">
               <Text>{selectedFile?.name || 'No file selected'}</Text>
             </Form.Item>
+
             <Form.Item>
               <Button type="primary" htmlType="submit" loading={isUploading}>
                 Upload

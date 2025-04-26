@@ -65,6 +65,9 @@ export class VideoEntity {
   @Column({ type: 'int', default: 0 })
   reportCount: number;
 
+  @Column({ type: 'int', default: 0 })
+  commentsCount: number;
+
   @Column({ type: 'boolean', default: false })
   allowComments: boolean;
 
