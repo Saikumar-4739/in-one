@@ -36,5 +36,4 @@ export default {
       external: [],
     },
   },
-  base: '/my-app/',  // Specify base path if deploying to a subdirectory
 };
