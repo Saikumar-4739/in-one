@@ -143,13 +143,14 @@ const ChatPage: React.FC = () => {
   };
 
   const initSocket = (userId: string) => {
-    const newSocket = io('http://localhost:3006', {
+    const newSocket = io('https://in-one.onrender.com', {
       query: { userId },
       transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 1000,
     });
+
 
     newSocket.on('connect', () => {
       console.log('Socket connected');

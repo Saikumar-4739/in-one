@@ -16,7 +16,7 @@ type RTCIceCandidateInit = {
   usernameFragment?: string | null;
 };
 
-@WebSocketGateway(3006, { cors: { origin: '*', methods: ['GET', 'POST'] } })
+@WebSocketGateway(3005, { cors: { origin: '*', methods: ['GET', 'POST'] } })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
