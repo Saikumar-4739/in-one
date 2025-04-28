@@ -1,41 +1,39 @@
-/// <reference types="vitest" />
-import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
-import { nxCopyAssetsPlugin } from '@nx/vite/plugins/nx-copy-assets.plugin';
 import path from 'path';
 
-const projectRoot = __dirname; // /packages/ui
-
-export default defineConfig({
-  root: projectRoot,
-  cacheDir: path.join(projectRoot, '../../node_modules/.vite/packages/ui'),
-
+export default {
+  root: __dirname,
+  cacheDir: '../../node_modules/.vite/packages/ui',
   server: {
     port: 4200,
     host: 'localhost',
   },
-
   preview: {
     port: 4300,
     host: 'localhost',
   },
-
-  plugins: [
-    react(),
-    nxViteTsPaths(),
-    nxCopyAssetsPlugin(['*.md']),
-  ],
-
+  plugins: [react()],
+  resolve: {
+    alias: {
+      '@in-one/shared-services': path.resolve(
+        __dirname,
+        '../libs/shared-services/src/index.ts'
+      ),
+      '@in-one/shared-models': path.resolve(
+        __dirname,
+        '../libs/shared-models/src/index.ts'
+      ),
+    },
+  },
   build: {
-    outDir: path.join(projectRoot, '../../dist/packages/ui'), // output OUTSIDE packages/
+    outDir: '../../dist/packages/ui',
     emptyOutDir: true,
     reportCompressedSize: true,
-    rollupOptions: {
-      input: path.join(projectRoot, 'index.html'), // point directly to index.html
-    },
     commonjsOptions: {
       transformMixedEsModules: true,
     },
+    rollupOptions: {
+      external: [],
+    },
   },
-});
+};
