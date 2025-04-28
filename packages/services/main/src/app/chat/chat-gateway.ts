@@ -35,11 +35,11 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private logger = new Logger(ChatGateway.name);
 
   constructor(private readonly chatService: ChatService) {
-    this.logger.log('✅ WebSocket Gateway Initialized on port 3006');
+    // this.logger.log('✅ WebSocket Gateway Initialized on port 3006');
   }
 
   async handleConnection(socket: Socket) {
-    const userId = socket.handshake.query.userId as string;
+    const userId = socket.handshake.auth.userId as string;
     if (!userId) {
       socket.disconnect();
       return;
