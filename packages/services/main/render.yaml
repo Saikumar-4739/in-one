@@ -1,24 +1,13 @@
 services:
   - type: web
-    name: inone-main
+    name: inone
     env: node
-    region: oregon
-    plan: free
-    buildCommand: npm install --force; npx nx run services-main:build 
-    startCommand: node dist/apps/inone-main/main.js # Correct NestJS startup for production build
+    repo: https://github.com/Saikumar-4739/in-one
+    buildCommand: npm install --force && npx nx run services-main:build 
+    startCommand: node dist/packages/services/main/main.js # Correct NestJS startup for production build
     envVars:
       - key: NX_DAEMON
         value: "false"
-      - key: PORT
-        value: "3005"
-      - key: RESPONSE_TIMEOUT
-        value: "30"
-      - key: CORS_ORIGIN
-        value: "*"
-      - key: RATE_LIMIT_WINDOW
-        value: "900000"
-      - key: RATE_LIMIT_MAX
-        value: "100"
       - key: DB_HOST
         value: mysql-b96cae4-ummidisettisai01-ebc2.e.aivencloud.com
       - key: DB_PORT
@@ -34,7 +23,7 @@ services:
       - key: EMAIL_PASS
         value: bxls csck fyrh cote
       - key: JWT_SECRET
-        sync: false # Missing 'sync: false' here originally; must secure this
+        sync: false 
       - key: ENCRYPTION_KEY
         sync: false
       - key: CLOUDINARY_CLOUD_NAME
@@ -43,4 +32,3 @@ services:
         value: "335634365556561"
       - key: CLOUDINARY_API_SECRET
         sync: false
-    healthCheckPath: /health
