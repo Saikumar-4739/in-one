@@ -42,8 +42,8 @@ const HomePage: React.FC = () => {
         display: 'flex',
         flexDirection: 'column',
         width: '100%',
-        overflowX: 'hidden',
-        backgroundColor: '#f7f7f7', 
+        overflowX: 'auto',
+        backgroundColor: '#ffffff', 
         fontFamily: "'Poppins', sans-serif", 
       }}
     >
@@ -57,8 +57,7 @@ const HomePage: React.FC = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'linear-gradient(135deg, #8a2be2, #45b7d1)', 
-          color: '#fff',
+          color: '#000',
           borderRadius: '0 0 40% 40%',
         }}
       >
@@ -79,30 +78,33 @@ const HomePage: React.FC = () => {
         >
           <motion.div variants={textVariants}>
             <Title
-              style={{
-                color: '#fff',
-                fontSize: 'clamp(36px, 8vw, 60px)',
-                marginBottom: 'clamp(16px, 3vw, 32px)',
-                fontWeight: 700,
-                lineHeight: 1.2,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexWrap: 'wrap',
-                gap: 'clamp(8px, 2vw, 12px)',
-              }}
+            style={{
+              color: '#000',
+              fontSize: 'clamp(36px, 8vw, 60px)',
+              marginBottom: 'clamp(16px, 3vw, 32px)',
+              fontWeight: 700,
+              lineHeight: 1.2,
+              fontFamily: 'Arial, sans-serif',  // Change font family here
+              fontStyle: 'italic',  // Optional: Change font style to italic
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexWrap: 'wrap',
+              gap: 'clamp(8px, 2vw, 12px)',
+            }}
+            
             >
               Welcome to Your
               <span
                 style={{
                   width: 'clamp(50px, 15vw, 80px)',
                   height: 'clamp(50px, 15vw, 80px)',
-                  background: '#ffd700', 
+                  background: '#8a2be2', 
                   borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#000',
+                  color: '#fff',
                   fontWeight: 'bold',
                   fontSize: 'clamp(40px, 5vw, 30px)',
                 }}
@@ -113,11 +115,13 @@ const HomePage: React.FC = () => {
             </Title>
             <Paragraph
               style={{
-                color: '#fff',
+                color: '#000',
                 fontSize: 'clamp(14px, 3vw, 18px)',
                 maxWidth: '800px',
                 margin: '0 auto',
                 lineHeight: 1.5,
+                 fontFamily: 'Arial, sans-serif',
+                 fontStyle: 'italic', 
               }}
             >
               Discover a seamless experience with powerful features designed to boost productivity and creativity.
@@ -133,9 +137,9 @@ const HomePage: React.FC = () => {
                 style={{
                   padding: '0 clamp(20px, 5vw, 32px)',
                   height: 'clamp(40px, 10vw, 48px)',
-                  backgroundColor: '#ffd700', // Gold button
-                  borderColor: '#ffd700',
-                  color: '#000',
+                  backgroundColor: '#8a2be2', // Gold button
+                  borderColor: '#8a2be2',
+                  color: '#fff',
                   fontSize: 'clamp(14px, 3vw, 16px)',
                   fontWeight: 600,
                   transition: 'background-color 0.3s ease',

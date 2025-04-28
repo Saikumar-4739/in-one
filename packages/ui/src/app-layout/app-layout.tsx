@@ -86,6 +86,15 @@ const AppLayout: React.FC = () => {
         transition={{ duration: 0.5, ease: 'easeOut' }}
         onClick={() => setIsNavOpen(!isNavOpen)}
         whileHover={{ cursor: 'pointer' }}
+        style={{
+          position: 'fixed', // Keeps the header fixed at the top
+          top: 0,
+          left: 0,
+          width: '100%',
+          zIndex: 1000, // Ensures it stays on top of other elements
+          backgroundColor: '#fff', // Optional: adds a background to prevent overlap with content
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)', // Optional: adds a shadow effect for better visibility
+        }}
       >
         <div className="header-container">
           <div className="header-circle">IN</div>
@@ -115,6 +124,7 @@ const AppLayout: React.FC = () => {
         </div>
       </motion.div>
 
+
       <AnimatePresence>
         {isNavOpen && (
           <motion.div className="side-nav" variants={navVariants} initial="hidden" animate="visible" exit="hidden">
@@ -142,11 +152,12 @@ const AppLayout: React.FC = () => {
       </AnimatePresence>
 
       <Content
-        className="content-container"
-        style={{ marginLeft: isNavOpen ? '300px' : '0', transition: 'margin-left 0.3s ease' }}
+        className={`content-container ${isNavOpen ? 'open-nav' : ''}`}
+        style={{ transition: 'margin-left 0.3s ease' }}
       >
         {loading ? <Spin size="large" /> : <Outlet />}
       </Content>
+
 
       <Modal
         title={<Title level={4}>User Profile</Title>}

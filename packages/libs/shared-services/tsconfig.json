@@ -1,7 +1,7 @@
 {
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": {
-    "module": "NodeNext", // Set this to match "moduleResolution": "NodeNext"
+    "module": "NodeNext", 
     "moduleResolution": "NodeNext",
     "baseUrl": "./",
     "forceConsistentCasingInFileNames": true,
@@ -11,7 +11,8 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "lib": ["dom", "esnext"],
-    "types": ["node"],
+    "rootDir": ".",
+    "types": ["node"],  // Add this line
     "paths": {
       "@insights-365/shared-services": [
         "../../libs/shared-services/src/index.ts"
@@ -21,11 +22,11 @@
   },
   "files": [],
   "include": [
-    "src/**/*.ts", // Adjust the pattern as necessary
-    "src/index.ts" // Include specific entry points if needed
+    "src/**/*.ts",
+    "src/index.ts"
   ],
   "exclude": [
-    "**/*.spec.ts", // Exclude spec files if not needed
+    "**/*.spec.ts",
     "**/*.test.ts"
   ],
   "references": [

@@ -1,7 +1,6 @@
 .notes-page {
   min-height: 100vh;
   background-color: #ffffff;
-  padding-top: 100px;
   overflow: auto;
   font-family: 'Inter', sans-serif;
   box-sizing: border-box;

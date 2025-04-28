@@ -1,7 +1,6 @@
 .video-page {
   min-height: 100vh;
-  background-color: #f9f9f9;
-  padding: 150px;
+  background-color: #ffffff;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;

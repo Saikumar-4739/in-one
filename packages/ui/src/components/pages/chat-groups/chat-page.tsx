@@ -172,7 +172,7 @@ const ChatPage: React.FC = () => {
 
     newSocket.on('onlineUsers', setOnlineUsers);
 
-    newSocket.on('callUser', (data) => {
+    newSocket.on('callUser', (data: { userToCall: string; from: string; callType: any; signal: any; callId: any; }) => {
       if (data.userToCall === userId && !isCalling) {
         setIncomingCall({ callerId: data.from, callType: data.callType, signalData: data.signal, callId: data.callId });
         showNotification('Incoming Call', `Incoming ${data.callType} call from ${users.find(u => u.id === data.from)?.username}`);
@@ -183,13 +183,13 @@ const ChatPage: React.FC = () => {
       }
     });
 
-    newSocket.on('callAccepted', async (data) => {
+    newSocket.on('callAccepted', async (data: { signal: RTCSessionDescriptionInit; }) => {
       if (peerConnection) {
         await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal));
       }
     });
 
-    newSocket.on('iceCandidate', async (data) => {
+    newSocket.on('iceCandidate', async (data: { candidate: RTCIceCandidateInit | undefined; }) => {
       if (peerConnection && data.candidate) {
         await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
       }
@@ -670,7 +670,7 @@ const ChatPage: React.FC = () => {
             </Select>
           </Space>
         </div>
-        <Input placeholder="Search contact / chat" prefix={<SearchOutlined />} value={searchQuery} onChange={handleSearch} className="search-input" />
+        <Input placeholder="Search contact / chat" prefix={<SearchOutlined />} value={searchQuery} onChange={handleSearch} className="search-input1" />
         {isCreatingGroup ? (
           <div className="group-creation">
             <Input placeholder="Group Name" value={groupName} onChange={(e) => setGroupName(e.target.value)} style={{ marginBottom: 16 }} />
