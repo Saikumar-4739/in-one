@@ -3,10 +3,8 @@ import { Avatar, Modal, Button, Upload, message } from 'antd';
 import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import { motion } from 'framer-motion';
 import './stories.css';
-import { CreateStoryModel } from '@in-one/shared-models';
 import { UploadChangeParam } from 'antd/es/upload';
 import { StoriesHelpService } from '@in-one/shared-services';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 
 const Stories: React.FC = () => {
@@ -144,11 +142,11 @@ const Stories: React.FC = () => {
         {/* Display Stories */}
         {loading && !isAddStoryModalVisible ? (
           <div className="loading-lottie-co">
-          <DotLottieReact className="loading-lottie"
+          {/* <className="loading-lottie"
           src="https://lottie.host/40a4dda9-19ed-44ca-a714-21abb0a8df4b/c5FKGuDCTv.lottie"
           loop
           autoplay
-        />
+        /> */}
         </div>
         ) : fetchError ? (
           <p className='j-stories-error-msg'>{fetchError}</p>

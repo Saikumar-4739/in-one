@@ -1,4 +1,4 @@
-import { UserRole } from "src/enums";
+import { UserRole } from "../enums/user-role-enum";
 import { UserIdRequestModel } from "./userid-request-model";
 
 export class UpdateUserModel extends UserIdRequestModel {

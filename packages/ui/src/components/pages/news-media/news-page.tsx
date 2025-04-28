@@ -120,7 +120,7 @@ const NewsPage: React.FC = () => {
         values.summary || '',
         values.category,
         values.tags ? values.tags.split(',').map((tag: string) => tag.trim()) : [],
-        imageBase64.length > 0 ? imageBase64 : undefined,
+        [],
         values.thumbnail || '',
         'draft',
         values.visibility || 'public',
