@@ -1,8 +1,8 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { FileType } from '@in-one/shared-models';
 
-@Entity('messages')
-export class MessageEntity {
+@Entity('private_messages')
+export class PrivateMessageEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -24,8 +24,8 @@ export class MessageEntity {
   @Column({ type: 'varchar', nullable: true })
   senderId: string;
 
-  @Column({ type: 'varchar', nullable: false })
-  chatRoomId: string;
+  @Column({ type: 'varchar', nullable: true })
+  receiverId: string;
 
   @CreateDateColumn()
   createdAt: Date;

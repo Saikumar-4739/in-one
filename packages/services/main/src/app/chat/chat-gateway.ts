@@ -2,7 +2,7 @@ import { WebSocketGateway, WebSocketServer, SubscribeMessage, MessageBody, Conne
 import { Server, Socket } from 'socket.io';
 import { ChatService } from './chat.service';
 import { Logger } from '@nestjs/common';
-import { CreateMessageModel, PrivateMessegeModel } from '@in-one/shared-models';
+import { CreateMessageModel, MessageResponseModel, PrivateMessegeModel } from '@in-one/shared-models';
 
 type RTCSessionDescriptionInit = {
   type?: 'offer' | 'answer' | 'rollback';
@@ -23,20 +23,16 @@ type RTCIceCandidateInit = {
       : '*',
     methods: ['GET', 'POST'],
     credentials: true,
-  }
+  },
 })
-
-
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
-  
+
   private activeUsers = new Map<string, string>();
   private logger = new Logger(ChatGateway.name);
 
-  constructor(private readonly chatService: ChatService) {
-    // this.logger.log('✅ WebSocket Gateway Initialized on port 3006');
-  }
+  constructor(private readonly chatService: ChatService) {}
 
   async handleConnection(socket: Socket) {
     const userId = socket.handshake.auth.userId as string;
@@ -63,47 +59,61 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return { success: true, message: `Joined room ${chatRoomId}` };
   }
 
-  @SubscribeMessage('sendMessage')
-  async handleSendMessage(@MessageBody() data: { message: PrivateMessegeModel }, @ConnectedSocket() socket: Socket) {
-    try {
-      const response = await this.chatService.sendPrivateMessage(data.message);
-      if (!response.status || !response.data) throw new Error('Failed to send private message');
+  @SubscribeMessage('sendPrivateMessage')
+async handleSendPrivateMessage(@MessageBody() data: { message: PrivateMessegeModel }, @ConnectedSocket() socket: Socket) {
+  try {
+    const response = await this.chatService.sendPrivateMessage(data.message);
+    if (!response.status || !response.data) throw new Error('Failed to send private message');
 
-      const newMessage = response.data;
-      const chatRoomId = newMessage.chatRoomId;
-      socket.join(chatRoomId);
-      this.server.to(chatRoomId).emit('privateMessage', newMessage);
-      return { success: true, data: newMessage };
-    } catch (error) {
-      this.logger.error(`❌ Error in sendMessage: ${error}`);
-      return { success: false, message: 'Failed to send message', error: error };
+    const newMessage = response.data;
+    const targetSocketId = this.activeUsers.get(newMessage.receiverId);
+    if (targetSocketId) {
+      this.server.to(targetSocketId).emit('privateMessage', newMessage);
+      socket.emit('privateMessage', newMessage); // Echo back to sender
+    } else {
+      this.logger.warn(`User ${newMessage.receiverId} not found`);
     }
+    return { success: true, data: newMessage };
+  } catch (error) {
+    this.logger.error(`❌ Error in sendPrivateMessage: ${error}`);
+    return { success: false, message: 'Failed to send private message', error };
   }
+}
 
   @SubscribeMessage('sendGroupMessage')
   async handleSendGroupMessage(@MessageBody() data: CreateMessageModel, @ConnectedSocket() socket: Socket) {
     try {
       const response = await this.chatService.createMessage(data);
-      if (!response || !response._id) throw new Error('Failed to create group message');
-
-      const newMessage = {
-        _id: response._id,
-        senderId: response.senderId,
-        chatRoomId: response.chatRoomId,
-        text: response.text,
-        createdAt: response.createdAt,
-      };
-      socket.join(newMessage.chatRoomId);
-      this.server.to(newMessage.chatRoomId).emit('groupMessage', newMessage);
+      if (!response || !response._id || !response.chatRoomId) {
+        throw new Error('Failed to create group message or missing chatRoomId');
+      }
+  
+      const newMessage = new MessageResponseModel(
+        response._id,
+        response.senderId,
+        response.text,
+        response.createdAt,
+        response.chatRoomId,
+        undefined,
+        response.emoji,
+        response.fileUrl,
+        response.fileType,
+        response.status
+      );
+  
+      socket.join(newMessage.chatRoomId || ''); // TypeScript now knows chatRoomId is string
+      this.server.to(newMessage.chatRoomId || '').emit('groupMessage', newMessage);
       return { success: true, data: newMessage };
     } catch (error) {
       this.logger.error(`❌ Error in sendGroupMessage: ${error}`);
-      return { success: false, message: 'Failed to send group message', error: error };
+      return { success: false, message: 'Failed to send group message', error };
     }
   }
 
   @SubscribeMessage('getOnlineUsers')
-  handleGetOnlineUsers() { return { success: true, data: Array.from(this.activeUsers.keys()) } }
+  handleGetOnlineUsers() {
+    return { success: true, data: Array.from(this.activeUsers.keys()) };
+  }
 
   @SubscribeMessage('callUser')
   handleCallUser(@MessageBody() data: { userToCall: string; signalData: RTCSessionDescriptionInit; from: string; callId: string; callType: string }, @ConnectedSocket() socket: Socket) {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CreateChatRoomModel, CreateMessageModel, PrivateMessegeModel, UserIdRequestModel } from '@in-one/shared-models';
-import { Button, Input, Typography, Avatar, message, Space, Select, Checkbox, Modal, Spin } from 'antd';
-import { SendOutlined, UserOutlined, SearchOutlined, PhoneOutlined, PlusOutlined, SmileOutlined, AudioOutlined, VideoCameraOutlined, CloseOutlined, VideoCameraAddOutlined, ShareAltOutlined, FullscreenExitOutlined, FullscreenOutlined, SoundOutlined } from '@ant-design/icons';
+import { CreateChatRoomModel, CreateMessageModel, PrivateMessegeModel, UserIdRequestModel, EditMessageModel, MessegeIdRequestModel } from '@in-one/shared-models';
+import { Button, Input, Typography, Avatar, message, Space, Select, Checkbox, Modal, Spin, Dropdown, Menu } from 'antd';
+import { SendOutlined, UserOutlined, SearchOutlined, PhoneOutlined, PlusOutlined, SmileOutlined, AudioOutlined, VideoCameraOutlined, CloseOutlined, VideoCameraAddOutlined, ShareAltOutlined, FullscreenExitOutlined, FullscreenOutlined, SoundOutlined, EditOutlined, DeleteOutlined, MoreOutlined, CheckOutlined } from '@ant-design/icons';
 import { ChatHelpService, UserHelpService } from '@in-one/shared-services';
 import { io, Socket } from 'socket.io-client';
 import { motion } from 'framer-motion';
@@ -27,10 +27,13 @@ interface Message {
   _id: string;
   senderId: string;
   receiverId?: string;
-  chatRoomId: string;
-  text: string;
+  chatRoomId?: string; // Optional, used only for group messages
+  text: string | null;
   createdAt: string;
-  status: 'pending' | 'delivered' | 'failed';
+  status: 'pending' | 'delivered' | 'read' | 'failed';
+  emoji?: string;
+  fileUrl?: string;
+  fileType?: string;
 }
 
 const ChatPage: React.FC = () => {
@@ -40,10 +43,10 @@ const ChatPage: React.FC = () => {
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [messageInput, setMessageInput] = useState<string>('');
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [userId] = useState<string | null>(() => localStorage.getItem('userId'));
   const [socket, setSocket] = useState<Socket | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
-  const [chatRoomId, setChatRoomId] = useState<string | null>(null);
   const [hasFetchedUsers, setHasFetchedUsers] = useState(false);
   const [chatBackground, setChatBackground] = useState<string>('#e6f0fa');
   const [sortOption, setSortOption] = useState<string>('recent');
@@ -97,7 +100,7 @@ const ChatPage: React.FC = () => {
 
   useEffect(() => {
     if (selectedUser && userId) {
-      fetchChatHistory();
+      fetchPrivateChatHistory();
     }
   }, [selectedUser, userId]);
 
@@ -105,7 +108,6 @@ const ChatPage: React.FC = () => {
     peerConnectionRef.current = peerConnection;
   }, [peerConnection]);
 
-  // Update isLoading when remote stream is received
   useEffect(() => {
     if (remoteStream) {
       setIsLoading(false);
@@ -144,7 +146,7 @@ const ChatPage: React.FC = () => {
 
   const initSocket = (userId: string) => {
     const newSocket = io('https://in-one.onrender.com', {
-      auth: { userId }, // 👈 pass userId inside auth
+      auth: { userId },
       transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: 5,
@@ -153,7 +155,7 @@ const ChatPage: React.FC = () => {
 
     newSocket.on('connect', () => {
       console.log('Socket connected');
-      if (selectedRoomId || chatRoomId) newSocket.emit('joinRoom', selectedRoomId || chatRoomId);
+      if (selectedRoomId) newSocket.emit('joinRoom', selectedRoomId);
     });
 
     newSocket.on('privateMessage', (savedMessage: Message) => {
@@ -161,18 +163,22 @@ const ChatPage: React.FC = () => {
         const exists = prev.some((msg) => msg._id === savedMessage._id);
         return exists ? prev : [...prev, { ...savedMessage, status: 'delivered' }];
       });
+      updateUserList(savedMessage);
     });
 
     newSocket.on('groupMessage', (savedMessage: Message) => {
-      setMessages((prev) => {
-        const exists = prev.some((msg) => msg._id === savedMessage._id);
-        return exists ? prev : [...prev, { ...savedMessage, status: 'delivered' }];
-      });
+      if (savedMessage.chatRoomId === selectedRoomId) {
+        setMessages((prev) => {
+          const exists = prev.some((msg) => msg._id === savedMessage._id);
+          return exists ? prev : [...prev, { ...savedMessage, status: 'delivered' }];
+        });
+      }
+      updateChatRoomList(savedMessage);
     });
 
     newSocket.on('onlineUsers', setOnlineUsers);
 
-    newSocket.on('callUser', (data: { userToCall: string; from: string; callType: any; signal: any; callId: any; }) => {
+    newSocket.on('callUser', (data: { userToCall: string; from: string; callType: 'audio' | 'video'; signal: any; callId: string }) => {
       if (data.userToCall === userId && !isCalling) {
         setIncomingCall({ callerId: data.from, callType: data.callType, signalData: data.signal, callId: data.callId });
         showNotification('Incoming Call', `Incoming ${data.callType} call from ${users.find(u => u.id === data.from)?.username}`);
@@ -183,13 +189,13 @@ const ChatPage: React.FC = () => {
       }
     });
 
-    newSocket.on('callAccepted', async (data: { signal: RTCSessionDescriptionInit; }) => {
+    newSocket.on('callAccepted', async (data: { signal: RTCSessionDescriptionInit }) => {
       if (peerConnection) {
         await peerConnection.setRemoteDescription(new RTCSessionDescription(data.signal));
       }
     });
 
-    newSocket.on('iceCandidate', async (data: { candidate: RTCIceCandidateInit | undefined; }) => {
+    newSocket.on('iceCandidate', async (data: { candidate: RTCIceCandidateInit | undefined }) => {
       if (peerConnection && data.candidate) {
         await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
       }
@@ -207,7 +213,7 @@ const ChatPage: React.FC = () => {
       prev
         .map((u) =>
           u.id === (savedMessage.senderId === userId ? savedMessage.receiverId : savedMessage.senderId)
-            ? { ...u, lastMessage: savedMessage.text, lastMessageTime: savedMessage.createdAt }
+            ? { ...u, lastMessage: savedMessage.text || '', lastMessageTime: savedMessage.createdAt }
             : u
         )
         .sort((a, b) => new Date(b.lastMessageTime || 0).getTime() - new Date(a.lastMessageTime || 0).getTime())
@@ -219,7 +225,7 @@ const ChatPage: React.FC = () => {
       prev
         .map((r) =>
           r._id === savedMessage.chatRoomId
-            ? { ...r, lastMessage: savedMessage.text, lastMessageTime: savedMessage.createdAt }
+            ? { ...r, lastMessage: savedMessage.text || '', lastMessageTime: savedMessage.createdAt }
             : r
         )
         .sort((a, b) => new Date(b.lastMessageTime || 0).getTime() - new Date(a.lastMessageTime || 0).getTime())
@@ -233,7 +239,7 @@ const ChatPage: React.FC = () => {
 
     pc.onicecandidate = (event) => {
       if (event.candidate && socket) {
-        socket.emit('iceCandidate', { callId: chatRoomId, candidate: event.candidate, userId, receiverId: selectedUser?.id });
+        socket.emit('iceCandidate', { callId: incomingCall?.callId, candidate: event.candidate, userId, receiverId: selectedUser?.id });
       }
     };
 
@@ -268,7 +274,6 @@ const ChatPage: React.FC = () => {
       if (response.status && response.data) {
         setIsCalling(true);
         setCallType(type);
-        setChatRoomId(response.data.callId);
         socket.emit('callUser', {
           userToCall: selectedUser.id,
           signalData: offer,
@@ -308,7 +313,6 @@ const ChatPage: React.FC = () => {
         socket.emit('callAccepted', { signal: answer, to: incomingCall.callerId });
         setIsCalling(true);
         setCallType(incomingCall.callType);
-        setChatRoomId(incomingCall.callId);
         setIncomingCall(null);
       }
     } catch (error) {
@@ -319,9 +323,9 @@ const ChatPage: React.FC = () => {
   };
 
   const endCall = async () => {
-    if (chatRoomId && userId && socket) {
-      await chatService.endCall({ callId: chatRoomId, userId });
-      socket.emit('callEnded', { to: selectedUser?.id, callId: chatRoomId });
+    if (incomingCall?.callId && userId && socket) {
+      await chatService.endCall({ callId: incomingCall.callId, userId });
+      socket.emit('callEnded', { to: selectedUser?.id, callId: incomingCall.callId });
     }
     endCallCleanup();
   };
@@ -338,20 +342,19 @@ const ChatPage: React.FC = () => {
     setRemoteStream(null);
     setIsCalling(false);
     setCallType(null);
-    setChatRoomId(null);
     setIncomingCall(null);
   };
 
   const fetchUsers = async () => {
     try {
       const response = await chatService.getAllUsers();
-      if (response.status && response.data?.data) {
-        const filteredUsers = response.data.data.filter((u: User) => u.id !== userId);
+      if (response.status && response.data) {
+        const filteredUsers = response.data.filter((u: User) => u.id !== userId);
         const usersWithLastMessage = await Promise.all(
           filteredUsers.map(async (user: User) => {
-            const chatHistory = await chatService.getChatHistoryByUsers({ senderId: userId!, receiverId: user.id });
+            const chatHistory = await chatService.getPrivateChatHistory({ senderId: userId!, receiverId: user.id });
             const lastMsg = chatHistory.status && chatHistory.data?.length > 0 ? chatHistory.data[chatHistory.data.length - 1] : null;
-            return { ...user, lastMessage: lastMsg?.text || '', lastMessageTime: lastMsg?.createdAt || '' };
+            return { ...user, lastMessage: lastMsg?.text || '', lastMessageTime: lastMsg?.createdAt || '', unreadCount: 0 };
           })
         );
         setUsers(usersWithLastMessage.sort((a, b) => new Date(b.lastMessageTime || 0).getTime() - new Date(a.lastMessageTime || 0).getTime()));
@@ -365,37 +368,35 @@ const ChatPage: React.FC = () => {
   const fetchChatRooms = async () => {
     try {
       const response = await chatService.getChatRooms(new UserIdRequestModel(userId!));
-      if (response.status && response.data?.data) {
-        setChatRooms(response.data.data.sort((a: { lastMessageTime: any }, b: { lastMessageTime: any }) => new Date(b.lastMessageTime || 0).getTime() - new Date(a.lastMessageTime || 0).getTime()));
+      if (response.status && response.data) {
+        setChatRooms(response.data.sort((a: { lastMessageTime: any }, b: { lastMessageTime: any }) => new Date(b.lastMessageTime || 0).getTime() - new Date(a.lastMessageTime || 0).getTime()));
       }
     } catch (error) {
       message.error('Failed to fetch chat rooms');
     }
   };
 
-  const fetchChatHistory = async () => {
+  const fetchPrivateChatHistory = async () => {
     if (!selectedUser || !userId) return;
     try {
-      const response = await chatService.getChatHistoryByUsers({ senderId: userId, receiverId: selectedUser.id });
+      const response = await chatService.getPrivateChatHistory({ senderId: userId, receiverId: selectedUser.id });
       if (response.status && Array.isArray(response.data)) {
-        const formattedMessages = response.data.map((msg: any) => ({
+        const formattedMessages = response.data.map((msg: Message) => ({
           _id: msg._id,
           senderId: msg.senderId,
           receiverId: msg.receiverId,
           chatRoomId: msg.chatRoomId,
           text: msg.text,
           createdAt: msg.createdAt,
-          status: 'delivered' as const,
+          status: msg.status || 'delivered',
+          emoji: msg.emoji,
+          fileUrl: msg.fileUrl,
+          fileType: msg.fileType,
         }));
         setMessages(formattedMessages);
-        const firstMessageWithChatRoom = response.data.find((msg: any) => msg.chatRoomId);
-        if (firstMessageWithChatRoom) {
-          setChatRoomId(firstMessageWithChatRoom.chatRoomId);
-          socket?.emit('joinRoom', firstMessageWithChatRoom.chatRoomId);
-        }
       }
     } catch (error) {
-      message.error('Failed to fetch chat history');
+      message.error('Failed to fetch private chat history');
       setMessages([]);
     }
   };
@@ -404,19 +405,21 @@ const ChatPage: React.FC = () => {
     if (!selectedRoomId || !userId) return;
     try {
       const response = await chatService.getMessages({ chatRoomId: selectedRoomId });
-      if (response?.status && Array.isArray(response.data)) {
+      if (response.status && Array.isArray(response.data)) {
         const formattedMessages = response.data
-          .map((msg: any) => ({
+          .map((msg: Message) => ({
             _id: msg._id,
             senderId: msg.senderId,
             chatRoomId: msg.chatRoomId,
-            text: msg.text || '',
-            createdAt: msg.createdAt || new Date().toISOString(),
-            status: 'delivered' as const,
+            text: msg.text,
+            createdAt: msg.createdAt,
+            status: msg.status || 'delivered',
+            emoji: msg.emoji,
+            fileUrl: msg.fileUrl,
+            fileType: msg.fileType,
           }))
           .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
         setMessages(formattedMessages);
-        setChatRoomId(selectedRoomId);
         if (socket?.connected) socket.emit('joinRoom', selectedRoomId);
       }
     } catch (error) {
@@ -424,6 +427,165 @@ const ChatPage: React.FC = () => {
       setMessages([]);
     }
   };
+
+  const handleSendMessage = async () => {
+    if (!messageInput.trim() || !userId) return;
+
+    const tempId = `temp-${Date.now()}`;
+    const tempMessage: Message = {
+      _id: tempId,
+      senderId: userId,
+      text: messageInput,
+      createdAt: new Date().toISOString(),
+      status: 'pending',
+      receiverId: selectedUser?.id,
+      chatRoomId: selectedRoomId || undefined,
+    };
+
+    setMessages((prev) => [...prev, tempMessage]);
+    setMessageInput('');
+
+    try {
+      if (selectedRoomId) {
+        // Group message
+        const messagePayload: CreateMessageModel = {
+          chatRoomId: selectedRoomId,
+          senderId: userId,
+          text: messageInput,
+        };
+        const response = await chatService.sendMessage(messagePayload);
+        if (response.status && response.data) {
+          const savedMessage: Message = { ...response.data, status: 'delivered' };
+          setMessages((prev) => prev.map((msg) => (msg._id === tempId ? savedMessage : msg)));
+          socket?.emit('sendGroupMessage', messagePayload);
+          updateChatRoomList(savedMessage);
+        } else {
+          throw new Error('Failed to send group message');
+        }
+      } else if (selectedUser) {
+        // Private message
+        const messageData: PrivateMessegeModel = {
+          senderId: userId,
+          receiverId: selectedUser.id,
+          text: messageInput,
+        };
+        const response = await chatService.sendPrivateMessage(messageData);
+        if (response.status && response.data) {
+          const savedMessage: Message = { ...response.data, status: 'delivered' };
+          setMessages((prev) => prev.map((msg) => (msg._id === tempId ? savedMessage : msg)));
+          socket?.emit('sendPrivateMessage', { message: messageData });
+          updateUserList(savedMessage);
+        } else {
+          throw new Error('Failed to send private message');
+        }
+      } else {
+        // New group creation
+        const messagePayload: CreateMessageModel = {
+          senderId: userId,
+          text: messageInput,
+          participants: [],
+          groupName: `Group-${Date.now()}`,
+        };
+        const response = await chatService.sendMessage(messagePayload);
+        if (response.status && response.data) {
+          const savedMessage: Message = { ...response.data, status: 'delivered' };
+          setMessages((prev) => prev.map((msg) => (msg._id === tempId ? savedMessage : msg)));
+          setSelectedRoomId(savedMessage.chatRoomId || '');
+          socket?.emit('joinRoom', savedMessage.chatRoomId);
+          socket?.emit('sendGroupMessage', messagePayload);
+          updateChatRoomList(savedMessage);
+          fetchChatRooms();
+        } else {
+          throw new Error('Failed to create new group');
+        }
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setMessages((prev) => prev.map((msg) => (msg._id === tempId ? { ...msg, status: 'failed' } : msg)));
+      message.error('Failed to send message');
+    }
+  };
+
+  const handleEditMessage = async (msg: Message) => {
+    if (!msg.text || !userId) return;
+    setEditingMessage(msg);
+    setMessageInput(msg.text);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingMessage || !messageInput.trim() || !userId) return;
+
+    const editPayload: EditMessageModel = {
+      messageId: editingMessage._id,
+      newText: messageInput,
+    };
+
+    try {
+      let response;
+      if (editingMessage.chatRoomId) {
+        // Group message
+        response = await chatService.editMessage(editPayload);
+      } else {
+        // Private message
+        response = await chatService.editPrivateMessage(editPayload);
+      }
+
+      if (response.status && response.data) {
+        const updatedMessage: Message = { ...response.data, status: 'delivered' };
+        setMessages((prev) => prev.map((msg) => (msg._id === editingMessage._id ? updatedMessage : msg)));
+        setEditingMessage(null);
+        setMessageInput('');
+        message.success('Message updated successfully');
+      } else {
+        throw new Error('Failed to edit message');
+      }
+    } catch (error) {
+      console.error('Error editing message:', error);
+      message.error('Failed to edit message');
+    }
+  };
+
+  const handleDeleteMessage = async (msg: Message) => {
+    if (!userId) return;
+
+    const deletePayload: MessegeIdRequestModel = { messageId: msg._id };
+
+    try {
+      let response;
+      if (msg.chatRoomId) {
+        // Group message
+        response = await chatService.deleteMessage(deletePayload);
+      } else {
+        // Private message
+        response = await chatService.deletePrivateMessage(deletePayload);
+      }
+
+      if (response.status) {
+        setMessages((prev) => prev.filter((m) => m._id !== msg._id));
+        message.success('Message deleted successfully');
+      } else {
+        throw new Error('Failed to delete message');
+      }
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      message.error('Failed to delete message');
+    }
+  };
+
+  const messageMenu = (msg: Message) => (
+    <Menu>
+      {msg.senderId === userId && (
+        <>
+          <Menu.Item key="edit" onClick={() => handleEditMessage(msg)}>
+            <EditOutlined /> Edit
+          </Menu.Item>
+          <Menu.Item key="delete" onClick={() => handleDeleteMessage(msg)}>
+            <DeleteOutlined /> Delete
+          </Menu.Item>
+        </>
+      )}
+    </Menu>
+  );
 
   const groupMessagesByDate = (messages: Message[]) =>
     messages.reduce((acc, msg) => {
@@ -448,91 +610,11 @@ const ChatPage: React.FC = () => {
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!messageInput.trim() || !userId) return;
-
-    const tempId = `temp-${Date.now()}`;
-    const tempMessage: Message = {
-      _id: tempId,
-      senderId: userId,
-      text: messageInput,
-      createdAt: new Date().toISOString(),
-      status: 'pending',
-      chatRoomId: selectedRoomId || chatRoomId || 'temp-chatroom',
-      receiverId: selectedUser?.id || undefined,
-    };
-
-    setMessages((prev) => [...prev, tempMessage]);
-    setMessageInput('');
-
-    try {
-      if (selectedRoomId) {
-        // Existing group message
-        const messagePayload: CreateMessageModel = {
-          chatRoomId: selectedRoomId,
-          senderId: userId,
-          text: messageInput,
-        };
-        const response = await chatService.sendMessage(messagePayload);
-        if (response.status && response.data) {
-          const savedMessage: Message = { ...response.data, status: 'delivered' };
-          setMessages((prev) => prev.map((msg) => (msg._id === tempId ? savedMessage : msg)));
-          socket?.emit('sendGroupMessage', messagePayload);
-        } else {
-          throw new Error('Failed to send group message');
-        }
-      } else if (selectedUser) {
-        // Private message
-        const messageData: PrivateMessegeModel = {
-          senderId: userId,
-          receiverId: selectedUser.id, // Use selectedUser.id
-          text: messageInput,
-        };
-        const response = await chatService.sendPrivateMessage(messageData);
-        if (response.status && response.data) {
-          const savedMessage: Message = { ...response.data, status: 'delivered' };
-          setMessages((prev) => prev.map((msg) => (msg._id === tempId ? savedMessage : msg)));
-          if (!chatRoomId || chatRoomId === 'temp-chatroom') {
-            setChatRoomId(savedMessage.chatRoomId);
-            socket?.emit('joinRoom', savedMessage.chatRoomId);
-          }
-          socket?.emit('sendMessage', { message: messageData });
-        } else {
-          throw new Error('Failed to send private message');
-        }
-      } else {
-        // New group creation
-        const messagePayload: CreateMessageModel = {
-          senderId: userId,
-          text: messageInput,
-          participants: [], // Solo group by default
-          groupName: `Group-${Date.now()}`,
-        };
-        const response = await chatService.sendMessage(messagePayload);
-        if (response.status && response.data) {
-          const savedMessage: Message = { ...response.data, status: 'delivered' };
-          setMessages((prev) => prev.map((msg) => (msg._id === tempId ? savedMessage : msg)));
-          setChatRoomId(savedMessage.chatRoomId);
-          setSelectedRoomId(savedMessage.chatRoomId);
-          socket?.emit('joinRoom', savedMessage.chatRoomId);
-          socket?.emit('sendGroupMessage', messagePayload);
-        } else {
-          throw new Error('Failed to create new group');
-        }
-      }
-    } catch (error) {
-      console.error('Error sending message:', error);
-      setMessages((prev) => prev.map((msg) => (msg._id === tempId ? { ...msg, status: 'failed' } : msg)));
-      message.error('Failed to send message');
-    }
-  };
-
   const handleUserSelect = (user: User) => {
     setSelectedUser(user);
     setSelectedRoomId(null);
     setMessages([]);
-    setChatRoomId(null);
-    fetchChatHistory();
+    fetchPrivateChatHistory();
     if (lastCheckedUserId.current !== user.id) checkUserStatus(user.id);
   };
 
@@ -540,37 +622,43 @@ const ChatPage: React.FC = () => {
     setSelectedRoomId(roomId);
     setSelectedUser(null);
     setMessages([]);
-    setChatRoomId(roomId);
     if (socket?.connected) socket.emit('joinRoom', roomId);
     fetchGroupMessages();
   };
 
   const handleSortChange = (value: string) => setSortOption(value);
+
   const handleCreateGroup = async () => {
-    if (!groupName || selectedUsersForGroup.length < 2) return;
+    if (!groupName || selectedUsersForGroup.length < 2) {
+      message.error('Please provide a group name and select at least two users');
+      return;
+    }
     const chatRoomData = new CreateChatRoomModel([userId!, ...selectedUsersForGroup], groupName);
-    const response = await chatService.createChatRoom(chatRoomData);
-    if (response.status && response.data) {
-      setIsCreatingGroup(false);
-      setSelectedUsersForGroup([]);
-      setGroupName('');
-      fetchChatRooms();
+    try {
+      const response = await chatService.createChatRoom(chatRoomData);
+      if (response.status && response.data) {
+        setIsCreatingGroup(false);
+        setSelectedUsersForGroup([]);
+        setGroupName('');
+        fetchChatRooms();
+        message.success('Group created successfully');
+      } else {
+        throw new Error('Failed to create group');
+      }
+    } catch (error) {
+      console.error('Error creating group:', error);
+      message.error('Failed to create group');
     }
   };
+
   const handleBackgroundChange = (background: string) => setChatBackground(background);
+
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value.toLowerCase());
+
   const onEmojiClick = (emojiObject: any) => {
     setMessageInput((prev) => prev + emojiObject.emoji);
     setShowEmojiPicker(false);
   };
-
-  if (!userId) {
-    return <div className="login-prompt"><Title level={3}>Please log in to use the chat</Title></div>;
-  }
-
-  const filteredUsers = users.filter((user) => user.username.toLowerCase().includes(searchQuery));
-  const filteredRooms = chatRooms.filter((room) => room.name.toLowerCase().includes(searchQuery));
-  const selectedRoom = chatRooms.find((room) => room._id === selectedRoomId);
 
   const toggleMute = () => {
     if (localStream) {
@@ -579,7 +667,6 @@ const ChatPage: React.FC = () => {
     }
   };
 
-  // Toggle camera
   const toggleCamera = () => {
     if (localStream && callType === 'video') {
       localStream.getVideoTracks().forEach((track) => (track.enabled = isCameraOff));
@@ -587,7 +674,6 @@ const ChatPage: React.FC = () => {
     }
   };
 
-  // Toggle full-screen
   const toggleFullScreen = () => {
     if (!isFullScreen) {
       document.documentElement.requestFullscreen().catch((err) => console.error('Fullscreen error:', err));
@@ -597,7 +683,6 @@ const ChatPage: React.FC = () => {
     setIsFullScreen(!isFullScreen);
   };
 
-  // Start/stop screen sharing
   const toggleScreenShare = async () => {
     if (!peerConnectionRef.current || !localStream) return;
 
@@ -613,16 +698,11 @@ const ChatPage: React.FC = () => {
           await sender.replaceTrack(screenTrack);
           setIsSharingScreen(true);
 
-          // Stop webcam video track
           localStream.getVideoTracks().forEach((track) => track.stop());
-
-          // Update local stream to screen stream
           setLocalStream(screenStream);
 
-          // Handle screen share ending
           screenTrack.onended = async () => {
             setIsSharingScreen(false);
-            // Revert to webcam
             try {
               const webcamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
               const webcamTrack = webcamStream.getVideoTracks()[0];
@@ -637,7 +717,6 @@ const ChatPage: React.FC = () => {
         message.error('Failed to share screen: ' + error);
       }
     } else {
-      // Stop screen sharing
       localStream.getTracks().forEach((track) => track.stop());
       try {
         const webcamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -655,6 +734,14 @@ const ChatPage: React.FC = () => {
       }
     }
   };
+
+  if (!userId) {
+    return <div className="login-prompt"><Title level={3}>Please log in to use the chat</Title></div>;
+  }
+
+  const filteredUsers = users.filter((user) => user.username.toLowerCase().includes(searchQuery));
+  const filteredRooms = chatRooms.filter((room) => room.name.toLowerCase().includes(searchQuery));
+  const selectedRoom = chatRooms.find((room) => room._id === selectedRoomId);
 
   return (
     <div className="chat-container">
@@ -695,7 +782,11 @@ const ChatPage: React.FC = () => {
           <div className="combined-list">
             <Text strong style={{ display: 'block', padding: '12px 16px' }}>Chats</Text>
             {[...filteredUsers, ...filteredRooms]
-              .sort((a, b) => new Date(b.lastMessageTime || 0).getTime() - new Date(a.lastMessageTime || 0).getTime())
+              .sort((a, b) => {
+                if (sortOption === 'unread') return (b.unreadCount || 0) - (a.unreadCount || 0);
+                if (sortOption === 'alphabetical') return (a.username || a.name).localeCompare(b.username || b.name);
+                return new Date(b.lastMessageTime || 0).getTime() - new Date(a.lastMessageTime || 0).getTime();
+              })
               .map((item) => {
                 const isUser = 'username' in item;
                 const id = isUser ? item.id : item._id;
@@ -712,7 +803,7 @@ const ChatPage: React.FC = () => {
                     <Space>
                       {isUser ? (
                         <div className="avatar-container">
-                          <div>{name.charAt(0).toUpperCase()}</div>
+                          <Avatar src={item.profilePicture} icon={<UserOutlined />} size={40} />
                           {onlineUsers.includes(id) && <span className="online-dot" />}
                         </div>
                       ) : (
@@ -722,6 +813,9 @@ const ChatPage: React.FC = () => {
                         <Text strong>{name}</Text>
                         <Text type="secondary" className="message-preview">{item.lastMessage || ''}</Text>
                       </div>
+                      {item.unreadCount > 0 && (
+                        <div className="unread-count">{item.unreadCount}</div>
+                      )}
                     </Space>
                   </motion.div>
                 );
@@ -736,7 +830,7 @@ const ChatPage: React.FC = () => {
             <motion.div className="chat-header" initial={{ y: -50 }} animate={{ y: 0 }} transition={{ type: 'spring', stiffness: 100 }}>
               <Space>
                 <div className="avatar-container">
-                  <div>{(selectedUser?.username || selectedRoom?.name || 'Group')?.charAt(0).toUpperCase()}</div>
+                  <Avatar src={selectedUser?.profilePicture} icon={<UserOutlined />} size={40} />
                 </div>
                 <div>
                   <Title level={4} style={{ margin: 0, color: '#8a2be2', fontWeight: 'bold' }}>
@@ -766,9 +860,25 @@ const ChatPage: React.FC = () => {
                     <div className="date-divider"><Text type="secondary">{date}</Text></div>
                     {msgs.map((msg) => (
                       <div key={msg._id} className={`message ${msg.senderId === userId ? 'sent' : 'received'}`}>
-                        <Text className="message-text">{msg.text}</Text>
+                        <Dropdown overlay={messageMenu(msg)} trigger={['click']}>
+                          <Button type="text" icon={<MoreOutlined />} className="message-actions" />
+                        </Dropdown>
+                        {msg.fileUrl && msg.fileType ? (
+                          msg.fileType.startsWith('image') ? (
+                            <img src={msg.fileUrl} alt="Attachment" style={{ maxWidth: '200px', borderRadius: '8px' }} />
+                          ) : (
+                            <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer">Download File</a>
+                          )
+                        ) : null}
+                        {msg.text && <Text className="message-text">{msg.text}</Text>}
+                        {msg.emoji && <Text className="message-emoji">{msg.emoji}</Text>}
                         <div className="timestamp">
                           <Text>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                          {msg.senderId === userId && (
+                            <Text className="message-status">
+                              {msg.status === 'pending' ? 'Sending...' : msg.status === 'delivered' ? 'Delivered' : msg.status === 'read' ? 'Read' : 'Failed'}
+                            </Text>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -791,10 +901,18 @@ const ChatPage: React.FC = () => {
                   onChange={(e) => setMessageInput(e.target.value)}
                   placeholder="Type a message..."
                   autoSize={{ minRows: 1, maxRows: 3 }}
-                  onPressEnter={(e) => { e.preventDefault(); handleSendMessage(); }}
+                  onPressEnter={(e) => { e.preventDefault(); editingMessage ? handleSaveEdit() : handleSendMessage(); }}
                   className="message-input"
                 />
-                <Button type="primary" icon={<SendOutlined />} onClick={handleSendMessage} className="send-button" />
+                <Button
+                  type="primary"
+                  icon={editingMessage ? <CheckOutlined /> : <SendOutlined />}
+                  onClick={editingMessage ? handleSaveEdit : handleSendMessage}
+                  className="send-button"
+                />
+                {editingMessage && (
+                  <Button type="text" icon={<CloseOutlined />} onClick={() => { setEditingMessage(null); setMessageInput(''); }} />
+                )}
               </Space.Compact>
             </motion.div>
           </>

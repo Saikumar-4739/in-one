@@ -1,5 +1,4 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
-
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('chat_room_participants')
 export class ChatRoomParticipantEntity {

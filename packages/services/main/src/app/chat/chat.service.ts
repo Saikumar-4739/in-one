@@ -12,7 +12,7 @@ import {
   UserIdRequestModel,
 } from '@in-one/shared-models';
 import { ChatRoomRepository } from './repository/chatroom.repository';
-import { MessegeRepository } from './repository/messege.repository';
+import { PrivateMessageRepository } from './repository/private-messege.repository';
 import { CallRepository } from './repository/call.repository';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
 import { ChatRoomParticipantRepository } from './repository/chat_room_participants.repo';
@@ -21,6 +21,9 @@ import { ChatRoomParticipantEntity } from './entities/chat.room.participants';
 import { MessageEntity } from './entities/messege.entity';
 import { CallEntity } from './entities/call.entity';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as crypto from 'crypto';
+import { MessegeRepository } from './repository/messege.repository';
+import { PrivateMessageEntity } from './entities/private-messege-entity';
 
 type RTCSessionDescriptionInit = {
   type?: 'offer' | 'answer' | 'rollback';
@@ -40,24 +43,46 @@ interface ChatRoomIdRequestModel {
 
 @Injectable()
 export class ChatService {
+  private readonly encryptionKey = Buffer.from(process.env.ENCRYPTION_KEY || '12345678901234567890123456789012'); // 32 bytes for AES-256
+  private readonly ivLength = 16; // AES block size
+
   constructor(
     private readonly dataSource: DataSource,
     @InjectRepository(ChatRoomRepository)
     private readonly chatRoomRepository: ChatRoomRepository,
     @InjectRepository(MessegeRepository)
     private readonly messageRepository: MessegeRepository,
+    @InjectRepository(PrivateMessageRepository)
+    private readonly privateMessageRepository: PrivateMessageRepository,
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
     @InjectRepository(CallRepository)
     private readonly callRepository: CallRepository,
     @InjectRepository(ChatRoomParticipantEntity)
     private readonly participantRepository: ChatRoomParticipantRepository,
-  ) { }
+  ) {}
+
+  private encrypt(text: string): string {
+    const iv = crypto.randomBytes(this.ivLength);
+    const cipher = crypto.createCipheriv('aes-256-cbc', this.encryptionKey, iv);
+    let encrypted = cipher.update(text);
+    encrypted = Buffer.concat([encrypted, cipher.final()]);
+    return iv.toString('hex') + ':' + encrypted.toString('hex');
+  }
+
+  private decrypt(text: string): string {
+    const [ivHex, encryptedHex] = text.split(':');
+    const iv = Buffer.from(ivHex, 'hex');
+    const encrypted = Buffer.from(encryptedHex, 'hex');
+    const decipher = crypto.createDecipheriv('aes-256-cbc', this.encryptionKey, iv);
+    let decrypted = decipher.update(encrypted);
+    decrypted = Buffer.concat([decrypted, decipher.final()]);
+    return decrypted.toString();
+  }
 
   async createMessage(reqModel: CreateMessageModel): Promise<MessageResponseModel> {
     const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
-      // Validate sender
       const sender = await this.userRepository.findOne({ where: { id: reqModel.senderId } });
       if (!sender) {
         throw new Error('Sender not found');
@@ -71,7 +96,6 @@ export class ChatService {
         }
         chatRoom = foundChatRoom;
       } else {
-        // Create a new chat room
         const participantIds = reqModel.participants?.length
           ? [sender.id, ...reqModel.participants]
           : [sender.id];
@@ -90,7 +114,6 @@ export class ChatService {
         });
         chatRoom = await transactionManager.getRepository(ChatRoomEntity).save(newChatRoom);
 
-        // Add participants to chat_room_participants
         const participantEntries = participantIds.map((userId) => ({
           chatRoomId: chatRoom.id,
           userId,
@@ -98,7 +121,6 @@ export class ChatService {
         await transactionManager.getRepository(ChatRoomParticipantEntity).save(participantEntries);
       }
 
-      // Update last message if chat room existed
       if (reqModel.chatRoomId) {
         await transactionManager.startTransaction();
         await transactionManager.getRepository(ChatRoomEntity).update(chatRoom.id, { lastMessage: reqModel.text });
@@ -148,6 +170,32 @@ export class ChatService {
     }
   }
 
+  async getPrivateChatHistory(reqModel: { senderId: string; receiverId: string }): Promise<MessageResponseModel[]> {
+    try {
+      const messages = await this.privateMessageRepository.find({
+        where: [
+          { senderId: reqModel.senderId, receiverId: reqModel.receiverId },
+          { senderId: reqModel.receiverId, receiverId: reqModel.senderId },
+        ],
+        order: { createdAt: 'ASC' },
+      });
+      return messages.map((msg) => ({
+        _id: msg.id,
+        senderId: msg.senderId,
+        receiverId: msg.receiverId,
+        text: msg.text ? this.decrypt(msg.text) : null,
+        createdAt: msg.createdAt,
+        emoji: msg.emoji,
+        fileUrl: msg.fileUrl,
+        fileType: msg.fileType,
+        status: msg.status,
+      }));
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error fetching private chat history';
+      throw new HttpException(errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   async editMessage(reqModel: EditMessageModel): Promise<MessageResponseModel> {
     const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
@@ -176,6 +224,34 @@ export class ChatService {
     }
   }
 
+  async editPrivateMessage(reqModel: EditMessageModel): Promise<MessageResponseModel> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
+    try {
+      const message = await this.privateMessageRepository.findOne({ where: { id: reqModel.messageId } });
+      if (!message) {
+        throw new Error('Private message not found');
+      }
+
+      await transactionManager.startTransaction();
+
+      message.text = this.encrypt(reqModel.newText);
+      const savedMessage = await transactionManager.getRepository(PrivateMessageEntity).save(message);
+      await transactionManager.commitTransaction();
+
+      return {
+        _id: savedMessage.id,
+        senderId: savedMessage.senderId,
+        receiverId: savedMessage.receiverId,
+        text: this.decrypt(savedMessage.text),
+        createdAt: savedMessage.createdAt,
+      };
+    } catch (error) {
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Error editing private message';
+      throw new HttpException(errorMessage, errorMessage.includes('not found') ? HttpStatus.NOT_FOUND : HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+  }
+
   async deleteMessage(reqModel: MessegeIdRequestModel): Promise<CommonResponse> {
     const transactionManager = new GenericTransactionManager(this.dataSource);
     try {
@@ -193,6 +269,31 @@ export class ChatService {
     } catch (error) {
       await transactionManager.rollbackTransaction();
       const errorMessage = error instanceof Error ? error.message : 'Error deleting message';
+      return new CommonResponse(
+        false,
+        errorMessage.includes('not found') ? 404 : 500,
+        errorMessage
+      );
+    }
+  }
+
+  async deletePrivateMessage(reqModel: MessegeIdRequestModel): Promise<CommonResponse> {
+    const transactionManager = new GenericTransactionManager(this.dataSource);
+    try {
+      const message = await this.privateMessageRepository.findOne({ where: { id: reqModel.messageId } });
+      if (!message) {
+        throw new Error('Private message not found');
+      }
+
+      await transactionManager.startTransaction();
+
+      await transactionManager.getRepository(PrivateMessageEntity).delete(reqModel.messageId);
+      await transactionManager.commitTransaction();
+
+      return new CommonResponse(true, 200, 'Private message deleted successfully');
+    } catch (error) {
+      await transactionManager.rollbackTransaction();
+      const errorMessage = error instanceof Error ? error.message : 'Error deleting private message';
       return new CommonResponse(
         false,
         errorMessage.includes('not found') ? 404 : 500,
@@ -232,9 +333,27 @@ export class ChatService {
     }
   }
 
+  async getPrivateMessageById(reqModel: MessegeIdRequestModel): Promise<CommonResponse> {
+    try {
+      const message = await this.privateMessageRepository.findOne({ where: { id: reqModel.messageId } });
+      if (!message) {
+        return new CommonResponse(false, 404, 'Private message not found', null);
+      }
+      return new CommonResponse(true, 200, 'Private message retrieved successfully', {
+        _id: message.id,
+        senderId: message.senderId,
+        receiverId: message.receiverId,
+        text: message.text ? this.decrypt(message.text) : null,
+        createdAt: message.createdAt,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error retrieving private message';
+      return new CommonResponse(false, 500, errorMessage, null);
+    }
+  }
+
   async getChatRoomsForUser(reqModel: UserIdRequestModel): Promise<CommonResponse> {
     try {
-      // Find chat rooms where user is a participant
       const participants = await this.participantRepository.find({
         where: { userId: reqModel.userId },
       });
@@ -287,7 +406,6 @@ export class ChatService {
       });
       const savedChatRoom = await transactionManager.getRepository(ChatRoomEntity).save(newChatRoom);
 
-      // Add participants
       const participantEntries = reqModel.participants.map((userId) => ({
         chatRoomId: savedChatRoom.id,
         userId,
@@ -322,63 +440,37 @@ export class ChatService {
       if (!sender || !receiver) {
         throw new Error('Sender or receiver not found');
       }
-
+  
       await transactionManager.startTransaction();
-
-      // Find private chat room (exactly two participants: sender and receiver)
-      const senderRooms = await this.participantRepository.find({ where: { userId: reqModel.senderId } });
-      const receiverRooms = await this.participantRepository.find({ where: { userId: reqModel.receiverId } });
-      const commonRoomIds = senderRooms
-        .map((p) => p.chatRoomId)
-        .filter((id) => receiverRooms.some((rp) => rp.chatRoomId === id));
-
-      let chatRoom: ChatRoomEntity | null = null;
-      for (const roomId of commonRoomIds) {
-        const room = await this.chatRoomRepository.findOne({ where: { id: roomId, isGroup: false } });
-        if (room) {
-          const participants = await this.participantRepository.find({ where: { chatRoomId: roomId } });
-          if (participants.length === 2) {
-            chatRoom = room;
-            break;
-          }
-        }
-      }
-
-      if (!chatRoom) {
-        chatRoom = transactionManager.getRepository(ChatRoomEntity).create({
-          isGroup: false,
-          lastMessage: reqModel.text,
-        });
-        chatRoom = await transactionManager.getRepository(ChatRoomEntity).save(chatRoom);
-
-        await transactionManager.getRepository(ChatRoomParticipantEntity).save([
-          { chatRoomId: chatRoom.id, userId: reqModel.senderId },
-          { chatRoomId: chatRoom.id, userId: reqModel.receiverId },
-        ]);
-      } else {
-        await transactionManager.getRepository(ChatRoomEntity).update(chatRoom.id, { lastMessage: reqModel.text });
-      }
-
-      const newMessage = transactionManager.getRepository(MessageEntity).create({
+  
+      const newMessage = transactionManager.getRepository(PrivateMessageEntity).create({
         senderId: reqModel.senderId,
         receiverId: reqModel.receiverId,
-        chatRoomId: chatRoom.id,
-        text: reqModel.text,
+        text: this.encrypt(reqModel.text),
         createdAt: new Date(),
         status: 'delivered',
       });
-
-      const savedMessage = await transactionManager.getRepository(MessageEntity).save(newMessage);
+  
+      const savedMessage = await transactionManager.getRepository(PrivateMessageEntity).save(newMessage);
       await transactionManager.commitTransaction();
-
-      return new CommonResponse(true, 200, 'Private message sent successfully', {
-        _id: savedMessage.id,
-        senderId: savedMessage.senderId,
-        receiverId: savedMessage.receiverId,
-        chatRoomId: savedMessage.chatRoomId,
-        text: savedMessage.text,
-        createdAt: savedMessage.createdAt,
-      });
+  
+      return new CommonResponse(
+        true,
+        200,
+        'Private message sent successfully',
+        new MessageResponseModel(
+          savedMessage.id,
+          savedMessage.senderId,
+          this.decrypt(savedMessage.text),
+          savedMessage.createdAt,
+          undefined, // chatRoomId is undefined for private messages
+          savedMessage.receiverId,
+          savedMessage.emoji,
+          savedMessage.fileUrl,
+          savedMessage.fileType,
+          savedMessage.status
+        )
+      );
     } catch (error) {
       await transactionManager.rollbackTransaction();
       const errorMessage = error instanceof Error ? error.message : 'Error sending private message';
@@ -388,29 +480,6 @@ export class ChatService {
         errorMessage,
         null
       );
-    }
-  }
-
-  async getChatHistoryByUsers(reqModel: { senderId: string; receiverId: string }): Promise<MessageResponseModel[]> {
-    try {
-      const messages = await this.messageRepository.find({
-        where: [
-          { senderId: reqModel.senderId, receiverId: reqModel.receiverId },
-          { senderId: reqModel.receiverId, receiverId: reqModel.senderId },
-        ],
-        order: { createdAt: 'ASC' },
-      });
-      return messages.map((msg) => ({
-        _id: msg.id,
-        senderId: msg.senderId,
-        receiverId: msg.receiverId,
-        chatRoomId: msg.chatRoomId,
-        text: msg.text,
-        createdAt: msg.createdAt,
-      }));
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error fetching chat history';
-      throw new HttpException(errorMessage, HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 

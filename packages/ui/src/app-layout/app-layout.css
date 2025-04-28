@@ -10,156 +10,111 @@
   left: 0;
   right: 0;
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  padding: 10px 30px;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(8px);
-  z-index: 1000; /* Ensure it stays on top of other content */
-  box-shadow: 0 3px 25px rgba(0, 0, 0, 0.05);
+  padding: 0 20px;
   height: 70px;
-  transition: top 0.3s ease-out; /* Optional for smooth behavior */
-}
-
-.custom-header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-  padding: 10px 30px;
   background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(8px);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
   z-index: 1000;
-  box-shadow: 0 3px 25px rgba(0, 0, 0, 0.05);
-  height: 70px;
 }
 
 .header-container {
   display: flex;
   align-items: center;
+  gap: 10px;
+  cursor: pointer;
 }
 
 .header-circle {
-  width: 50px;
-  height: 50px;
+  width: 40px;
+  height: 40px;
   background: #8a2be2;
   border-radius: 50%;
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
   font-weight: bold;
-  font-size: 25px;
-  margin-right: 5px;
 }
 
 .header-title {
-  color: #000;
-  margin-top: 50px;
-  font-size: 20px;
+  margin: 0;
+  color: black;
 }
 
-.header-actions {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.logout-button {
+  background: #8a2be2;
+  color: white;
+  border: none;
+  border-radius: 6px;
 }
 
-.header-icon {
-  font-size: 108px;
-  color: #8a2be2;
-}
-
-.header-avatar {
-  cursor: pointer;
-  width: 2px;
-  height: 25px;
-}
-
-.home-page {
-  box-sizing: border-box;
-}
-
-button:hover {
-  transform: scale(1.05);
-  transition: transform 0.2s ease-in-out;
+.logout-button:hover {
+  background: #6a1bb2;
 }
 
 .side-nav {
-  gap: 10px;
   position: fixed;
-  top: 70px; /* Added 70px top to account for the header */
+  top: 70px;
   left: 0;
   width: 250px;
-  height: calc(100vh - 70px); /* Subtract header height from the full viewport height */
+  height: calc(100vh - 70px);
   background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(10px);
   padding: 20px;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
   z-index: 999;
-  box-shadow: 0 0 50px rgba(0, 0, 0, 0.1);
 }
 
 .nav-items {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 15px;
 }
 
-.nav-item a {
+.nav-link {
   display: flex;
   align-items: center;
-  padding: 12px 20px;
-  color: #000;
+  padding: 10px 15px;
+  border-radius: 8px;
   text-decoration: none;
-  border-radius: 10px;
-  transition: all 0.3s ease;
+  color: #000;
+  font-weight: 500;
+  transition: 0.3s;
 }
 
-.nav-item a:hover {
+.nav-link:hover {
   background: #8a2be2;
   color: #fff;
-  transform: translateX(10px);
 }
 
 .nav-icon {
-  margin-right: 15px;
-  font-size: 22px;
-}
-
-.nav-label {
-  font-size: 16px;
-  font-weight: 500;
+  margin-right: 10px;
 }
 
 .content-container {
-  min-height: 100vh;
-  transition: margin-left 0.3s ease;
-  margin-left: 0;
-  padding-top: 75px; /* Ensure padding-top is always there */
+  margin-top: 70px;
+  padding: 20px;
+  transition: margin-left 0.3s;
 }
 
-content-container.open-nav {
-  margin-left: 250px; /* This can be the width of the side-nav */
+.content-container.nav-open {
+  margin-left: 250px;
 }
 
-.ant-modal-content {
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-}
+@media (max-width: 768px) {
+  .side-nav {
+    width: 100%;
+    height: auto;
+    top: 70px;
+    flex-direction: column;
+    box-shadow: none;
+    background: white;
+  }
 
-.ant-modal-header {
-  border-bottom: none;
-}
-
-.ant-btn-primary {
-  background: #8a2be2;
-  border-color: #8a2be2;
-}
-
-.ant-btn-primary:hover {
-  background: #6a1bb2;
-  border-color: #6a1bb2;
+  .content-container.nav-open {
+    margin-left: 0;
+  }
 }
