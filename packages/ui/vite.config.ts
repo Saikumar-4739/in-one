@@ -3,7 +3,7 @@ import path from 'path';
 
 export default {
   root: __dirname,
-  cacheDir: '../../node_modules/.vite/packages/ui',
+  cacheDir: 'node_modules/.vite',  // Cache directory simplified
   server: {
     port: 4200,
     host: 'localhost',
@@ -26,7 +26,7 @@ export default {
     },
   },
   build: {
-    outDir: '../../dist/packages/ui',
+    outDir: 'dist',  // Simplified output directory to 'dist' in project root
     emptyOutDir: true,
     reportCompressedSize: true,
     commonjsOptions: {
@@ -36,4 +36,5 @@ export default {
       external: [],
     },
   },
+  base: '/my-app/',  // Specify base path if deploying to a subdirectory
 };
