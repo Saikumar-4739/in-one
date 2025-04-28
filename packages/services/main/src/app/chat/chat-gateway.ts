@@ -16,7 +16,17 @@ type RTCIceCandidateInit = {
   usernameFragment?: string | null;
 };
 
-@WebSocketGateway({ cors: { origin: '*', methods: ['GET', 'POST'] } })
+@WebSocketGateway({
+  cors: {
+    origin: process.env.NODE_ENV === 'production'
+      ? ['https://localhost:4200', 'https://localhost:4202']
+      : '*',
+    methods: ['GET', 'POST'],
+    credentials: true,
+  }
+})
+
+
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
