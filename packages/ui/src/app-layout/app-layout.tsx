@@ -12,7 +12,7 @@ import {
   VideoCameraOutlined,
   PictureOutlined,
   LineChartOutlined,
-  UserOutlined
+  UserOutlined,
 } from '@ant-design/icons';
 import './app-layout.css';
 import { UserHelpService } from '@in-one/shared-services';
@@ -57,6 +57,27 @@ const AppLayout: React.FC = () => {
     }
   }, [navigate, userService]);
 
+  const fetchUserProfile = useCallback(async () => {
+    setLoading(true);
+    try {
+      const userId = localStorage.getItem('userId');
+      if (!userId) throw new Error('User ID not found');
+      // const response = await userService.getUserProfile(new UserIdRequestModel(userId));
+      // setUser(response);
+    } catch (error) {
+      console.error('Failed to fetch user profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [userService]);
+
+  const handleProfileClick = () => {
+    setIsProfileModalVisible(true);
+    if (!user) {
+      fetchUserProfile();
+    }
+  };
+
   const navItems = [
     { key: '1', icon: <ProjectOutlined />, label: 'Home', path: '/home' },
     { key: '2', icon: <DashboardOutlined />, label: 'Dashboard', path: '/dashboard', adminOnly: true },
@@ -79,17 +100,30 @@ const AppLayout: React.FC = () => {
       >
         <div className="header-container" onClick={() => setIsNavOpen(!isNavOpen)}>
           <div className="header-circle">IN</div>
-          <Title level={3} className="header-title">One</Title>
+          <Title level={3} className="header-title">
+            One
+          </Title>
         </div>
 
         <div className="header-actions">
+          <Avatar
+            size={40}
+            icon={<UserOutlined />}
+            src={user?.profilePicture}
+            className="profile-icon"
+            onClick={handleProfileClick}
+            style={{ lineHeight: '40px' }}
+          />
           <Button
             icon={<PoweroffOutlined />}
-            onClick={(e) => { e.stopPropagation(); logoutUser(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              logoutUser();
+            }}
             loading={isLoggingOut}
             className="logout-button"
           >
-            {isLoggingOut ? 'Logging out...' : 'Logout'}
+            {isLoggingOut ? '' : ''}
           </Button>
         </div>
       </motion.header>
@@ -108,7 +142,12 @@ const AppLayout: React.FC = () => {
               {navItems
                 .filter((item) => !item.adminOnly || isAdmin)
                 .map((item) => (
-                  <Link key={item.key} to={item.path} className="nav-link" onClick={() => setIsNavOpen(false)}>
+                  <Link
+                    key={item.key}
+                    to={item.path}
+                    className="nav-link"
+                    onClick={() => setIsNavOpen(false)}
+                  >
                     <span className="nav-icon">{item.icon}</span>
                     <span className="nav-label">{item.label}</span>
                   </Link>
@@ -129,6 +168,8 @@ const AppLayout: React.FC = () => {
         title={<Title level={4}>User Profile</Title>}
         onCancel={() => setIsProfileModalVisible(false)}
         centered
+        className="profile-modal"
+        footer={null}
       >
         {user ? (
           <div className="profile-content">
@@ -141,7 +182,9 @@ const AppLayout: React.FC = () => {
               <Text>Role: {user.role || 'User'}</Text>
             </div>
           </div>
-        ) : <Spin tip="Loading..." />}
+        ) : (
+          <Spin tip="Loading profile..." />
+        )}
       </Modal>
     </Layout>
   );

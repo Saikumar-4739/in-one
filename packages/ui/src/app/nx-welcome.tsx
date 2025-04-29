@@ -103,7 +103,6 @@ export function NxWelcome({ title }: { title: string }) {
       font-size: 1.875rem;
       font-weight: 300;
       line-height: 2.25rem;
-      margin-bottom: 0.5rem;
     }
     #hero {
       align-items: center;

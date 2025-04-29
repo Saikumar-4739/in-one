@@ -145,7 +145,9 @@ const ChatPage: React.FC = () => {
   };
 
   const initSocket = (userId: string) => {
-    const newSocket = io('https://in-one.onrender.com', {
+    const newSocket = io(
+      'http://localhost:3005'
+      , {
       auth: { userId },
       transports: ['websocket'],
       reconnection: true,
@@ -161,7 +163,8 @@ const ChatPage: React.FC = () => {
     newSocket.on('privateMessage', (savedMessage: Message) => {
       setMessages((prev) => {
         const exists = prev.some((msg) => msg._id === savedMessage._id);
-        return exists ? prev : [...prev, { ...savedMessage, status: 'delivered' }];
+        if (exists) return prev; // Prevent duplicates
+        return [...prev, { ...savedMessage, status: 'delivered' }];
       });
       updateUserList(savedMessage);
     });
@@ -170,7 +173,8 @@ const ChatPage: React.FC = () => {
       if (savedMessage.chatRoomId === selectedRoomId) {
         setMessages((prev) => {
           const exists = prev.some((msg) => msg._id === savedMessage._id);
-          return exists ? prev : [...prev, { ...savedMessage, status: 'delivered' }];
+          if (exists) return prev; // Prevent duplicates
+          return [...prev, { ...savedMessage, status: 'delivered' }];
         });
       }
       updateChatRoomList(savedMessage);
@@ -357,6 +361,7 @@ const ChatPage: React.FC = () => {
             return { ...user, lastMessage: lastMsg?.text || '', lastMessageTime: lastMsg?.createdAt || '', unreadCount: 0 };
           })
         );
+        console.log('Users with last messages:', usersWithLastMessage); // Debug log
         setUsers(usersWithLastMessage.sort((a, b) => new Date(b.lastMessageTime || 0).getTime() - new Date(a.lastMessageTime || 0).getTime()));
       }
     } catch (error) {
@@ -430,8 +435,8 @@ const ChatPage: React.FC = () => {
 
   const handleSendMessage = async () => {
     if (!messageInput.trim() || !userId) return;
-
-    const tempId = `temp-${Date.now()}`;
+  
+    const tempId = `temp-${Date.now()}-${Math.random()}`; // Unique temp ID
     const tempMessage: Message = {
       _id: tempId,
       senderId: userId,
@@ -441,10 +446,11 @@ const ChatPage: React.FC = () => {
       receiverId: selectedUser?.id,
       chatRoomId: selectedRoomId || undefined,
     };
-
+  
+    // Optimistically add the temporary message
     setMessages((prev) => [...prev, tempMessage]);
     setMessageInput('');
-
+  
     try {
       if (selectedRoomId) {
         // Group message
@@ -456,8 +462,11 @@ const ChatPage: React.FC = () => {
         const response = await chatService.sendMessage(messagePayload);
         if (response.status && response.data) {
           const savedMessage: Message = { ...response.data, status: 'delivered' };
-          setMessages((prev) => prev.map((msg) => (msg._id === tempId ? savedMessage : msg)));
-          socket?.emit('sendGroupMessage', messagePayload);
+          // Replace the temporary message with the server response
+          setMessages((prev) =>
+            prev.map((msg) => (msg._id === tempId ? savedMessage : msg))
+          );
+          // No need to emit 'sendGroupMessage' here; server should broadcast
           updateChatRoomList(savedMessage);
         } else {
           throw new Error('Failed to send group message');
@@ -472,7 +481,9 @@ const ChatPage: React.FC = () => {
         const response = await chatService.sendPrivateMessage(messageData);
         if (response.status && response.data) {
           const savedMessage: Message = { ...response.data, status: 'delivered' };
-          setMessages((prev) => prev.map((msg) => (msg._id === tempId ? savedMessage : msg)));
+          setMessages((prev) =>
+            prev.map((msg) => (msg._id === tempId ? savedMessage : msg))
+          );
           socket?.emit('sendPrivateMessage', { message: messageData });
           updateUserList(savedMessage);
         } else {
@@ -489,10 +500,11 @@ const ChatPage: React.FC = () => {
         const response = await chatService.sendMessage(messagePayload);
         if (response.status && response.data) {
           const savedMessage: Message = { ...response.data, status: 'delivered' };
-          setMessages((prev) => prev.map((msg) => (msg._id === tempId ? savedMessage : msg)));
+          setMessages((prev) =>
+            prev.map((msg) => (msg._id === tempId ? savedMessage : msg))
+          );
           setSelectedRoomId(savedMessage.chatRoomId || '');
           socket?.emit('joinRoom', savedMessage.chatRoomId);
-          socket?.emit('sendGroupMessage', messagePayload);
           updateChatRoomList(savedMessage);
           fetchChatRooms();
         } else {
@@ -501,7 +513,11 @@ const ChatPage: React.FC = () => {
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      setMessages((prev) => prev.map((msg) => (msg._id === tempId ? { ...msg, status: 'failed' } : msg)));
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === tempId ? { ...msg, status: 'failed' } : msg
+        )
+      );
       message.error('Failed to send message');
     }
   };
@@ -780,47 +796,54 @@ const ChatPage: React.FC = () => {
           </div>
         ) : (
           <div className="combined-list">
-            <Text strong style={{ display: 'block', padding: '12px 16px' }}>Chats</Text>
-            {[...filteredUsers, ...filteredRooms]
-              .sort((a, b) => {
-                if (sortOption === 'unread') return (b.unreadCount || 0) - (a.unreadCount || 0);
-                if (sortOption === 'alphabetical') return (a.username || a.name).localeCompare(b.username || b.name);
-                return new Date(b.lastMessageTime || 0).getTime() - new Date(a.lastMessageTime || 0).getTime();
-              })
-              .map((item) => {
-                const isUser = 'username' in item;
-                const id = isUser ? item.id : item._id;
-                const name = isUser ? item.username : item.name || 'Unnamed Group';
-                const isSelected = isUser ? selectedUser?.id === id : selectedRoomId === id;
-                return (
-                  <motion.div
-                    key={id}
-                    className={`user-item ${isSelected ? 'active' : ''}`}
-                    onClick={() => (isUser ? handleUserSelect(item) : handleGroupSelect(id))}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Space>
-                      {isUser ? (
-                        <div className="avatar-container">
-                          <Avatar src={item.profilePicture} icon={<UserOutlined />} size={40} />
-                          {onlineUsers.includes(id) && <span className="online-dot" />}
-                        </div>
-                      ) : (
-                        <Avatar icon={<UserOutlined />} size={40} />
-                      )}
-                      <div className="user-info">
-                        <Text strong>{name}</Text>
-                        <Text type="secondary" className="message-preview">{item.lastMessage || ''}</Text>
+          <Text strong style={{ display: 'block', padding: '12px 16px' }}>Chats</Text>
+          {[...filteredUsers, ...filteredRooms]
+            .sort((a, b) => {
+              if (sortOption === 'unread') return (b.unreadCount || 0) - (a.unreadCount || 0);
+              if (sortOption === 'alphabetical') return (a.username || a.name).localeCompare(b.username || b.name);
+              return new Date(b.lastMessageTime || 0).getTime() - new Date(a.lastMessageTime || 0).getTime();
+            })
+            .map((item) => {
+              const isUser = 'username' in item;
+              const id = isUser ? item.id : item._id;
+              const name = isUser ? item.username : item.name || 'Unnamed Group';
+              const isSelected = isUser ? selectedUser?.id === id : selectedRoomId === id;
+              return (
+                <motion.div
+                  key={id}
+                  className={`user-item ${isSelected ? 'active' : ''}`}
+                  onClick={() => (isUser ? handleUserSelect(item) : handleGroupSelect(id))}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Space>
+                    {isUser ? (
+                      <div className="avatar-container">
+                        <Avatar src={item.profilePicture} icon={<UserOutlined />} size={40} />
+                        {onlineUsers.includes(id) && <span className="online-dot" />}
                       </div>
-                      {item.unreadCount > 0 && (
-                        <div className="unread-count">{item.unreadCount}</div>
-                      )}
-                    </Space>
-                  </motion.div>
-                );
-              })}
-          </div>
+                    ) : (
+                      <Avatar icon={<UserOutlined />} size={40} />
+                    )}
+                    <div className="user-info">
+                      <div className="user-info-header">
+                        <Text strong>{name}</Text>
+                        {/* {item.lastMessageTime && (
+                          <Text type="secondary" className="message-timestamp">
+                            {new Date(item.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </Text>
+                        )} */}
+                      </div>
+                      <Text type="secondary" className="message-preview">{item.lastMessage || ''}</Text>
+                    </div>
+                    {item.unreadCount > 0 && (
+                      <div className="unread-count">{item.unreadCount}</div>
+                    )}
+                  </Space>
+                </motion.div>
+              );
+            })}
+        </div>
         )}
       </motion.div>
 
@@ -921,48 +944,6 @@ const ChatPage: React.FC = () => {
         )}
       </div>
 
-      {(selectedUser || selectedRoomId) && (
-        <motion.div className={`right-sidebar ${selectedRoomId ? 'group-expanded' : ''}`} initial={{ x: 300 }} animate={{ x: 0 }} transition={{ type: 'spring', stiffness: 100, damping: 20 }}>
-          <div className="user-profile">
-            <Avatar src={selectedUser?.profilePicture} icon={<UserOutlined />} size={80} />
-            <Title level={4}>{selectedUser ? selectedUser.username : selectedRoom?.name || 'Group Chat'}</Title>
-            <Text type="secondary">
-              {selectedUser
-                ? selectedUser.isOnline
-                  ? 'Active Now'
-                  : `Last Seen ${new Date(selectedUser.lastSeen || Date.now()).toLocaleString()}`
-                : 'Group Chat'}
-            </Text>
-          </div>
-          {selectedRoomId && selectedRoom?.isGroup && (
-            <div className="group-members">
-              <Text strong>Group Members</Text>
-              {selectedRoom?.members?.map((memberId: string) => {
-                const member = users.find((u) => u.id === memberId);
-                return member ? (
-                  <div key={member.id} className="member-item">
-                    <Avatar src={member.profilePicture} icon={<UserOutlined />} size={40} />
-                    <Text>{member.username}</Text>
-                  </div>
-                ) : null;
-              })}
-            </div>
-          )}
-          <div className="customize-section">
-            <Text strong>Customize</Text>
-            <div className="customize-option">
-              <Text>Change Theme</Text><br /><br />
-              <Space>
-                <motion.div className="theme-circle blue" whileHover={{ scale: 1.2 }} onClick={() => handleBackgroundChange('#1890ff')} />
-                <motion.div className="theme-circle green" whileHover={{ scale: 1.2 }} onClick={() => handleBackgroundChange('#52c41a')} />
-                <motion.div className="theme-circle red" whileHover={{ scale: 1.2 }} onClick={() => handleBackgroundChange('#ff4d4f')} />
-                <motion.div className="theme-circle purple" whileHover={{ scale: 1.2 }} onClick={() => handleBackgroundChange('#8a2be2')} />
-                <motion.div className="theme-circle orange" whileHover={{ scale: 1.2 }} onClick={() => handleBackgroundChange('#fa8c16')} />
-              </Space>
-            </div>
-          </div>
-        </motion.div>
-      )}
 
       {/* Call Modal */}
       <Modal

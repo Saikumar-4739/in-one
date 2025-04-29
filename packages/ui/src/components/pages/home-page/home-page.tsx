@@ -38,11 +38,12 @@ const HomePage: React.FC = () => {
   return (
     <div
       style={{
-        minHeight: '100vh',
+        height: '100vh',
         display: 'flex',
         flexDirection: 'column',
         width: '100%',
         overflowX: 'auto',
+        scrollbarWidth: 'none',
         backgroundColor: '#ffffff', 
         fontFamily: "'Poppins', sans-serif", 
       }}
@@ -84,15 +85,13 @@ const HomePage: React.FC = () => {
               marginBottom: 'clamp(16px, 3vw, 32px)',
               fontWeight: 700,
               lineHeight: 1.2,
-              fontFamily: 'Arial, sans-serif',  // Change font family here
-              fontStyle: 'italic',  // Optional: Change font style to italic
+              fontStyle: 'bold',  // Optional: Change font style to italic
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               flexWrap: 'wrap',
               gap: 'clamp(8px, 2vw, 12px)',
             }}
-            
             >
               Welcome to Your
               <span
@@ -121,7 +120,7 @@ const HomePage: React.FC = () => {
                 margin: '0 auto',
                 lineHeight: 1.5,
                  fontFamily: 'Arial, sans-serif',
-                 fontStyle: 'italic', 
+                 fontStyle: 'bold', 
               }}
             >
               Discover a seamless experience with powerful features designed to boost productivity and creativity.
@@ -144,8 +143,8 @@ const HomePage: React.FC = () => {
                   fontWeight: 600,
                   transition: 'background-color 0.3s ease',
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#ff8c00'} // Hover effect
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ffd700'}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#8a2be2'} // Hover effect
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#8a2be2'}
               >
                 Get Started
               </Button>
@@ -153,7 +152,7 @@ const HomePage: React.FC = () => {
           </motion.div>
         </motion.div>
       </div>
-
+    
       {/* Features Section */}
       <div
         style={{
@@ -195,7 +194,7 @@ const HomePage: React.FC = () => {
               initial="hidden"
               animate="visible"
               style={{
-                maxWidth: '280px',
+                maxWidth: '500px',
                 transition: 'transform 0.3s ease',
               }}
             >

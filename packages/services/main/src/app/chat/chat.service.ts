@@ -43,7 +43,10 @@ interface ChatRoomIdRequestModel {
 
 @Injectable()
 export class ChatService {
-  private readonly encryptionKey = Buffer.from(process.env.ENCRYPTION_KEY || '12345678901234567890123456789012'); // 32 bytes for AES-256
+  private readonly encryptionKey = process.env.ENCRYPTION_KEY
+  ? Buffer.from(process.env.ENCRYPTION_KEY, 'hex') // if ENV key provided, treat as HEX
+  : Buffer.from('12345678901234567890123456789012'); // fallback is already plain text
+
   private readonly ivLength = 16; // AES block size
 
   constructor(

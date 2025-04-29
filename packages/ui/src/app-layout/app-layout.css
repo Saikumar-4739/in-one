@@ -1,4 +1,5 @@
-* {
+/* Reset with higher specificity to override global styles */
+html, body, * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -18,41 +19,72 @@
   backdrop-filter: blur(8px);
   box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
   z-index: 1000;
+  font-family: 'Inter', sans-serif;
 }
 
 .header-container {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 5px;
   cursor: pointer;
 }
 
 .header-circle {
-  width: 40px;
-  height: 40px;
+  width: 50px;
+  height: 50px;
   background: #8a2be2;
   border-radius: 50%;
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: bold;
+  font-weight: 700; /* Bold */
+  font-style: bold; /* Italic */
+  font-size: 25px;
 }
 
 .header-title {
-  margin: 0;
+  margin-top: 15px;
   color: black;
+  font-weight: 700; /* Bold */
+  font-style: bold; /* Italic */
+  font-size: 50px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .logout-button {
-  background: #8a2be2;
-  color: white;
-  border: none;
-  border-radius: 6px;
+  color: #8a2be2;
+  border: 2px solid #8a2be2; /* Added border with width, style, and color */
+  border-radius: 10px; /* Kept the second border-radius value */
+  font-weight: 600; /* Bold */
+  font-size: 16px;
+  padding: 8px 16px;
+  transition: background 0.3s;
+  margin: 0 !important;
+  line-height: 1.5;
+  background: transparent; /* Optional: ensures button has no default background */
 }
+
 
 .logout-button:hover {
   background: #6a1bb2;
+}
+
+.profile-icon {
+  cursor: pointer;
+  transition: transform 0.3s;
+  margin: 0 !important;
+}
+
+.profile-icon:hover {
+  transform: scale(1.1);
 }
 
 .side-nav {
@@ -81,7 +113,9 @@
   border-radius: 8px;
   text-decoration: none;
   color: #000;
-  font-weight: 500;
+  font-weight: 900; /* Heavier bold (range: 100-900, 900 is maximum) */
+  font-style: normal; /* Remove italic effect; use 'italic' if you want italics */
+  font-size: 18px;
   transition: 0.3s;
 }
 
@@ -92,16 +126,45 @@
 
 .nav-icon {
   margin-right: 10px;
+  font-size: 20px;
 }
 
 .content-container {
-  margin-top: 70px;
-  padding: 20px;
+  position: relative;
+  z-index: 1;
+  overflow: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  background-color: #f5f5f5;
   transition: margin-left 0.3s;
+  padding-top: 70px;
+  min-height: calc(100vh - 70px);
+}
+
+.content-container::-webkit-scrollbar {
+  display: none;
 }
 
 .content-container.nav-open {
   margin-left: 250px;
+}
+
+.content-wrapper {
+  padding: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.profile-modal .ant-modal-content {
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.profile-modal .profile-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
 }
 
 @media (max-width: 768px) {
@@ -116,5 +179,26 @@
 
   .content-container.nav-open {
     margin-left: 0;
+  }
+
+  .header-title {
+    font-size: 22px;
+  }
+
+  .header-circle {
+    font-size: 18px;
+  }
+
+  .logout-button {
+    font-size: 14px;
+    padding: 6px 12px;
+  }
+
+  .nav-link {
+    font-size: 16px;
+  }
+
+  .nav-icon {
+    font-size: 18px;
   }
 }
