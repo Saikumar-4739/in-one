@@ -1,6 +1,6 @@
 import { Controller, Post, Get, Body, Delete } from '@nestjs/common';
 import { NewsService } from './news.service';
-import { CommonResponse, CreateNewsModel, UpdateNewsModel, CreateCommentModel, ExceptionHandler, NewsIdRequestModel, CommentIdRequestModel } from '@in-one/shared-models';
+import { CommonResponse, CreateNewsModel, UpdateNewsModel, CreateCommentModel, ExceptionHandler, NewsIdRequestModel, CommentIdRequestModel, TogglelikeModel, ToggleReactionModel } from '@in-one/shared-models';
 import { ApiBody } from '@nestjs/swagger';
 
 @Controller('news')
@@ -86,6 +86,15 @@ export class NewsController {
       return await this.newsService.markNewsAsImportant(body.id, body.isImportant);
     } catch (error) {
       return ExceptionHandler.handleError(error, 'Error marking news as important');
+    }
+  }
+
+  @Post('toggleReactionNews')
+  async toggleReactionNews(@Body() reqModel: ToggleReactionModel): Promise<CommonResponse> {
+    try {
+      return await this.newsService.toggleReactionNews(reqModel);
+    } catch (error) {
+      return ExceptionHandler.handleError(error, 'Error for like the news');
     }
   }
 }

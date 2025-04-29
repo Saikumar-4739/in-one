@@ -1,6 +1,6 @@
 import { AxiosRequestConfig } from 'axios';
 import { CommonAxiosService } from '../common-axios-service';
-import { GlobalResponseObject, CreateNoteModel, UpdateNoteModel, GetUserNotesModel, NotesIdRequestModel, CommonResponse } from '@in-one/shared-models';
+import { GlobalResponseObject, CreateNoteModel, UpdateNoteModel, GetUserNotesModel, NotesIdRequestModel, CommonResponse, ToggleReactionModel } from '@in-one/shared-models';
 
 export class NotesHelpService extends CommonAxiosService {
   

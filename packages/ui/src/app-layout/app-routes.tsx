@@ -6,10 +6,10 @@ import HomePage from "../components/pages/home-page/home-page";
 import ChatPage from "../components/pages/chat-groups/chat-page";
 import NotesPage from "../components/pages/note-page/notes-page";
 import VideosPage, { VideoDetail } from "../components/pages/videos-page/videos-page";
-import NewsPage from "../components/pages/news-media/news-page";
 import Chatbot from "../components/pages/ai-bot-page/ai-bot-page";
 import PhotosPage from "../components/pages/photos-page/photos-page";
 import DashboardPage from "./dashboard";
+import NewsPageMain from "../components/pages/news-media/news-page-view";
 
 
 const ProtectedRoute: React.FC<{ isAuthenticated: boolean }> = ({ isAuthenticated }) => {
@@ -46,7 +46,7 @@ const AppRoutes: React.FC = () => {
           <Route path="/ai-bot" element={<Chatbot />} />
           <Route path="/videos" element={<VideosPage />} />
           <Route path="/photos" element={<PhotosPage />} />
-          <Route path="/news" element={<NewsPage />} />
+          <Route path="/news" element={<NewsPageMain />} />
           <Route path="/home" element={<HomePage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/video/:id" element={<VideoDetail />} />

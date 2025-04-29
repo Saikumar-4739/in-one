@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DataSource, Like, Repository } from 'typeorm';
 import { NewsEntity } from './entities/news.entity';
 import { UserEntity } from '../user/entities/user.entity';
-import { CommentIdRequestModel, CommonResponse, CreateCommentModel, CreateNewsModel, ErrorResponse, NewsIdRequestModel, UpdateNewsModel, UpdateViewModel } from '@in-one/shared-models';
+import { CommentIdRequestModel, CommonResponse, CreateCommentModel, CreateNewsModel, ErrorResponse, NewsIdRequestModel, ToggleReactionModel, UpdateNewsModel, UpdateViewModel } from '@in-one/shared-models';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { CommentEntity } from '../masters/common-entities/comment.entity';
@@ -168,7 +168,7 @@ export class NewsService {
       await transactionManager.startTransaction()
 
       await this.commentRepository.delete({ newsId: reqModel.newsId });
-      await this.likeRepository.delete({ newsId: reqModel.newsId });
+      await this.likeRepository.delete({ entityId: reqModel.newsId });
       await this.newsRepo.remove(news);
 
       await transactionManager.commitTransaction();
@@ -228,43 +228,6 @@ export class NewsService {
     }
   }
 
-  async toggleLikeNews(id: string, userId: string): Promise<CommonResponse> {
-    const transactionManager = new GenericTransactionManager(this.dataSource);
-    try {
-
-      const news = await this.newsRepo.findOne({ where: { id } });
-      if (!news) {
-        throw new ErrorResponse(6, 'News not found');
-      }
-      if (!userId) {
-        throw new Error('User ID is required');
-      }
-      const user = await this.userRepository.findOne({ where: { id: userId } });
-      if (!user) {
-        throw new Error('User not found');
-      }
-
-      await transactionManager.startTransaction()
-
-      const existingLike = await this.likeRepository.findOne({ where: { newsId: id, userId } });
-      if (existingLike) {
-        await this.likeRepository.remove(existingLike);
-        news.likes = Math.max(0, (news.likes || 0) - 1);
-      } else {
-        const newLike = this.likeRepository.create({ userId, newsId: id });
-        await this.likeRepository.save(newLike);
-        news.likes = (news.likes || 0) + 1;
-      }
-
-      const updatedNews = await this.newsRepo.save(news);
-      await transactionManager.commitTransaction();
-      return new CommonResponse(true, 200, existingLike ? 'News unliked successfully' : 'News liked successfully', updatedNews);
-    } catch (error) {
-      await transactionManager.rollbackTransaction();
-      return new CommonResponse(false, 500, 'Error toggling like', error);
-    }
-  }
-
   async searchNews(query: string): Promise<CommonResponse> {
     try {
       const news = await this.newsRepo.find({
@@ -300,43 +263,6 @@ export class NewsService {
       return new CommonResponse(true, 200, 'News retrieved successfully', { news: newsWithComments, total });
     } catch (error) {
       return new CommonResponse(false, 500, 'Error retrieving news', error);
-    }
-  }
-
-  async toggleDislikeNews(id: string, userId: string): Promise<CommonResponse> {
-    const transactionManager = new GenericTransactionManager(this.dataSource);
-    try {
-      const news = await this.newsRepo.findOne({ where: { id } });
-      if (!news) {
-        throw new ErrorResponse(1, 'News not found');
-      }
-      if (!userId) {
-        throw new Error('User ID is required');
-      }
-
-      // Validate userId exists
-      const user = await this.userRepository.findOne({ where: { id: userId } });
-      if (!user) {
-        throw new Error('User not found');
-      }
-
-      await transactionManager.startTransaction()
-
-      const existingDislike = await this.likeRepository.findOne({ where: { newsId: id, userId } });
-      if (existingDislike) {
-        await this.likeRepository.remove(existingDislike);
-        news.dislikes = Math.max(0, (news.dislikes || 0) - 1);
-      } else {
-        const newDislike = this.likeRepository.create({ userId, newsId: id });
-        await this.likeRepository.save(newDislike);
-        news.dislikes = (news.dislikes || 0) + 1;
-      }
-      const updatedNews = await this.newsRepo.save(news);
-      await transactionManager.commitTransaction();
-      return new CommonResponse(true, 200, existingDislike ? 'News undisliked successfully' : 'News disliked successfully', updatedNews);
-    } catch (error) {
-      await transactionManager.rollbackTransaction();
-      return new CommonResponse(false, 500, 'Error toggling dislike', error);
     }
   }
 
@@ -390,5 +316,99 @@ export class NewsService {
       return new CommonResponse(false, 1, 'Error Updating View', error)
     }
   }
+
+  async toggleReactionNews(reqModel: ToggleReactionModel): Promise<CommonResponse> {
+  const transactionManager = new GenericTransactionManager(this.dataSource);
+  try {
+    await transactionManager.startTransaction();
+
+    // Check for existing reaction
+    const existing = await this.likeRepository.findOne({
+      where: {
+        entityId: reqModel.newsId,
+        userId: reqModel.userId,
+        entityType: 'news',
+      },
+    });
+
+    // Validate news
+    const news = await this.newsRepo.findOne({
+      where: { id: reqModel.newsId },
+    });
+    if (!news) {
+      throw new Error('News not found');
+    }
+
+    // Validate user
+    const user = await this.userRepository.findOne({
+      where: { id: reqModel.userId },
+    });
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    let updatedLikes = news.likes || 0;
+    let updatedDislikes = news.dislikes || 0;
+    // let isLiked = news.isLiked || false;
+    // let isDisliked = news.isDisliked || false;
+
+    if (existing) {
+      // Remove existing reaction (toggle off)
+      await this.likeRepository.delete({
+        entityId: reqModel.newsId,
+        userId: reqModel.userId,
+        entityType: 'news',
+      });
+      if (reqModel.reactionType === 'like') {
+        updatedLikes = Math.max(0, news.likes - 1);
+        // isLiked = false;
+      } else {
+        updatedDislikes = Math.max(0, news.dislikes - 1);
+        // isDisliked = false;
+      }
+    } else {
+      // Create new reaction
+      const reaction = this.likeRepository.create({
+        entityId: reqModel.newsId,
+        userId: reqModel.userId,
+        entityType: 'news',
+      });
+      await this.likeRepository.save(reaction);
+      if (reqModel.reactionType === 'like') {
+        updatedLikes = news.likes + 1;
+        // isLiked = true;
+      } else {
+        updatedDislikes = news.dislikes + 1;
+        // isDisliked = true;
+      }
+    }
+
+    // Update news counters
+    await this.newsRepo.update(reqModel.newsId, {
+      likes: updatedLikes,
+      dislikes: updatedDislikes,
+    });
+
+    await transactionManager.commitTransaction();
+    return new CommonResponse(
+      true,
+      200,
+      '',
+      {
+        id: news.id,
+        likes: updatedLikes,
+        dislikes: updatedDislikes,
+      }
+    );
+  } catch (error) {
+    await transactionManager.rollbackTransaction();
+    return new CommonResponse(
+      false,
+      500,
+      `News ${reqModel.reactionType === 'like' ? 'like' : 'dislike'} failed`,
+      error
+    );
+  }
+}
 
 }

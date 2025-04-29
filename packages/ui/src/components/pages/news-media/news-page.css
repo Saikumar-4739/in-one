@@ -1,12 +1,9 @@
-/* Violet Theme Colors */
 :root {
   --violet-primary: #8a2be2;
   --violet-light: #b388ff;
   --violet-dark: #6a1bb8;
   --earth-brown: #4e342e;
   --light-gray: #f5f7fa;
-  --white: #ffffff;
-  --shadow: rgba(138, 43, 226, 0.2);
 }
 
 .news-page-container {
@@ -38,7 +35,6 @@
 .create-news-btn {
   background: var(--violet-primary) !important;
   color: #ffffff !important;
-  float: right;
   border: none !important;
   padding: 8px 16px !important;
   font-size: 0.9rem !important;
@@ -101,12 +97,12 @@
   flex: 1;
   overflow-y: auto;
   max-height: calc(100vh - 250px);
-  margin-bottom: 0; /* Ensure no extra bottom margin */
-  padding-bottom: 12px; /* Match the gap to the bottom */
+  margin-bottom: 0;
+  padding-bottom: 12px;
 }
 
 .news-grid-container::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
+  display: none;
 }
 
 .news-grid-container.with-full-view {
@@ -115,43 +111,31 @@
 
 .latest-news-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 12px; /* Uniform gap between all grid items */
-  align-items: stretch; /* Ensure grid items stretch to fill the container */
-  height: 100%; /* Ensure the grid takes the full height of its container */
-}
-
-.grid-item {
-  margin: 0; /* Ensure no extra margin */
-  padding: 0; /* Ensure no extra padding */
-}
-
-.big-card-wrapper {
-  grid-column: span 2; /* Spans 2 columns */
-  grid-row: span 2; /* Spans 2 rows */
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  align-items: stretch;
 }
 
 .news-card {
+  box-sizing: border-box !important;
   overflow: hidden !important;
-  border: none !important;
-  border-radius: 12px !important;
+  border-radius: 18px !important;
   background: var(--white) !important;
-  box-shadow: 0 4px 12px var(--shadow) !important;
   transition: transform 0.3s ease, box-shadow 0.3s ease !important;
   cursor: pointer;
-  margin: 0; /* Ensure no extra margin */
-  padding: 0; /* Ensure no extra padding */
-  height: 100%; /* Ensure the card takes the full height of its grid cell */
+  margin: 0;
+  padding: 0;
+  height: 300px;
+  width: 100%;
+  position: relative; /* Helps with stacking if overlapping occurs */
+  z-index: 1;
 }
+
+
 
 .news-card:hover {
   transform: translateY(-5px) !important;
   box-shadow: 0 8px 24px var(--shadow) !important;
-}
-
-.news-card.big-card {
-  display: flex;
-  flex-direction: column;
 }
 
 .news-card-image {
@@ -161,28 +145,11 @@
   border-radius: 12px 12px 0 0 !important;
 }
 
-.news-card-image.big-card-image {
-  height: 500px !important; /* Larger image for big card */
-}
-
-.news-card-placeholder {
-  width: 100%;
-  height: 180px;
-  background: var(--light-gray);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px 12px 0 0;
-}
-
-.news-card-placeholder.big-card-placeholder {
-  height: 300px; /* Larger placeholder for big card */
-}
-
 .news-card .ant-card-body {
   padding: 16px !important;
-  flex: 1; /* Ensure the body takes the remaining space */
+  flex: 1;
 }
+
 
 .news-card-title {
   font-size: 1.1rem;
@@ -193,12 +160,6 @@
   line-height: 1.4;
 }
 
-.news-card-title.big-card-title {
-  font-size: 1.4rem; /* Larger title */
-  font-weight: 700;
-  margin-bottom: 12px;
-}
-
 .news-card-meta {
   display: flex;
   gap: 12px;
@@ -206,24 +167,20 @@
   font-size: 0.85rem;
 }
 
-.news-card-meta.big-card-meta {
-  font-size: 1rem; /* Slightly larger meta text */
-}
-
 .full-view-container {
   flex: 0 0 50%;
-  background: var(--light-white);
+  background: var(--white);
   border-radius: 12px;
   padding: 24px;
   overflow-y: auto;
   max-height: calc(100vh - 250px);
   box-shadow: 0 4px 12px var(--shadow);
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .full-view-container::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
+  display: none;
 }
 
 .full-view-header {
@@ -263,24 +220,6 @@
   object-fit: cover;
   border-radius: 12px;
   box-shadow: 0 2px 8px var(--shadow);
-}
-
-.full-view-placeholder {
-  width: 100%;
-  height: 350px;
-  background: var(--light-gray);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  color: var(--earth-brown);
-  font-size: 1rem;
-}
-
-.full-view-placeholder img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
 }
 
 .full-view-actions {
@@ -362,30 +301,15 @@
 
   .latest-news-grid {
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 8px; /* Slightly smaller gap for mobile */
-  }
-
-  .big-card-wrapper {
-    grid-column: span 1; /* Single column on mobile */
-    grid-row: span 1; /* Single row on mobile */
+    gap: 8px;
   }
 
   .news-grid-container {
-    padding-bottom: 8px; /* Match the mobile gap */
+    padding-bottom: 8px;
   }
 
-  .news-card-image,
-  .news-card-placeholder {
+  .news-card-image {
     height: 140px !important;
-  }
-
-  .news-card-image.big-card-image,
-  .news-card-placeholder.big-card-placeholder {
-    height: 200px !important; /* Adjusted for mobile */
-  }
-
-  .news-card-title.big-card-title {
-    font-size: 1.2rem;
   }
 
   .breaking-news-wrapper {

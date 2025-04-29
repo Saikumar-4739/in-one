@@ -1,6 +1,6 @@
 import { AxiosRequestConfig } from 'axios';
 import { CommonAxiosService } from '../common-axios-service';
-import { GlobalResponseObject, CreateNewsModel, UpdateNewsModel, CreateCommentModel } from '@in-one/shared-models';
+import { GlobalResponseObject, CreateNewsModel, UpdateNewsModel, CreateCommentModel, ToggleReactionModel, CommonResponse } from '@in-one/shared-models';
 
 export class NewsHelpService extends CommonAxiosService {
   
@@ -54,5 +54,9 @@ export class NewsHelpService extends CommonAxiosService {
 
   async markNewsAsImportant(id: string, isImportant: boolean, config?: AxiosRequestConfig): Promise<GlobalResponseObject> {
     return await this.axiosPostCall(this.getURLwithMainEndPoint('markImportant'), { id, isImportant }, config);
+  }
+
+  async toggleReactionNews(reqModel: ToggleReactionModel, config?: AxiosRequestConfig): Promise<CommonResponse> {
+    return await this.axiosPostCall(this.getURLwithMainEndPoint('toggleReactionNews'), reqModel, config);
   }
 }

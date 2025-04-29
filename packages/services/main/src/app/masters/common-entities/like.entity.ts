@@ -14,9 +14,6 @@ export class LikeEntity {
   @Column({ type: 'enum', enum: ['video', 'news', 'photo'] })
   entityType: 'video' | 'news' | 'photo';
 
-  @Column({ type: 'varchar', nullable: true })
-  newsId?: string;
-
   @CreateDateColumn()
   createdAt: Date;
 }
