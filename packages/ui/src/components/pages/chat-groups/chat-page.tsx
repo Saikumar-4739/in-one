@@ -146,7 +146,7 @@ const ChatPage: React.FC = () => {
 
   const initSocket = (userId: string) => {
     const newSocket = io(
-      'http://localhost:3005'
+      'https://in-one.onrender.com'
       , {
       auth: { userId },
       transports: ['websocket'],
