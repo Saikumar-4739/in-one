@@ -60,7 +60,7 @@ const LoginPage: React.FC = () => {
     try {
       const response: CommonResponse = await userService.loginUser(loginData);
       if (response.status && response.data?.accessToken) {
-        message.success('Login successful!');
+        message.success('Login successfully!');
         localStorage.setItem('token', response.data.accessToken);
         localStorage.setItem('username', response.data.user?.username || '');
         localStorage.setItem('email', response.data.user?.email || '');
@@ -98,7 +98,7 @@ const LoginPage: React.FC = () => {
       const signupData = new CreateUserModel(username, email, password, profilePicture);
       const response = await userService.createUser(signupData);
       if (response.status) {
-        message.success("Sign-up successful! Please log in.");
+        message.success("Sign-up successfully! Please log in.");
         setIsSignup(false);
         setEmail("");
         setPassword("");
