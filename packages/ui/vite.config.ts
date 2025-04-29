@@ -26,7 +26,7 @@ export default {
     },
   },
   build: {
-    outDir: 'dist',  // Simplified output directory to 'dist' in project root
+    outDir: path.resolve(__dirname, '../../dist/packages/ui'),  // Simplified output directory to 'dist' in project root
     emptyOutDir: true,
     reportCompressedSize: true,
     commonjsOptions: {
