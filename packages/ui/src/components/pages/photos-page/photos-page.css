@@ -7,6 +7,13 @@
   overflow: hidden;
 }
 
+.j-header {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  background: #fff;
+  border-bottom: 1px solid #dbdbdb;
+}
 
 .upload-btn {
   background: #0095f6;
@@ -27,7 +34,7 @@
   flex: 1;
   display: flex;
   max-width: 935px;
-  margin: 60px auto 0;
+  margin: 0 auto;
   width: 100%;
   padding: 0 5px;
   box-sizing: border-box;
@@ -46,11 +53,10 @@
 }
 
 .photo-grid {
-  column-count: 2; /* Always two columns */
-  column-gap: 10px; /* 10px gap between columns */
-  column-fill: balance; /* Distribute items evenly across columns */
-  /* margin-top: 1rem; */
-  width: 100%; /* Ensure the grid takes the full width */
+  column-count: 2;
+  column-gap: 10px;
+  column-fill: balance;
+  width: 100%;
 }
 
 .photo-card {
@@ -59,10 +65,10 @@
   border: 1px solid #e6e6e6;
   background: #fff;
   transition: transform 0.3s ease, box-shadow 0.3s ease;
-  margin-bottom: 10px; /* 10px gap between rows */
-  break-inside: avoid; /* Prevent cards from breaking across columns */
-  width: 100%; /* Full width within the column */
-  box-sizing: border-box; /* Ensure padding/border doesn't affect width */
+  margin-bottom: 10px;
+  break-inside: avoid;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .photo-card:hover {
@@ -71,10 +77,10 @@
 }
 
 .photo-img {
-  width: 100%; /* Ensure image fills the card */
-  height: auto; /* Maintain aspect ratio */
-  display: block; /* Remove inline spacing */
-  margin: 0; /* No extra margins */
+  width: 100%;
+  height: auto;
+  display: block;
+  margin: 0;
 }
 
 .photo-img:hover {
@@ -247,7 +253,6 @@
   color: #b3dffc;
 }
 
-/* Animations */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -263,7 +268,6 @@
   animation: fadeInUp 0.5s ease-out forwards;
 }
 
-/* Responsive adjustments */
 @media (max-width: 1024px) {
   .content-wrapper {
     width: 100% !important;
@@ -282,7 +286,7 @@
 
 @media (max-width: 768px) {
   .photo-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    column-count: 1;
     gap: 8px;
   }
 
@@ -293,7 +297,7 @@
 
 @media (max-width: 480px) {
   .photo-grid {
-    grid-template-columns: 1fr;
+    column-count: 1;
     gap: 6px;
   }
 
