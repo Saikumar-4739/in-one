@@ -8,7 +8,7 @@ export interface ConfigTypo {
   }
   
   export const configVariables: ConfigTypo = {
-    APP_INO_SERVICE_URL: 'http://localhost:3005',
+    APP_INO_SERVICE_URL: 'https://in-one.onrender.com',
     APP_REQ_RETRY_MAX_ATTEMPTS: 3,
     APP_REQ_RETRY_STATUS_CODES: '429,502',
     APP_REQ_RETRY_DELAY: 2000,
