@@ -95,32 +95,6 @@ const NewsActions: React.FC<NewsActionsProps> = ({
     }
   };
 
-  const handleToggleDislike = async () => {
-    if (!userId) {
-      message.error('Please log in to dislike news');
-      return;
-    }
-    setLoading(true);
-    try {
-      const response = await newsService.toggleDislikeNews(selectedNews.id);
-      if (response.status) {
-        setNews((prev) =>
-          prev.map((item) =>
-            item.id === selectedNews.id
-              ? { ...item, dislikes: selectedNews.isDisliked ? item.dislikes - 1 : item.dislikes + 1, isDisliked: !selectedNews.isDisliked }
-              : item
-          )
-        );
-        message.success(`News ${selectedNews.isDisliked ? 'undisliked' : 'disliked'} successfully`);
-      } else {
-        message.error(response.internalMessage || `Failed to ${selectedNews.isDisliked ? 'undislike' : 'dislike'} news`);
-      }
-    } catch (error: any) {
-      message.error(error.message || `An error occurred while ${selectedNews.isDisliked ? 'undisliking' : 'disliking'} news`);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleShareNews = async () => {
     if (!userId) {
@@ -143,31 +117,6 @@ const NewsActions: React.FC<NewsActionsProps> = ({
       }
     } catch (error: any) {
       message.error(error.message || 'An error occurred while sharing news');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleMarkImportant = async () => {
-    if (!userId) {
-      message.error('Please log in to mark news');
-      return;
-    }
-    setLoading(true);
-    try {
-      const response = await newsService.markNewsAsImportant(selectedNews.id, !selectedNews.isImportant);
-      if (response.status) {
-        setNews((prev) =>
-          prev.map((item) =>
-            item.id === selectedNews.id ? { ...item, isImportant: !selectedNews.isImportant } : item
-          )
-        );
-        message.success(`News marked as ${!selectedNews.isImportant ? 'important' : 'not important'} successfully`);
-      } else {
-        message.error(response.internalMessage || 'Failed to mark news');
-      }
-    } catch (error: any) {
-      message.error(error.message || 'An error occurred while marking news');
     } finally {
       setLoading(false);
     }

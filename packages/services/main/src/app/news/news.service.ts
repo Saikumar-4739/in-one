@@ -3,13 +3,15 @@ import { DataSource, Like, Repository } from 'typeorm';
 import { NewsEntity } from './entities/news.entity';
 import { UserEntity } from '../user/entities/user.entity';
 import { CommentIdRequestModel, CommonResponse, CreateCommentModel, CreateNewsModel, ErrorResponse, NewsIdRequestModel, ToggleReactionModel, UpdateNewsModel, UpdateViewModel } from '@in-one/shared-models';
-import { promises as fs } from 'fs';
+import { existsSync, promises as fs } from 'fs';
 import { join } from 'path';
 import { CommentEntity } from '../masters/common-entities/comment.entity';
 import { LikeEntity } from '../masters/common-entities/like.entity';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
 import { NewsRepository } from './repository/news.repository';
 import { InjectRepository } from '@nestjs/typeorm';
+import { mkdir } from 'fs/promises';
+import { writeFile } from 'fs/promises';
 
 @Injectable()
 export class NewsService {
@@ -27,73 +29,85 @@ export class NewsService {
 
   async createNews(reqModel: CreateNewsModel): Promise<CommonResponse> {
     const transactionManager = new GenericTransactionManager(this.dataSource);
+  
+    // Util: Validate base64 string
+    function isValidBase64Image(data: string): boolean {
+      return /^data:image\/[a-zA-Z]+;base64,[A-Za-z0-9+/=]+$/.test(data);
+    }
+  
+    // Util: Save base64 image to file
+    async function saveBase64Image(base64: string, filenamePrefix: string, index: number, uploadDir: string): Promise<string> {
+      if (!isValidBase64Image(base64)) throw new Error('Invalid base64 image format');
+  
+      const [, mimeType, base64Data] = base64.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/) || [];
+      const buffer = Buffer.from(base64Data, 'base64');
+      const extension = mimeType;
+      const fileName = `${filenamePrefix}_${Date.now()}_${index}_${Math.random().toString(36).substring(2, 10)}.${extension}`;
+      const filePath = join(uploadDir, fileName);
+      await writeFile(filePath, buffer);
+      return `/uploads/${fileName}`;
+    }
+  
     try {
+      // Basic validation
       if (!reqModel.title || !reqModel.authorId) {
         const missingField = !reqModel.title ? 'Title' : 'Author ID';
         const errorCode = !reqModel.title ? 1 : 2;
         throw new ErrorResponse(errorCode, `${missingField} is required`);
       }
-
-      // Validate authorId exists
+  
+      // Validate author exists
       const author = await this.userRepository.findOne({ where: { id: reqModel.authorId } });
-      if (!author) {
-        throw new Error('Author not found');
+      if (!author) throw new ErrorResponse(3, `Author with ID ${reqModel.authorId} not found`);
+  
+      // Setup uploads directory
+      const uploadsDir = join(process.cwd(), 'uploads');
+      if (!existsSync(uploadsDir)) {
+        await mkdir(uploadsDir, { recursive: true });
       }
-
+  
       await transactionManager.startTransaction();
-
-      let processedImages: string[] = [];
-      if (reqModel.images?.length) {
-        processedImages = await Promise.all(
-          reqModel.images.map(async (base64, index) => {
-            const matches = base64.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
-            if (!matches) throw new Error('Invalid base64 image format');
-            const ext = matches[1];
-            const buffer = new Uint8Array(Buffer.from(matches[2], 'base64'));
-            const fileName = `news_${Date.now()}_${index}.${ext}`;
-            const filePath = join(__dirname, 'Uploads', fileName);
-            await fs.writeFile(filePath, buffer);
-            return `/uploads/${fileName}`;
-          }),
-        );
-      }
-
-      let processedThumbnail: string = '';
-      if (reqModel.thumbnail) {
-        const matches = reqModel.thumbnail.match(/^data:image\/([a-zA-Z]+);base64,(.+)$/);
-        if (!matches) throw new Error('Invalid base64 thumbnail format');
-        const ext = matches[1];
-        const buffer = new Uint8Array(Buffer.from(matches[2], 'base64'));
-        const fileName = `thumbnail_${Date.now()}.${ext}`;
-        const filePath = join(__dirname, 'Uploads', fileName);
-        await fs.writeFile(filePath, buffer);
-        processedThumbnail = `/uploads/${fileName}`;
-      }
-
+  
+      // Process images
+      const processedImages = reqModel.images
+        ? await Promise.all(reqModel.images.map((img, i) => saveBase64Image(img, 'news_img', i, uploadsDir)))
+        : [];
+  
+      // Process thumbnail
+      const processedThumbnail = reqModel.thumbnail
+        ? await saveBase64Image(reqModel.thumbnail, 'news_thumb', -1, uploadsDir)
+        : '';
+  
+      // Create entity
       const newsEntity = new NewsEntity();
-      newsEntity.title = reqModel.title.trim();
-      newsEntity.content = reqModel.content;
-      newsEntity.summary = reqModel.summary;
-      newsEntity.category = reqModel.category;
-      newsEntity.tags = reqModel.tags;
-      newsEntity.images = processedImages;
-      newsEntity.thumbnail = processedThumbnail;
-      newsEntity.status = reqModel.status;
-      newsEntity.visibility = reqModel.visibility ?? 'public';
-      newsEntity.isFeatured = reqModel.isFeatured ?? false;
-      newsEntity.isBreaking = reqModel.isBreaking ?? false;
-      newsEntity.publishedAt = reqModel.publishedAt ?? new Date();
-      newsEntity.authorId = reqModel.authorId;
-      newsEntity.commentIds = [];
-
-      const saveNews = await transactionManager.getRepository(NewsEntity).save(newsEntity)
+      Object.assign(newsEntity, {
+        title: reqModel.title.trim(),
+        content: reqModel.content,
+        summary: reqModel.summary,
+        category: reqModel.category,
+        tags: reqModel.tags,
+        images: processedImages,
+        thumbnail: processedThumbnail,
+        status: reqModel.status,
+        visibility: reqModel.visibility ?? 'public',
+        isFeatured: reqModel.isFeatured ?? false,
+        isBreaking: reqModel.isBreaking ?? false,
+        publishedAt: reqModel.publishedAt ?? new Date(),
+        authorId: reqModel.authorId,
+        commentIds: [],
+      });
+  
+      const saved = await transactionManager.getRepository(NewsEntity).save(newsEntity);
       await transactionManager.commitTransaction();
-      return new CommonResponse(true, 201, 'News created successfully', saveNews);
+  
+      return new CommonResponse(true, 201, 'News created successfully', saved);
     } catch (error) {
       await transactionManager.rollbackTransaction();
-      return new CommonResponse(false, 500, 'Error creating news', error);
+      return new CommonResponse(false, 500, 'Error creating news', error instanceof Error ? error.message : error);
     }
   }
+  
+  
 
   async updateNews(reqModel: UpdateNewsModel): Promise<CommonResponse> {
     const transactionManager = new GenericTransactionManager(this.dataSource);
@@ -318,97 +332,97 @@ export class NewsService {
   }
 
   async toggleReactionNews(reqModel: ToggleReactionModel): Promise<CommonResponse> {
-  const transactionManager = new GenericTransactionManager(this.dataSource);
-  try {
-    await transactionManager.startTransaction();
+    const transactionManager = new GenericTransactionManager(this.dataSource);
+    try {
+      await transactionManager.startTransaction();
 
-    // Check for existing reaction
-    const existing = await this.likeRepository.findOne({
-      where: {
-        entityId: reqModel.newsId,
-        userId: reqModel.userId,
-        entityType: 'news',
-      },
-    });
-
-    // Validate news
-    const news = await this.newsRepo.findOne({
-      where: { id: reqModel.newsId },
-    });
-    if (!news) {
-      throw new Error('News not found');
-    }
-
-    // Validate user
-    const user = await this.userRepository.findOne({
-      where: { id: reqModel.userId },
-    });
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    let updatedLikes = news.likes || 0;
-    let updatedDislikes = news.dislikes || 0;
-    // let isLiked = news.isLiked || false;
-    // let isDisliked = news.isDisliked || false;
-
-    if (existing) {
-      // Remove existing reaction (toggle off)
-      await this.likeRepository.delete({
-        entityId: reqModel.newsId,
-        userId: reqModel.userId,
-        entityType: 'news',
+      // Check for existing reaction
+      const existing = await this.likeRepository.findOne({
+        where: {
+          entityId: reqModel.newsId,
+          userId: reqModel.userId,
+          entityType: 'news',
+        },
       });
-      if (reqModel.reactionType === 'like') {
-        updatedLikes = Math.max(0, news.likes - 1);
-        // isLiked = false;
-      } else {
-        updatedDislikes = Math.max(0, news.dislikes - 1);
-        // isDisliked = false;
-      }
-    } else {
-      // Create new reaction
-      const reaction = this.likeRepository.create({
-        entityId: reqModel.newsId,
-        userId: reqModel.userId,
-        entityType: 'news',
+
+      // Validate news
+      const news = await this.newsRepo.findOne({
+        where: { id: reqModel.newsId },
       });
-      await this.likeRepository.save(reaction);
-      if (reqModel.reactionType === 'like') {
-        updatedLikes = news.likes + 1;
-        // isLiked = true;
-      } else {
-        updatedDislikes = news.dislikes + 1;
-        // isDisliked = true;
+      if (!news) {
+        throw new Error('News not found');
       }
-    }
 
-    // Update news counters
-    await this.newsRepo.update(reqModel.newsId, {
-      likes: updatedLikes,
-      dislikes: updatedDislikes,
-    });
+      // Validate user
+      const user = await this.userRepository.findOne({
+        where: { id: reqModel.userId },
+      });
+      if (!user) {
+        throw new Error('User not found');
+      }
 
-    await transactionManager.commitTransaction();
-    return new CommonResponse(
-      true,
-      200,
-      '',
-      {
-        id: news.id,
+      let updatedLikes = news.likes || 0;
+      let updatedDislikes = news.dislikes || 0;
+      // let isLiked = news.isLiked || false;
+      // let isDisliked = news.isDisliked || false;
+
+      if (existing) {
+        // Remove existing reaction (toggle off)
+        await this.likeRepository.delete({
+          entityId: reqModel.newsId,
+          userId: reqModel.userId,
+          entityType: 'news',
+        });
+        if (reqModel.reactionType === 'like') {
+          updatedLikes = Math.max(0, news.likes - 1);
+          // isLiked = false;
+        } else {
+          updatedDislikes = Math.max(0, news.dislikes - 1);
+          // isDisliked = false;
+        }
+      } else {
+        // Create new reaction
+        const reaction = this.likeRepository.create({
+          entityId: reqModel.newsId,
+          userId: reqModel.userId,
+          entityType: 'news',
+        });
+        await this.likeRepository.save(reaction);
+        if (reqModel.reactionType === 'like') {
+          updatedLikes = news.likes + 1;
+          // isLiked = true;
+        } else {
+          updatedDislikes = news.dislikes + 1;
+          // isDisliked = true;
+        }
+      }
+
+      // Update news counters
+      await this.newsRepo.update(reqModel.newsId, {
         likes: updatedLikes,
         dislikes: updatedDislikes,
-      }
-    );
-  } catch (error) {
-    await transactionManager.rollbackTransaction();
-    return new CommonResponse(
-      false,
-      500,
-      `News ${reqModel.reactionType === 'like' ? 'like' : 'dislike'} failed`,
-      error
-    );
+      });
+
+      await transactionManager.commitTransaction();
+      return new CommonResponse(
+        true,
+        200,
+        '',
+        {
+          id: news.id,
+          likes: updatedLikes,
+          dislikes: updatedDislikes,
+        }
+      );
+    } catch (error) {
+      await transactionManager.rollbackTransaction();
+      return new CommonResponse(
+        false,
+        500,
+        `News ${reqModel.reactionType === 'like' ? 'like' : 'dislike'} failed`,
+        error
+      );
+    }
   }
-}
 
 }

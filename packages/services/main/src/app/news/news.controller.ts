@@ -11,6 +11,7 @@ export class NewsController {
   @ApiBody({ type: CreateNewsModel })
   async createNews(@Body() reqModel: CreateNewsModel): Promise<CommonResponse> {
     try {
+      console.log(reqModel, '.........')
       return await this.newsService.createNews(reqModel);
     } catch (error) {
       return ExceptionHandler.handleError(error, 'Error creating news');

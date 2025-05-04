@@ -4,6 +4,9 @@
   "include": [],
   "references": [
     {
+      "path": "../../libs/shared-services"
+    },
+    {
       "path": "../../libs/shared-models"
     },
     {

@@ -11,6 +11,8 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "lib": ["dom", "esnext"],
+    "incremental": true,
+"tsBuildInfoFile": "./.tsbuildinfo",
     "rootDir": ".",
     "types": ["node"],  // Add this line
     "paths": {
