@@ -27,9 +27,9 @@ const PhotoActionPage: React.FC<PhotoActionPageProps> = ({
   const photoService = new PhotoHelpService();
 
   const previewVariants = {
-    hidden: { x: '100%', opacity: 0 },
-    visible: { x: 0, opacity: 1, transition: { duration: 0.4, ease: 'easeOut' } },
-    exit: { x: '100%', opacity: 0, transition: { duration: 0.3, ease: 'easeIn' } },
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { duration: 0.4, ease: 'easeOut' } },
+    exit: { opacity: 0, transition: { duration: 0.3, ease: 'easeIn' } },
   };
 
   useEffect(() => {
@@ -102,7 +102,7 @@ const PhotoActionPage: React.FC<PhotoActionPageProps> = ({
     <AnimatePresence>
       {selectedPhoto && (
         <motion.div
-          className="preview-container"
+          className="preview-container active"
           variants={previewVariants}
           initial="hidden"
           animate="visible"

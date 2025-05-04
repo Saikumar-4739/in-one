@@ -105,12 +105,8 @@ const PhotoCardSection: React.FC<PhotoCardSectionProps> = ({
 
   return (
     <motion.div
-      className="content-wrapper"
+      className={`content-wrapper ${selectedPhoto ? 'preview-active' : ''}`}
       ref={contentRef}
-      animate={{
-        width: selectedPhoto ? '50%' : '100%',
-        x: selectedPhoto ? '-25%' : 0,
-      }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
     >
       {loading && !photos.length ? (
@@ -162,7 +158,8 @@ const PhotoCardSection: React.FC<PhotoCardSectionProps> = ({
                           icon={<CommentOutlined />}
                           onClick={(e: React.MouseEvent) => {
                             e.stopPropagation();
-                            handlePreview(photo)}}
+                            handlePreview(photo);
+                          }}
                         />
                       </motion.div>
                       <motion.div variants={buttonVariants} whileHover="hover" whileTap="tap">

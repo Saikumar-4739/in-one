@@ -1,14 +1,27 @@
 import { useState } from 'react';
 import axios from 'axios';
-import { Input, Button, List } from 'antd';
+import { Input, Button, List, Modal, Avatar, Typography } from 'antd';
+import { SendOutlined, PaperClipOutlined, SmileOutlined, UserOutlined } from '@ant-design/icons';
 
-const Chatbot = () => {
-  const [messages, setMessages] = useState<string[]>([]);
+// Types
+interface Message {
+  sender: string;
+  text: string;
+  timestamp: string;
+}
+
+// Component
+const Chatbot: React.FC = () => {
+  // State Management
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
+  const [isProfileModalVisible, setIsProfileModalVisible] = useState<boolean>(false);
 
+  // API Logic: Fetch response from Cohere AI
   const fetchCohereResponse = async (message: string) => {
     setLoading(true);
+    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     try {
       const response = await axios.post(
         'https://api.cohere.ai/generate',
@@ -26,98 +39,154 @@ const Chatbot = () => {
         }
       );
 
-      if (response.data && response.data.text) {
-        setMessages((prev) => [...prev, `Bot: ${response.data.text}`]);
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          "Bot: Sorry, I couldn't process your request.",
-        ]);
-      }
+      const botMessage = response.data?.text || "Sorry, I couldn't process your request.";
+      setMessages((prev) => [...prev, { sender: 'Bot', text: botMessage, timestamp }]);
     } catch (error) {
       console.error('Error fetching Cohere response:', error);
       setMessages((prev) => [
         ...prev,
-        "Bot: Sorry, I couldn't process your request.",
+        { sender: 'Bot', text: "Sorry, I couldn't process your request.", timestamp },
       ]);
     } finally {
       setLoading(false);
     }
   };
 
+  // Event Handlers
   const handleMessageSubmit = () => {
-    if (input.trim()) {
-      setMessages((prev) => [...prev, `You: ${input}`]);
-      fetchCohereResponse(input);
-      setInput('');
-    }
+    if (!input.trim()) return;
+
+    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setMessages((prev) => [...prev, { sender: 'You', text: input, timestamp }]);
+    fetchCohereResponse(input);
+    setInput('');
   };
 
+  const handleProfileClick = () => {
+    setIsProfileModalVisible(true);
+  };
+
+  // UI Rendering
   return (
-    <div
-      className="chatbot-container"
-      style={{
-        width: '500px',
-        height: '85vh',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        position: 'absolute',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-      }}
-    >
+    <div className="chatbot-container">
+      {/* Header Section */}
+      <div className="chatbot-header">
+        <Typography.Text strong>One BoT</Typography.Text>
+      </div>
+
+      {/* Messages Section */}
       <List
         dataSource={messages}
         renderItem={(item, index) => (
-          <List.Item key={index} className="message-item">
-            <div>{item}</div>
+          <List.Item
+            key={index}
+            style={{
+              display: 'flex',
+              justifyContent: item.sender === 'You' ? 'flex-end' : 'flex-start',
+              padding: '8px 16px',
+            }}
+          >
+            <div
+              style={{
+                maxWidth: '60%',
+                padding: '8px 12px',
+                borderRadius: '12px',
+                backgroundColor: item.sender === 'You' ? '#e6f0ff' : '#f0f0f0',
+                color: '#000',
+              }}
+            >
+              <Typography.Text>{item.text}</Typography.Text>
+              <div style={{ fontSize: '10px', color: '#888', marginTop: '4px' }}>
+                {item.timestamp}
+              </div>
+            </div>
           </List.Item>
         )}
-        className="messages-list"
         style={{
-          flexGrow: 1,
+          flex: 1,
           overflowY: 'auto',
-          padding: '10px',
-          minHeight: '50%',
+          padding: '16px',
+          backgroundColor: '#ffffff',
         }}
       />
 
-      <div
-        className="input-container"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '10px',
-        }}
-      >
+      {/* Input Section */}
+      <div className="input-container">
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onPressEnter={handleMessageSubmit}
-          placeholder="Type a message..."
-          className="input-field"
-          style={{ width: '80%' }}
+          placeholder="Enter Message..."
+          style={{
+            flex: 1,
+            borderRadius: '20px',
+            border: '1px solid #d9d9d9',
+            padding: '8px 16px',
+          }}
         />
-
         <Button
           type="primary"
+          icon={<SendOutlined />}
           onClick={handleMessageSubmit}
-          className="send-button"
           loading={loading}
           style={{
-            width: '15%',
-            height: '100%',
-            backgroundColor: '#003049', 
-            color: 'white', 
-            borderColor: '#003049', 
+            borderRadius: '50%',
+            backgroundColor: '#8a2be2',
+            borderColor: '#8a2be2',
+            marginLeft: '8px',
           }}
-        >
-          Send
-        </Button>
+        />
       </div>
+
+      {/* Profile Modal */}
+      <Modal
+        open={isProfileModalVisible}
+        title="Grok AI Profile"
+        onCancel={() => setIsProfileModalVisible(false)}
+        footer={null}
+        style={{ top: '20px', right: '20px', width: '300px' }}
+      >
+        <div style={{ textAlign: 'center' }}>
+          <Avatar size={80} icon={<UserOutlined />} />
+          <Typography.Text strong style={{ marginTop: '8px' }}>
+            Grok AI
+          </Typography.Text>
+          <Typography.Text type="secondary">
+            Created by xAI
+          </Typography.Text>
+          <Typography.Text style={{ marginTop: '8px' }}>
+            I'm here to help answer your questions and provide assistance.
+          </Typography.Text>
+        </div>
+      </Modal>
+
+      {/* Styles */}
+      <style>
+        {`
+          .chatbot-container {
+            display: flex;
+            flex-direction: column;
+            height: 90vh;
+            width: 100%;
+            background-color: #ffffff;
+          }
+          .chatbot-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid #e8e8e8;
+            background-color: #ffffff;
+          }
+          .input-container {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            border-top: 1px solid #e8e8e8;
+            background-color: #ffffff;
+          }
+        `}
+      </style>
     </div>
   );
 };

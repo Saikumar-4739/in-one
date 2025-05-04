@@ -18,7 +18,7 @@ import './app-layout.css';
 import { UserHelpService } from '@in-one/shared-services';
 import { UserIdRequestModel } from '@in-one/shared-models';
 
-const { Content } = Layout;
+const { Content, Footer } = Layout;
 const { Title, Text } = Typography;
 
 interface User {
@@ -106,22 +106,33 @@ const AppLayout: React.FC = () => {
         </div>
 
         <div className="header-actions">
-          <Avatar
-            size={40}
+          {/* <Avatar
+            size={32}
             icon={<UserOutlined />}
             src={user?.profilePicture}
             className="profile-icon"
             onClick={handleProfileClick}
-            style={{ lineHeight: '40px' }}
-          />
+            style={{ 
+              lineHeight: '32px',
+            }}
+          /> */}
           <Button
-            icon={<PoweroffOutlined />}
+            icon={<PoweroffOutlined style={{ fontSize: '20px' }} />}
             onClick={(e) => {
               e.stopPropagation();
               logoutUser();
             }}
             loading={isLoggingOut}
             className="logout-button"
+            style={{ 
+              width: '32px', 
+              height: '32px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              padding: 0,
+              borderRadius: '50%',
+            }}
           >
             {isLoggingOut ? '' : ''}
           </Button>
@@ -161,6 +172,13 @@ const AppLayout: React.FC = () => {
       <Content className={`content-container ${isNavOpen ? 'nav-open' : ''}`}>
         {loading ? <Spin size="large" /> : <Outlet />}
       </Content>
+
+      {/* Footer */}
+      <Footer className="custom-footer">
+        <Text className="footer-text">
+          © {new Date().getFullYear()} InOne. All rights reserved.
+        </Text>
+      </Footer>
 
       {/* Profile Modal */}
       <Modal

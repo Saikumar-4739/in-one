@@ -44,15 +44,15 @@ const HomePage: React.FC = () => {
         width: '100%',
         overflowX: 'auto',
         scrollbarWidth: 'none',
-        backgroundColor: '#ffffff', 
-        fontFamily: "'Poppins', sans-serif", 
+        backgroundColor: '#ffffff',
+        fontFamily: "'Montserrat', sans-serif",
       }}
     >
       {/* Hero Section */}
       <div
         style={{
           position: 'relative',
-          minHeight: '60vh',
+          minHeight: '50vh',
           width: '100%',
           flexShrink: 0,
           display: 'flex',
@@ -79,33 +79,34 @@ const HomePage: React.FC = () => {
         >
           <motion.div variants={textVariants}>
             <Title
-            style={{
-              color: '#000',
-              fontSize: 'clamp(36px, 8vw, 60px)',
-              marginBottom: 'clamp(16px, 3vw, 32px)',
-              fontWeight: 700,
-              lineHeight: 1.2,
-              fontStyle: 'bold',  // Optional: Change font style to italic
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexWrap: 'wrap',
-              gap: 'clamp(8px, 2vw, 12px)',
-            }}
+              style={{
+                color: '#000',
+                fontSize: 'clamp(50px, 8vw, 32px)',
+                marginBottom: 'clamp(16px, 3vw, 32px)',
+                fontWeight: 800,
+                lineHeight: 1.2,
+                fontFamily: "'Montserrat', sans-serif",
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexWrap: 'wrap',
+                gap: 'clamp(8px, 2vw, 12px)',
+              }}
             >
               Welcome to Your
               <span
                 style={{
-                  width: 'clamp(50px, 15vw, 80px)',
-                  height: 'clamp(50px, 15vw, 80px)',
-                  background: '#8a2be2', 
+                  width: 'clamp(40px, 12vw, 60px)',
+                  height: 'clamp(40px, 12vw, 60px)',
+                  background: '#8a2be2',
                   borderRadius: '50%',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   color: '#fff',
-                  fontWeight: 'bold',
-                  fontSize: 'clamp(40px, 5vw, 30px)',
+                  fontWeight: 800,
+                  fontSize: 'clamp(25px, 4vw, 24px)',
+                  fontFamily: "'Montserrat', sans-serif",
                 }}
               >
                 IN
@@ -119,8 +120,8 @@ const HomePage: React.FC = () => {
                 maxWidth: '800px',
                 margin: '0 auto',
                 lineHeight: 1.5,
-                 fontFamily: 'Arial, sans-serif',
-                 fontStyle: 'bold', 
+                fontFamily: "'Montserrat', sans-serif",
+                fontWeight: 600,
               }}
             >
               Discover a seamless experience with powerful features designed to boost productivity and creativity.
@@ -136,14 +137,15 @@ const HomePage: React.FC = () => {
                 style={{
                   padding: '0 clamp(20px, 5vw, 32px)',
                   height: 'clamp(40px, 10vw, 48px)',
-                  backgroundColor: '#8a2be2', // Gold button
+                  backgroundColor: '#8a2be2',
                   borderColor: '#8a2be2',
                   color: '#fff',
                   fontSize: 'clamp(14px, 3vw, 16px)',
-                  fontWeight: 600,
+                  fontWeight: 800,
+                  fontFamily: "'Montserrat', sans-serif",
                   transition: 'background-color 0.3s ease',
                 }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#8a2be2'} // Hover effect
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#6a1bb2'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#8a2be2'}
               >
                 Get Started
@@ -167,8 +169,9 @@ const HomePage: React.FC = () => {
           style={{
             marginBottom: 'clamp(24px, 6vw, 40px)',
             fontSize: 'clamp(20px, 5vw, 32px)',
-            color: '#333', // Dark text for features
-            fontWeight: 600,
+            color: '#333',
+            fontWeight: 800,
+            fontFamily: "'Montserrat', sans-serif",
           }}
         >
           Explore Our Features

@@ -3,6 +3,13 @@ html, body, * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  font-family: 'Inter', sans-serif;
+}
+
+.app-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .custom-header {
@@ -15,72 +22,70 @@ html, body, * {
   align-items: center;
   padding: 0 20px;
   height: 70px;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(8px);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   z-index: 1000;
-  font-family: 'Inter', sans-serif;
 }
 
 .header-container {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 8px;
   cursor: pointer;
 }
 
 .header-circle {
   width: 50px;
   height: 50px;
-  background: #8a2be2;
+  background: linear-gradient(135deg, #8a2be2, #6a1bb2);
   border-radius: 50%;
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700; /* Bold */
-  font-style: bold; /* Italic */
-  font-size: 25px;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800;
+  font-size: 24px;
 }
 
 .header-title {
   margin-top: 15px;
-  color: black;
-  font-weight: 700; /* Bold */
-  font-style: bold; /* Italic */
-  font-size: 50px;
+  color: #1a1a1a;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800;
+  font-size: 32px;
+  letter-spacing: -0.5px;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin: 0 !important;
-  padding: 0 !important;
 }
 
 .logout-button {
   color: #8a2be2;
-  border: 2px solid #8a2be2; /* Added border with width, style, and color */
-  border-radius: 10px; /* Kept the second border-radius value */
-  font-weight: 600; /* Bold */
-  font-size: 16px;
-  padding: 8px 16px;
-  transition: background 0.3s;
-  margin: 0 !important;
-  line-height: 1.5;
-  background: transparent; /* Optional: ensures button has no default background */
+  background: transparent;
+  border: none; /* Border is set inline in JSX */
+  border-radius: 50%;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-
 .logout-button:hover {
-  background: #6a1bb2;
+  background: #8a2be2;
+  color: white;
 }
 
 .profile-icon {
   cursor: pointer;
-  transition: transform 0.3s;
-  margin: 0 !important;
+  transition: transform 0.3s ease;
 }
 
 .profile-icon:hover {
@@ -93,7 +98,7 @@ html, body, * {
   left: 0;
   width: 250px;
   height: calc(100vh - 70px);
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(10px);
   padding: 20px;
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
@@ -112,11 +117,11 @@ html, body, * {
   padding: 10px 15px;
   border-radius: 8px;
   text-decoration: none;
-  color: #000;
-  font-weight: 900; /* Heavier bold (range: 100-900, 900 is maximum) */
-  font-style: normal; /* Remove italic effect; use 'italic' if you want italics */
+  color: #000000;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800;
   font-size: 18px;
-  transition: 0.3s;
+  transition: all 0.3s ease;
 }
 
 .nav-link:hover {
@@ -131,12 +136,12 @@ html, body, * {
 
 .content-container {
   position: relative;
-  z-index: 1;
+  flex: 1;
   overflow: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  background-color: #f5f5f5;
-  transition: margin-left 0.3s;
+  background-color: #f7f8fc;
+  transition: margin-left 0.3s ease;
   padding-top: 70px;
   min-height: calc(100vh - 70px);
 }
@@ -149,22 +154,33 @@ html, body, * {
   margin-left: 250px;
 }
 
-.content-wrapper {
-  padding: 20px;
-  position: relative;
-  z-index: 1;
+.custom-footer {
+  text-align: center;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06);
+  z-index: 100;
+}
+
+.footer-text {
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  color: #666;
 }
 
 .profile-modal .ant-modal-content {
   border-radius: 12px;
   padding: 20px;
+  background: #fff;
 }
 
 .profile-modal .profile-content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
 @media (max-width: 768px) {
@@ -172,7 +188,6 @@ html, body, * {
     width: 100%;
     height: auto;
     top: 70px;
-    flex-direction: column;
     box-shadow: none;
     background: white;
   }
@@ -182,23 +197,28 @@ html, body, * {
   }
 
   .header-title {
-    font-size: 22px;
+    font-size: 24px;
   }
 
   .header-circle {
-    font-size: 18px;
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
   }
 
   .logout-button {
-    font-size: 14px;
-    padding: 6px 12px;
+    font-size: 13px;
   }
 
   .nav-link {
-    font-size: 16px;
+    font-size: 24px;
   }
 
-  .nav-icon {
-    font-size: 18px;
+  .custom-footer {
+    padding: 12px 20px;
+  }
+
+  .footer-text {
+    font-size: 12px;
   }
 }

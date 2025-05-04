@@ -163,16 +163,38 @@ const VideosPage: React.FC = () => {
 
   return (
     <div className="video-page">
-
-      <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.5 }} className="j-header">
+      <motion.div
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
         <div
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0px 25px', flexWrap: 'wrap', width: '100%' }}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <VideoCameraOutlined style={{ fontSize: 24, color: '#4A90E2', marginRight: 10 }} />
-            <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#333' }}></Text>
-          </div>
-          <Upload beforeUpload={() => false} onChange={handleFileChange} showUploadList={false} disabled={isUploading}>
-            <Button className="get-started-btn" type="primary" icon={<UploadOutlined />} loading={isUploading}>Upload</Button>
+          style={{
+            paddingLeft: '10%',    // Use relative unit for responsiveness
+            paddingTop: '20px',    // Relative to font size
+            display: 'flex',
+            justifyContent: 'flex-start',
+          }}
+        >
+          <Upload
+            beforeUpload={() => false}
+            onChange={handleFileChange}
+            showUploadList={false}
+            disabled={isUploading}
+          >
+            <Button
+              type="primary"
+              icon={<UploadOutlined />}
+              loading={isUploading}
+              style={{
+                height: '2.6rem',   // Responsive to font size
+                width: '10rem',     // Responsive width
+                fontSize: '1rem',   // Use rem for font size
+                minWidth: '120px',  // Set a fallback for smaller screens
+              }}
+            >
+              Upload Video
+            </Button>
           </Upload>
         </div>
       </motion.div>

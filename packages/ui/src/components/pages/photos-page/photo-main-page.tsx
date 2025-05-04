@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Button, Upload, message, Typography, Modal, Form, Input, Select } from 'antd';
-import { UploadOutlined, LoadingOutlined, PictureOutlined } from '@ant-design/icons';
+import { UploadOutlined, LoadingOutlined } from '@ant-design/icons';
 import { PhotoHelpService } from '@in-one/shared-services';
 import { CreatePhotoModel, UpdatePhotoModel } from '@in-one/shared-models';
 import { motion } from 'framer-motion';
-import './PhotosPage.css';
+import './photos-page.css';
 import PhotoCardSection from './photo-card-section';
 import PhotoActionPage from './photo-action-page';
+import Stories from './stories';
 
 const { Text } = Typography;
 
@@ -53,8 +54,8 @@ const PhotoMainPage: React.FC<PhotoMainPageProps> = () => {
         message.error('Failed to fetch photos');
       }
     } catch (error) {
-      console.error('Error fetching stories:', error);
-      message.error('An error occurred while fetching stories');
+      console.error('Error fetching photos:', error);
+      message.error('An error occurred while fetching photos');
     } finally {
       setLoading(false);
     }
@@ -151,9 +152,8 @@ const PhotoMainPage: React.FC<PhotoMainPageProps> = () => {
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="j-header"
+        className="upload-section"
       >
-        <PictureOutlined style={{ fontSize: 24, color: '#4A90E2', marginRight: 10 }} />
         <Upload beforeUpload={handleUpload} showUploadList={false} disabled={loading}>
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button
@@ -167,7 +167,7 @@ const PhotoMainPage: React.FC<PhotoMainPageProps> = () => {
           </motion.div>
         </Upload>
       </motion.div>
-
+      {/* <Stories/> */}
       <div className="main-container">
         <PhotoCardSection
           photos={photos}
@@ -187,7 +187,7 @@ const PhotoMainPage: React.FC<PhotoMainPageProps> = () => {
       </div>
 
       <Modal
-        title={<span className="modal-title">Edit Photo</span>}
+        title="Edit Photo"
         open={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
         footer={null}

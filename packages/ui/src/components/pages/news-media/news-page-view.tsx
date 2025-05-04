@@ -143,6 +143,7 @@ const NewsPageMain: React.FC = () => {
               icon={<PlusOutlined />}
               onClick={() => setIsNewsModalVisible(true)}
               className="create-news-btn"
+              style={{display: 'flex', justifyContent: 'flex-end'}}
             >
               Create News
             </Button>
