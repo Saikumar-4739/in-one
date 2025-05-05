@@ -4,4 +4,4 @@
 
 [build.environment]
   GO_VERSION = "1.19"
-  NODE_VERSION = "18"
+  NODE_VERSION = "18.20.8"
