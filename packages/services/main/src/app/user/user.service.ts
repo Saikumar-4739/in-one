@@ -166,7 +166,7 @@ export class UserService {
         auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
       });
 
-      const verificationLink = `https://in-one.com/verify-email?token=${reqModel.verificationToken}`;
+      const verificationLink = `http://localhost:3005/verify-email?token=${reqModel.verificationToken}`;
       const mailOptions = {
         from: process.env.EMAIL_USER,
         to: reqModel.email,

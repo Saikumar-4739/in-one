@@ -1,7 +1,0 @@
-[build]
-  command = "npm install --force && npm run build"
-  publish = "dist/packages/ui/"
-
-[build.environment]
-  GO_VERSION = "1.19"
-  NODE_VERSION = "18.20.8"
