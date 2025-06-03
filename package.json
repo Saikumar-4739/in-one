@@ -26,6 +26,7 @@
     "@nx/vite": "^20.8.1",
     "@nx/web": "19.8.4",
     "@nx/webpack": "19.8.4",
+    "@nxlv/python": "^21.0.1",
     "@react-native-community/cli": "~15.0.1",
     "@react-native-community/cli-platform-android": "~15.0.1",
     "@react-native-community/cli-platform-ios": "~15.0.1",
