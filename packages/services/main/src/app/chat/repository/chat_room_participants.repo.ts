@@ -1,6 +1,10 @@
+import { Injectable } from "@nestjs/common";
+import { Repository, DataSource } from "typeorm";
+import { ChatRoomParticipantEntity } from "../entities/chat.room.participants";
 
-import { EntityRepository, Repository } from 'typeorm';
-import { ChatRoomParticipantEntity } from '../entities/chat.room.participants';
-
-@EntityRepository(ChatRoomParticipantEntity)
-export class ChatRoomParticipantRepository extends Repository<ChatRoomParticipantEntity> { }
+@Injectable()
+export class ChatRoomParticipantRepository extends Repository<ChatRoomParticipantEntity> {
+    constructor(private dataSource: DataSource) {
+        super(ChatRoomParticipantEntity, dataSource.createEntityManager());
+    }
+}
