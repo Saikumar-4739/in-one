@@ -6,3 +6,4 @@ export * from './welcome-request-model';
 export * from './userid-request-model';
 export * from './reset-passoword-model';
 export * from './user-prefense-model';
+export * from './activity-status-model';

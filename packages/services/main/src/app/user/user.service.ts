@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import * as nodemailer from 'nodemailer';
 import * as CryptoJS from 'crypto-js';
-import { CommonResponse, CreateUserModel, EmailRequestModel, ResetPassowordModel, UserIdRequestModel, UserLoginModel, UserRole, WelcomeRequestModel, UpdateUserModel } from '@in-one/shared-models';
+import { CommonResponse, CreateUserModel, EmailRequestModel, ResetPassowordModel, UserIdRequestModel, UserLoginModel, UserRole, WelcomeRequestModel, UpdateUserModel, UserActivityStatus } from '@in-one/shared-models';
 import { UserRepository } from './repository/user.repository';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
@@ -65,19 +65,18 @@ export class UserService {
         await this.sendWelcomeEmail({ email: reqModel.email, username: reqModel.username });
         await this.sendVerificationEmail({ email: reqModel.email, verificationToken });
       } catch (emailError) {
-        console.error('Failed to send email:', emailError);
+        throw new Error('Failed to send email')
       }
 
       const { password, verificationToken: token, ...userResponse } = savedUser;
       return new CommonResponse(true, 201, 'User created successfully', userResponse);
     } catch (error) {
       await transactionManager.rollbackTransaction();
-      const message = error instanceof Error ? error.message : 'Unknown error occurred';
-      return new CommonResponse(false, message.includes('required') ? 400 : 500, message, null);
+      return new CommonResponse(false, 500, 'User Creation Failed', error);
     }
   }
 
-  async sendWelcomeEmail(reqModel: WelcomeRequestModel): Promise<void> {
+  async sendWelcomeEmail(reqModel: WelcomeRequestModel): Promise<CommonResponse> {
     try {
       const transporter = nodemailer.createTransport({
         service: 'gmail',
@@ -154,19 +153,16 @@ export class UserService {
           `,
       };
       await transporter.sendMail(mailOptions);
+      return new CommonResponse(false, 500, 'Email Sending Success')
     } catch (error) {
-      console.error('Error sending welcome email:', error);
+      return new CommonResponse(false, 500, 'Email Sending Failed', error)
     }
   }
 
-  async sendVerificationEmail(reqModel: { email: string; verificationToken: string }): Promise<void> {
+  async sendVerificationEmail(reqModel: { email: string; verificationToken: string }): Promise<CommonResponse> {
     try {
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-      });
-
-      const verificationLink = `http://localhost:3005/verify-email?token=${reqModel.verificationToken}`;
+      const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }, });
+      const verificationLink = `http://https://in-one.onrender.com/verify-email?token=${reqModel.verificationToken}`;
       const mailOptions = {
         from: process.env.EMAIL_USER,
         to: reqModel.email,
@@ -216,8 +212,9 @@ export class UserService {
                </html>`,
       };
       await transporter.sendMail(mailOptions);
+      return new CommonResponse(false, 500, 'Email Sending Success')
     } catch (error) {
-      console.error('Error sending verification email:', error);
+      return new CommonResponse(false, 500, 'Email Sending Failed', error)
     }
   }
 
@@ -239,8 +236,7 @@ export class UserService {
       return new CommonResponse(true, 200, 'Email verified successfully');
     } catch (error) {
       await transactionManager.rollbackTransaction();
-      const errorMessage = error instanceof Error ? error.message : 'Error verifying email';
-      return new CommonResponse(false, 400, errorMessage);
+      return new CommonResponse(false, 500, 'Email Verification Failed', error);
     }
   }
 
@@ -294,8 +290,7 @@ export class UserService {
     } catch (error) {
       const transactionManager = new GenericTransactionManager(this.dataSource);
       await transactionManager.rollbackTransaction();
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-      return new CommonResponse(false, 500, errorMessage);
+      return new CommonResponse(false, 500, 'User Login Failed', error);
     }
   }
 
@@ -308,8 +303,7 @@ export class UserService {
       const { password, verificationToken, ...userResponse } = user;
       return new CommonResponse(true, 200, 'User fetched successfully', userResponse);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-      return new CommonResponse(false, 500, errorMessage);
+      return new CommonResponse(false, 500, 'User Fetching Failed', error);
     }
   }
 
@@ -344,8 +338,7 @@ export class UserService {
       return new CommonResponse(true, 200, 'User updated successfully', userResponse);
     } catch (error) {
       await transactionManager.rollbackTransaction();
-      const errorMessage = error instanceof Error ? error.message : 'Error updating user';
-      return new CommonResponse(false, errorMessage.includes('not found') ? 404 : 500, errorMessage);
+      return new CommonResponse(false, 500, 'Upate User Failed', error);
     }
   }
 
@@ -358,14 +351,12 @@ export class UserService {
       }
 
       await transactionManager.startTransaction();
-      await transactionManager.getRepository(UserEntity).softRemove(user);
+      await transactionManager.getRepository(UserEntity).delete(user);
       await transactionManager.commitTransaction();
-
-      return new CommonResponse(true, 200, 'User deleted successfully');
+      return new CommonResponse(true, 200, 'User Deleted successfully');
     } catch (error) {
       await transactionManager.rollbackTransaction();
-      const errorMessage = error instanceof Error ? error.message : 'Error deleting user';
-      return new CommonResponse(false, errorMessage.includes('not found') ? 404 : 500, errorMessage);
+      return new CommonResponse(false, 500, 'User Deleted Failed', error);
     }
   }
 
@@ -382,17 +373,12 @@ export class UserService {
       }
 
       await transactionManager.startTransaction();
-      await transactionManager.getRepository(UserEntity).update(user.id, {
-        status: 'offline',
-        lastSeen: new Date(),
-      });
+      await transactionManager.getRepository(UserEntity).update(user.id, { status: 'offline', lastSeen: new Date() });
       await transactionManager.commitTransaction();
-
       return new CommonResponse(true, 200, 'User logged out successfully');
     } catch (error) {
       await transactionManager.rollbackTransaction();
-      const errorMessage = error instanceof Error ? error.message : 'Error logging out user';
-      return new CommonResponse(false, errorMessage.includes('not found') || errorMessage.includes('Invalid') ? 400 : 500, errorMessage);
+      return new CommonResponse(false, 500, 'User Logout Failed', error);
     }
   }
 
@@ -402,35 +388,29 @@ export class UserService {
       if (!user) {
         return new CommonResponse(false, 404, 'User not found');
       }
-      return new CommonResponse(true, 200, 'User status fetched successfully', {
-        status: user.status,
-        lastSeen: user.lastSeen || user.updatedAt,
-      });
+      return new CommonResponse(true, 200, 'User status fetched successfully', { status: user.status, lastSeen: user.lastSeen || user.updatedAt });
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Error fetching user status';
-      return new CommonResponse(false, 500, errorMessage);
+      return new CommonResponse(false, 500, 'User status fetched failed', error);
     }
   }
 
   async getUserActivityStatus(reqModel: UserIdRequestModel): Promise<CommonResponse> {
     try {
-      const user = await this.userRepository.findOne({
-        where: { id: reqModel.userId },
-        select: ['id', 'status', 'lastSeen', 'createdAt', 'updatedAt'],
-      });
+      const user = await this.userRepository.findOne({ where: { id: reqModel.userId }, select: ['id', 'status', 'lastSeen', 'createdAt', 'updatedAt'] });
       if (!user) {
         return new CommonResponse(false, 404, 'User not found');
       }
-      return new CommonResponse(true, 200, 'User activity status fetched successfully', {
-        status: user.status,
-        isOnline: user.status === 'online',
-        lastSeen: user.lastSeen || user.updatedAt,
-        firstLogin: user.createdAt,
-        lastActivity: user.updatedAt,
-      });
+
+      const status = user.status;
+      const isOnline = status === 'online';
+      const lastSeen = user.lastSeen || user.updatedAt;
+      const firstLogin = user.createdAt;
+      const lastActivity = user.updatedAt;
+
+      const activityStatus = new UserActivityStatus(status, isOnline, lastSeen, firstLogin, lastActivity);
+      return new CommonResponse(true, 200, 'User activity status fetched successfully', activityStatus);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-      return new CommonResponse(false, 500, `Error fetching user activity status: ${errorMessage}`);
+      return new CommonResponse(false, 500, 'Error fetching user activity status', error);
     }
   }
 
@@ -447,24 +427,15 @@ export class UserService {
       }
 
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      const resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000); 
+      const resetPasswordExpires = new Date(Date.now() + 15 * 60 * 1000);
 
       await transactionManager.startTransaction();
 
-      await transactionManager.getRepository(UserEntity).update(user.id, {
-        resetPasswordExpires,
-      });
+      await transactionManager.getRepository(UserEntity).update(user.id, { resetPasswordExpires });
 
       await transactionManager.commitTransaction();
 
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      });
-
+      const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }, });
       await transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: user.email,
@@ -507,10 +478,9 @@ export class UserService {
     } catch (error) {
       console.log(error)
       await transactionManager.rollbackTransaction();
-      return new CommonResponse(false, 1, 'Error Sending OTP', error);
+      return new CommonResponse(false, 500, 'Error Sending OTP', error);
     }
-}
-
+  }
 
   async resetPassword(reqModel: ResetPassowordModel): Promise<CommonResponse> {
     const transactionManager = new GenericTransactionManager(this.dataSource);
@@ -520,26 +490,19 @@ export class UserService {
         throw new Error('User not found');
       }
 
-      if (
-        !user.resetPasswordExpires ||
-        user.resetPasswordExpires < new Date()
-      ) {
+      if (!user.resetPasswordExpires || user.resetPasswordExpires < new Date()) {
         throw new Error('Invalid or expired OTP');
       }
 
       await transactionManager.startTransaction();
 
       const hashedPassword = await bcrypt.hash(reqModel.newPassword, 10);
-      await transactionManager.getRepository(UserEntity).update(user.id, {
-        password: hashedPassword,
-      });
-
+      await transactionManager.getRepository(UserEntity).update(user.id, { password: hashedPassword, });
       await transactionManager.commitTransaction();
       return new CommonResponse(true, 200, 'Password reset successfully');
     } catch (error) {
       await transactionManager.rollbackTransaction();
-      const errorMessage = error instanceof Error ? error.message : 'Error resetting password';
-      return new CommonResponse(false, errorMessage.includes('not found') || errorMessage.includes('Invalid') ? 400 : 500, errorMessage);
+      return new CommonResponse(false, 500, 'Password Reset Failed', error);
     }
   }
 }
