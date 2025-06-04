@@ -1,16 +1,6 @@
-import { Controller, Post, Body, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body } from '@nestjs/common';
 import { ChatService } from './chat.service';
-import {
-  ChatRoomIdRequestModel,
-  CommonResponse,
-  CreateChatRoomModel,
-  CreateMessageModel,
-  EditMessageModel,
-  MessageResponseModel,
-  MessegeIdRequestModel,
-  PrivateMessegeModel,
-  UserIdRequestModel,
-} from '@in-one/shared-models';
+import { ChatRoomIdRequestModel, CommonResponse, CreateChatRoomModel, CreateMessageModel, EditMessageModel, MessageResponse, MessegeIdRequestModel, PrivateMessegeModel, returnException, UserIdRequestModel } from '@in-one/shared-models';
 import { ExceptionHandler } from '@in-one/shared-models';
 import { ApiBody } from '@nestjs/swagger';
 
@@ -28,16 +18,15 @@ type RTCIceCandidateInit = {
 
 @Controller('chat')
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(private readonly chatService: ChatService) { }
 
   @Post('sendMessage')
   @ApiBody({ type: CreateMessageModel })
-  async sendMessage(@Body() reqModel: CreateMessageModel): Promise<CommonResponse> {
+  async sendMessage(@Body() reqModel: CreateMessageModel): Promise<MessageResponse> {
     try {
-      const message = await this.chatService.createMessage(reqModel);
-      return new CommonResponse(true, 200, 'Message sent successfully', message);
+      return await this.chatService.createMessage(reqModel);
     } catch (error) {
-      return ExceptionHandler.handleError(error, 'Failed to send message');
+      return returnException(MessageResponse, error);
     }
   }
 
@@ -45,10 +34,9 @@ export class ChatController {
   @ApiBody({ type: PrivateMessegeModel })
   async sendPrivateMessage(@Body() reqModel: PrivateMessegeModel): Promise<CommonResponse> {
     try {
-      const message = await this.chatService.sendPrivateMessage(reqModel);
-      return message; // Already returns CommonResponse
+      return await this.chatService.sendPrivateMessage(reqModel);
     } catch (error) {
-      return ExceptionHandler.handleError(error, 'Failed to send private message');
+      return returnException(CommonResponse, error);
     }
   }
 
@@ -56,10 +44,9 @@ export class ChatController {
   @ApiBody({ type: ChatRoomIdRequestModel })
   async getMessages(@Body() reqModel: ChatRoomIdRequestModel): Promise<CommonResponse> {
     try {
-      const messages = await this.chatService.getChatHistory(reqModel);
-      return new CommonResponse(true, 200, 'Chat history retrieved', messages);
+      return await this.chatService.getChatHistory(reqModel);
     } catch (error) {
-      return ExceptionHandler.handleError(error, 'Failed to retrieve chat history');
+      return returnException(CommonResponse, error);
     }
   }
 
@@ -67,10 +54,9 @@ export class ChatController {
   @ApiBody({ schema: { properties: { senderId: { type: 'string' }, receiverId: { type: 'string' } } } })
   async getPrivateChatHistory(@Body() reqModel: { senderId: string; receiverId: string }): Promise<CommonResponse> {
     try {
-      const messages = await this.chatService.getPrivateChatHistory(reqModel);
-      return new CommonResponse(true, 200, 'Private chat history retrieved', messages);
+      return await this.chatService.getPrivateChatHistory(reqModel);
     } catch (error) {
-      return ExceptionHandler.handleError(error, 'Failed to retrieve private chat history');
+      return returnException(CommonResponse, error);
     }
   }
 
@@ -78,10 +64,9 @@ export class ChatController {
   @ApiBody({ type: EditMessageModel })
   async editMessage(@Body() reqModel: EditMessageModel): Promise<CommonResponse> {
     try {
-      const updatedMessage = await this.chatService.editMessage(reqModel);
-      return new CommonResponse(true, 200, 'Message updated successfully', updatedMessage);
+      return await this.chatService.editMessage(reqModel);
     } catch (error) {
-      return ExceptionHandler.handleError(error, 'Failed to edit message');
+      return returnException(CommonResponse, error);
     }
   }
 
@@ -89,10 +74,9 @@ export class ChatController {
   @ApiBody({ type: EditMessageModel })
   async editPrivateMessage(@Body() reqModel: EditMessageModel): Promise<CommonResponse> {
     try {
-      const updatedMessage = await this.chatService.editPrivateMessage(reqModel);
-      return new CommonResponse(true, 200, 'Private message updated successfully', updatedMessage);
+      return await this.chatService.editPrivateMessage(reqModel);
     } catch (error) {
-      return ExceptionHandler.handleError(error, 'Failed to edit private message');
+      return returnException(CommonResponse, error);
     }
   }
 
@@ -100,10 +84,9 @@ export class ChatController {
   @ApiBody({ type: MessegeIdRequestModel })
   async deleteMessage(@Body() reqModel: MessegeIdRequestModel): Promise<CommonResponse> {
     try {
-      const result = await this.chatService.deleteMessage(reqModel);
-      return result; // Already returns CommonResponse
+      return await this.chatService.deleteMessage(reqModel);
     } catch (error) {
-      return ExceptionHandler.handleError(error, 'Failed to delete message');
+      return returnException(CommonResponse, error);
     }
   }
 
@@ -111,10 +94,9 @@ export class ChatController {
   @ApiBody({ type: MessegeIdRequestModel })
   async deletePrivateMessage(@Body() reqModel: MessegeIdRequestModel): Promise<CommonResponse> {
     try {
-      const result = await this.chatService.deletePrivateMessage(reqModel);
-      return result; // Already returns CommonResponse
+      return await this.chatService.deletePrivateMessage(reqModel);
     } catch (error) {
-      return ExceptionHandler.handleError(error, 'Failed to delete private message');
+      return returnException(CommonResponse, error);
     }
   }
 
@@ -122,10 +104,9 @@ export class ChatController {
   @ApiBody({ type: UserIdRequestModel })
   async getChatRooms(@Body() reqModel: UserIdRequestModel): Promise<CommonResponse> {
     try {
-      const chatRooms = await this.chatService.getChatRoomsForUser(reqModel);
-      return chatRooms; // Already returns CommonResponse
+      return await this.chatService.getChatRoomsForUser(reqModel);
     } catch (error) {
-      return ExceptionHandler.handleError(error, 'Failed to retrieve chat rooms');
+      return returnException(CommonResponse, error);
     }
   }
 
@@ -133,20 +114,18 @@ export class ChatController {
   @ApiBody({ type: CreateChatRoomModel })
   async createChatRoom(@Body() reqModel: CreateChatRoomModel): Promise<CommonResponse> {
     try {
-      const chatRoom = await this.chatService.createChatRoom(reqModel);
-      return chatRoom; // Already returns CommonResponse
+      return await this.chatService.createChatRoom(reqModel);
     } catch (error) {
-      return ExceptionHandler.handleError(error, 'Failed to create chat room');
+      return returnException(CommonResponse, error);
     }
   }
 
   @Post('getAllUsers')
   async getAllUsers(): Promise<CommonResponse> {
     try {
-      const users = await this.chatService.getAllUsers();
-      return users; // Already returns CommonResponse
+      return await this.chatService.getAllUsers();
     } catch (error) {
-      return ExceptionHandler.handleError(error, 'Failed to retrieve users');
+      return returnException(CommonResponse, error);
     }
   }
 
@@ -154,10 +133,9 @@ export class ChatController {
   @ApiBody({ type: MessegeIdRequestModel })
   async getMessageById(@Body() reqModel: MessegeIdRequestModel): Promise<CommonResponse> {
     try {
-      const message = await this.chatService.getMessageById(reqModel);
-      return message; // Already returns CommonResponse
+      return await this.chatService.getMessageById(reqModel);
     } catch (error) {
-      return ExceptionHandler.handleError(error, 'Failed to retrieve message');
+      return returnException(CommonResponse, error);
     }
   }
 
@@ -165,10 +143,9 @@ export class ChatController {
   @ApiBody({ type: MessegeIdRequestModel })
   async getPrivateMessageById(@Body() reqModel: MessegeIdRequestModel): Promise<CommonResponse> {
     try {
-      const message = await this.chatService.getPrivateMessageById(reqModel);
-      return message; // Already returns CommonResponse
+      return await this.chatService.getPrivateMessageById(reqModel);
     } catch (error) {
-      return ExceptionHandler.handleError(error, 'Failed to retrieve private message');
+      return returnException(CommonResponse, error);
     }
   }
 
@@ -176,10 +153,9 @@ export class ChatController {
   @ApiBody({ schema: { properties: { callerId: { type: 'string' }, userToCall: { type: 'string' }, signalData: { type: 'object' } } } })
   async initiateCall(@Body() reqModel: { callerId: string; userToCall: string; signalData: RTCSessionDescriptionInit }): Promise<CommonResponse> {
     try {
-      const result = await this.chatService.initiateCall(reqModel.callerId, reqModel.userToCall, reqModel.signalData);
-      return result; // Already returns CommonResponse
+      return await this.chatService.initiateCall(reqModel.callerId, reqModel.userToCall, reqModel.signalData);
     } catch (error) {
-      return ExceptionHandler.handleError(error, 'Failed to initiate call');
+      return returnException(CommonResponse, error);
     }
   }
 
@@ -187,10 +163,9 @@ export class ChatController {
   @ApiBody({ schema: { properties: { callId: { type: 'string' }, signalData: { type: 'object' }, answererId: { type: 'string' } } } })
   async answerCall(@Body() reqModel: { callId: string; signalData: RTCSessionDescriptionInit; answererId: string }): Promise<CommonResponse> {
     try {
-      const result = await this.chatService.answerCall(reqModel.callId, reqModel.signalData, reqModel.answererId);
-      return result; // Already returns CommonResponse
+      return await this.chatService.answerCall(reqModel.callId, reqModel.signalData, reqModel.answererId);
     } catch (error) {
-      return ExceptionHandler.handleError(error, 'Failed to answer call');
+      return returnException(CommonResponse, error);
     }
   }
 
@@ -198,10 +173,9 @@ export class ChatController {
   @ApiBody({ schema: { properties: { callId: { type: 'string' }, candidate: { type: 'object' }, userId: { type: 'string' } } } })
   async handleIceCandidate(@Body() reqModel: { callId: string; candidate: RTCIceCandidateInit; userId: string }): Promise<CommonResponse> {
     try {
-      const result = await this.chatService.handleIceCandidate(reqModel.callId, reqModel.candidate, reqModel.userId);
-      return result; // Already returns CommonResponse
+      return await this.chatService.handleIceCandidate(reqModel.callId, reqModel.candidate, reqModel.userId);
     } catch (error) {
-      return ExceptionHandler.handleError(error, 'Failed to handle ICE candidate');
+      return returnException(CommonResponse, error);
     }
   }
 
@@ -209,10 +183,9 @@ export class ChatController {
   @ApiBody({ schema: { properties: { callId: { type: 'string' }, userId: { type: 'string' } } } })
   async endCall(@Body() reqModel: { callId: string; userId: string }): Promise<CommonResponse> {
     try {
-      const result = await this.chatService.endCall(reqModel.callId, reqModel.userId);
-      return result; // Already returns CommonResponse
+      return await this.chatService.endCall(reqModel.callId, reqModel.userId);
     } catch (error) {
-      return ExceptionHandler.handleError(error, 'Failed to end call');
+      return returnException(CommonResponse, error);
     }
   }
 }
