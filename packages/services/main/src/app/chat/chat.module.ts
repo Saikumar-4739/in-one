@@ -16,10 +16,11 @@ import { ChatRoomParticipantRepository } from './repository/chat_room_participan
 import { ChatRoomParticipantEntity } from './entities/chat.room.participants';
 import { PrivateMessageEntity } from './entities/private-messege-entity';
 import { PrivateMessageRepository } from './repository/private-messege.repository';
+import { ChatHelperService } from './chat.helper.services';
 
 @Module({
   imports: [TypeOrmModule.forFeature([ChatRoomEntity, MessageEntity, UserEntity, CallEntity, ChatRoomParticipantEntity, PrivateMessageEntity])],
-  providers: [ChatService, ChatGateway, ChatRoomRepository, MessegeRepository, UserRepository, CallRepository, GenericTransactionManager, ChatRoomParticipantRepository, PrivateMessageRepository],
+  providers: [ChatService, ChatGateway, ChatRoomRepository, MessegeRepository, UserRepository, CallRepository, GenericTransactionManager, ChatRoomParticipantRepository, PrivateMessageRepository, ChatHelperService],
   controllers: [ChatController],
 })
 export class ChatModule { }

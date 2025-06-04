@@ -14,6 +14,7 @@ import { CallEntity } from './entities/call.entity';
 import { MessegeRepository } from './repository/messege.repository';
 import { ChatHelperService } from './chat.helper.services';
 import { PrivateMessageEntity } from './entities/private-messege-entity';
+import { InjectRepository } from '@nestjs/typeorm';
 
 
 interface ChatRoomIdRequestModel {
@@ -39,6 +40,7 @@ export class ChatService {
     private readonly chatRoomRepository: ChatRoomRepository,
     private readonly messageRepository: MessegeRepository,
     private readonly privateMessageRepository: PrivateMessageRepository,
+    @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
     private readonly callRepository: CallRepository,
     private readonly participantRepository: ChatRoomParticipantRepository,

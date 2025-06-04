@@ -1,4 +1,4 @@
-import { GlobalResponseObject } from "src/responses";
+import { GlobalResponseObject } from "../responses/global-response";
 import { MessageResponseModel } from "./messege-response-model";
 
 export class MessageResponse extends GlobalResponseObject {
