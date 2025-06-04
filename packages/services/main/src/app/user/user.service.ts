@@ -20,27 +20,24 @@ export class UserService {
   ) { }
 
   async createUser(reqModel: CreateUserModel): Promise<CommonResponse> {
-    const transactionManager = new GenericTransactionManager(this.dataSource);
+  const passwordRegex = /^(?=(.*[a-z]){2,})(?=(.*[A-Z]){1,})(?=(.*\d){1,})(?=(.*[@$!%*?&#_+\-/]){2,})[A-Za-z\d@$!%*?&#_+\-/]{8,}$/;
+  if (!passwordRegex.test(reqModel.password)) {
+    throw new Error(
+      'Password must be at least 8 characters long, with at least 2 lowercase letters, 1 uppercase letter, 1 number, and 2 special characters (@, $, !, %, *, ?, &, #, _, -, +, /)',
+    );
+  }
+
+  const existingUser = await this.userRepository.findOne({
+    where: [{ username: reqModel.username }, { email: reqModel.email }],
+  });
+  if (existingUser) {
+    throw new Error('Username or email already exists');
+  }
+
+  return this.dataSource.transaction(async (transactionalEntityManager) => {
     try {
-      const passwordRegex = /^(?=(.*[a-z]){2,})(?=(.*[A-Z]){1,})(?=(.*\d){1,})(?=(.*[@$!%*?&#_+\-/]){2,})[A-Za-z\d@$!%*?&#_+\-/]{8,}$/;
-      if (!passwordRegex.test(reqModel.password)) {
-        throw new Error(
-          'Password must be at least 8 characters long, with at least 2 lowercase letters, 1 uppercase letter, 1 number, and 2 special characters (@, $, !, %, *, ?, &, #, _, -, +, /)',
-        );
-      }
-
-      const existingUser = await this.userRepository.findOne({
-        where: [{ username: reqModel.username }, { email: reqModel.email }],
-      });
-      if (existingUser) {
-        throw new Error('Username or email already exists');
-      }
-
-      await transactionManager.startTransaction();
-
       const saltRounds = 10;
       const hashedPassword = await bcrypt.hash(reqModel.password, saltRounds);
-
       const verificationToken = CryptoJS.lib.WordArray.random(32).toString();
 
       const user = this.userRepository.create({
@@ -58,23 +55,24 @@ export class UserService {
         isEmailVerified: false,
       });
 
-      const savedUser = await transactionManager.getRepository(UserEntity).save(user);
-      await transactionManager.commitTransaction();
+      const savedUser = await transactionalEntityManager.save(UserEntity, user);
 
       try {
         await this.sendWelcomeEmail({ email: reqModel.email, username: reqModel.username });
         await this.sendVerificationEmail({ email: reqModel.email, verificationToken });
       } catch (emailError) {
-        throw new Error('Failed to send email')
+        throw new Error('Failed to send email');
       }
 
       const { password, verificationToken: token, ...userResponse } = savedUser;
       return new CommonResponse(true, 201, 'User created successfully', userResponse);
     } catch (error) {
-      await transactionManager.rollbackTransaction();
-      return new CommonResponse(false, 500, 'User Creation Failed', error);
+      throw new Error( 'User Creation Failed');
     }
-  }
+  }).catch((error) => {
+    return new CommonResponse(false, 500, 'User Creation Failed', error.message);
+  });
+}
 
   async sendWelcomeEmail(reqModel: WelcomeRequestModel): Promise<CommonResponse> {
     try {
