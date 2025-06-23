@@ -26,6 +26,6 @@ export const DatabaseModule = TypeOrmModule.forRoot({
   ssl: {
     rejectUnauthorized: false, 
   },
-  logging:true
+  logging:false
 });
 
