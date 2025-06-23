@@ -2,11 +2,15 @@ import { Controller, Post, Body } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CommonResponse, CreateUserModel, EmailRequestModel, ResetPassowordModel, returnException, UpdateUserModel, UserIdRequestModel, UserLoginModel } from '@in-one/shared-models';
 import { ApiBody, ApiTags } from '@nestjs/swagger';
+import { UserInfoService } from './user.info.services';
 
 @ApiTags('Users')
 @Controller('users')
 export class UserController {
-  constructor(private readonly userService: UserService) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly infoService: UserInfoService
+  ) {}
 
   @Post('createUser')
   @ApiBody({ type: CreateUserModel })
@@ -42,7 +46,7 @@ export class UserController {
   @ApiBody({ type: UserIdRequestModel })
   async getUserById(@Body() reqModel: UserIdRequestModel): Promise<CommonResponse> {
     try {
-      return await this.userService.getUserById(reqModel);
+      return await this.infoService.getUserById(reqModel);
     } catch (error) {
       return returnException(CommonResponse, error);
     }
@@ -92,7 +96,7 @@ export class UserController {
   @ApiBody({ type: UserIdRequestModel })
   async getUserActivityStatus(@Body() reqModel: UserIdRequestModel): Promise<CommonResponse> {
     try {
-      return await this.userService.getUserActivityStatus(reqModel);
+      return await this.infoService.getUserActivityStatus(reqModel);
     } catch (error) {
       return returnException(CommonResponse, error);
     }

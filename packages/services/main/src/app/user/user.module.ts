@@ -8,6 +8,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { GenericTransactionManager } from 'src/database/trasanction-manager';
 import { UserRepository } from './repository/user.repository';
+import { UserInfoService } from './user.info.services';
 
 @Module({
   imports: [
@@ -24,7 +25,7 @@ import { UserRepository } from './repository/user.repository';
     CacheModule.register({ isGlobal: true, ttl: 300 }),
   ],
   controllers: [UserController],
-  providers: [UserService, GenericTransactionManager, UserRepository],
+  providers: [UserService, GenericTransactionManager, UserRepository, UserInfoService],
   exports: [UserService],
 })
 export class UserModule { }
